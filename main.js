@@ -9,14 +9,23 @@ let isExtracting = false;
 let currentK = 5;
 let currentImgEl = null;
 let history = JSON.parse(localStorage.getItem('paletteHistory') || '[]');
+let starred = JSON.parse(localStorage.getItem('starredPalettes') || '[]');
 
 const loadingOverlay = document.getElementById('loading-overlay');
 const btnExportTailwind = document.getElementById('btn-export-tailwind');
 const btnExportCss = document.getElementById('btn-export-css');
 const btnExportFigma = document.getElementById('btn-export-figma');
+const btnExportImage = document.getElementById('btn-export-image');
+const btnStarCurrent = document.getElementById('btn-star-current');
 const kSlider = document.getElementById('k-slider');
+
+let isSelecting = false;
+let wasDragging = false;
+let startX, startY;
+let selectionRectDom = null;
 const kValue = document.getElementById('k-value');
 const historyContainer = document.getElementById('history-container');
+const favoritesContainer = document.getElementById('favorites-container');
 
 const roleNames = {
     3: ['BASE', 'PRIMARY', 'TEXT'],
@@ -70,6 +79,7 @@ function initializeCentroidsKMeansPlusPlus(pixels, k) {
 }
 
 let currentTheme = {};
+let currentRawColors = null;
 
 // ---- Event Listeners for Drag & Drop ----
 ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -92,8 +102,84 @@ dropZone.addEventListener('drop', (e) => {
     }
 });
 
-dropZone.addEventListener('click', () => {
+dropZone.addEventListener('click', (e) => {
+    if (wasDragging) return;
+    if (currentImgEl && selectionRectDom) {
+        const selBox = document.getElementById('selection-box');
+        if (selBox) selBox.style.display = 'none';
+        selectionRectDom = null;
+        extractColorsVisualized(currentImgEl);
+        return;
+    }
     fileInput.click();
+});
+
+dropZone.addEventListener('mousedown', (e) => {
+    if (!currentImgEl || isExtracting) return;
+    isSelecting = true;
+    wasDragging = false;
+    const rect = dropZone.getBoundingClientRect();
+    startX = e.clientX - rect.left;
+    startY = e.clientY - rect.top;
+    
+    let selBox = document.getElementById('selection-box');
+    if (!selBox) {
+        selBox = document.createElement('div');
+        selBox.id = 'selection-box';
+        selBox.className = 'selection-box';
+        dropZone.appendChild(selBox);
+    }
+    selBox.style.display = 'block';
+    selBox.style.left = startX + 'px';
+    selBox.style.top = startY + 'px';
+    selBox.style.width = '0px';
+    selBox.style.height = '0px';
+});
+
+document.addEventListener('mousemove', (e) => {
+    if (!isSelecting) return;
+    wasDragging = true;
+    const rect = dropZone.getBoundingClientRect();
+    let currentX = e.clientX - rect.left;
+    let currentY = e.clientY - rect.top;
+    
+    currentX = Math.max(0, Math.min(currentX, rect.width));
+    currentY = Math.max(0, Math.min(currentY, rect.height));
+
+    const x = Math.min(startX, currentX);
+    const y = Math.min(startY, currentY);
+    const w = Math.abs(currentX - startX);
+    const h = Math.abs(currentY - startY);
+    
+    const selBox = document.getElementById('selection-box');
+    if (selBox) {
+        selBox.style.left = x + 'px';
+        selBox.style.top = y + 'px';
+        selBox.style.width = w + 'px';
+        selBox.style.height = h + 'px';
+    }
+});
+
+document.addEventListener('mouseup', (e) => {
+    if (!isSelecting) return;
+    isSelecting = false;
+    setTimeout(() => { if(!isSelecting) wasDragging = false; }, 0);
+    
+    const selBox = document.getElementById('selection-box');
+    if (!selBox) return;
+
+    const w = parseInt(selBox.style.width);
+    const h = parseInt(selBox.style.height);
+    
+    if (w > 10 && h > 10) {
+        const x = parseInt(selBox.style.left);
+        const y = parseInt(selBox.style.top);
+        selectionRectDom = {x, y, w, h};
+        extractColorsVisualized(currentImgEl, selectionRectDom);
+    } else {
+        selBox.style.display = 'none';
+        selectionRectDom = null;
+    }
 });
 
 fileInput.addEventListener('change', (e) => {
@@ -111,6 +197,9 @@ function processImage(file) {
     img.onload = () => {
         if (dropContent) dropContent.hidden = true;
         currentImgEl = img;
+        const selBox = document.getElementById('selection-box');
+        if (selBox) selBox.style.display = 'none';
+        selectionRectDom = null;
         extractColorsVisualized(img);
     };
     img.src = URL.createObjectURL(file);
@@ -122,12 +211,46 @@ if (kSlider) {
         if (kValue) kValue.textContent = currentK;
     });
     kSlider.addEventListener('change', () => {
-        if (currentImgEl) extractColorsVisualized(currentImgEl);
+        if (currentImgEl) extractColorsVisualized(currentImgEl, selectionRectDom);
     });
 }
 
+function mapDomRectToCanvas(domRect, canvas, dropZone) {
+    const dzRect = dropZone.getBoundingClientRect();
+    const canvasAspect = canvas.width / canvas.height;
+    const dzAspect = dzRect.width / dzRect.height;
+    
+    let renderWidth, renderHeight, offsetX = 0, offsetY = 0;
+    if (canvasAspect > dzAspect) {
+        renderWidth = dzRect.width;
+        renderHeight = dzRect.width / canvasAspect;
+        offsetY = (dzRect.height - renderHeight) / 2;
+    } else {
+        renderHeight = dzRect.height;
+        renderWidth = dzRect.height * canvasAspect;
+        offsetX = (dzRect.width - renderWidth) / 2;
+    }
+    
+    const scaleX = canvas.width / renderWidth;
+    const scaleY = canvas.height / renderHeight;
+    
+    let cx = (domRect.x - offsetX) * scaleX;
+    let cy = (domRect.y - offsetY) * scaleY;
+    let cw = domRect.w * scaleX;
+    let ch = domRect.h * scaleY;
+    
+    let right = Math.min(canvas.width, cx + cw);
+    let bottom = Math.min(canvas.height, cy + ch);
+    cx = Math.max(0, cx);
+    cy = Math.max(0, cy);
+    cw = right - cx;
+    ch = bottom - cy;
+    
+    return { x: cx, y: cy, w: cw, h: ch };
+}
+
 // ---- K-Means Color Extraction Visualized ----
-function extractColorsVisualized(imgEl) {
+function extractColorsVisualized(imgEl, selDomRect = null) {
     isExtracting = true;
     
     loadingOverlay.hidden = false;
@@ -154,12 +277,39 @@ function extractColorsVisualized(imgEl) {
     ctx.drawImage(imgEl, 0, 0, width, height);
     previewCanvas.classList.add('visible');
     
+    let extractRect = { x: 0, y: 0, w: width, h: height };
+    if (selDomRect) {
+        extractRect = mapDomRectToCanvas(selDomRect, previewCanvas, dropZone);
+        if (extractRect.w <= 0 || extractRect.h <= 0) {
+            extractRect = { x: 0, y: 0, w: width, h: height };
+        }
+    }
+
     const imageDataObj = ctx.getImageData(0, 0, width, height);
     const data = imageDataObj.data;
+    const originalData = new Uint8ClampedArray(data);
     
     const rawPixels = [];
-    for (let i = 0; i < data.length; i += 4) {
-        rawPixels.push({ r: data[i], g: data[i + 1], b: data[i + 2], index: i });
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            if (x >= extractRect.x && x < extractRect.x + extractRect.w &&
+                y >= extractRect.y && y < extractRect.y + extractRect.h) {
+                
+                let i = (y * width + x) * 4;
+                if (data[i + 3] > 0) {
+                    rawPixels.push({ r: data[i], g: data[i + 1], b: data[i + 2], index: i });
+                }
+            }
+        }
+    }
+    
+    if (rawPixels.length === 0) {
+        for (let i = 0; i < data.length; i += 4) {
+            if (data[i + 3] > 0) {
+                rawPixels.push({ r: data[i], g: data[i + 1], b: data[i + 2], index: i });
+            }
+        }
+        selDomRect = null;
     }
 
     const k = currentK;
@@ -170,7 +320,7 @@ function extractColorsVisualized(imgEl) {
         const weight = 1 + Math.min(chroma * 10, 5); 
         return { r: p.r, g: p.g, b: p.b, oklab, weight, index: p.index };
     });
-    let centroids = initializeCentroidsKMeansPlusPlus(pixels, k);
+    let centroids = initializeCentroidsKMeansPlusPlus(pixels, Math.min(k, pixels.length));
     
     let iter = 0;
     const MAX_ITER = 15;
@@ -206,10 +356,11 @@ function extractColorsVisualized(imgEl) {
         });
         
         // Strategy 3: In-flight deduplication
-        if (iter < MAX_ITER - 2) {
+        const cLen = centroids.length;
+        if (iter < MAX_ITER - 2 && cLen > 1) {
             let merged = false;
-            for (let a = 0; a < k && !merged; a++) {
-                for (let b = a + 1; b < k && !merged; b++) {
+            for (let a = 0; a < cLen && !merged; a++) {
+                for (let b = a + 1; b < cLen && !merged; b++) {
                     if (colorDistanceOklab(centroids[a].oklab, centroids[b].oklab) < 0.07) {
                         const toReplace = clusters[a].length < clusters[b].length ? a : b;
                         let maxScore = -1; let bestPixel = null;
@@ -218,7 +369,7 @@ function extractColorsVisualized(imgEl) {
                         for (let i = 0; i < pixels.length; i += 7) {
                             const pixel = pixels[i];
                             let minDistToCentroids = Infinity;
-                            for (let cIdx = 0; cIdx < k; cIdx++) {
+                            for (let cIdx = 0; cIdx < cLen; cIdx++) {
                                 if (cIdx === toReplace) continue;
                                 const d = colorDistanceOklab(pixel.oklab, centroids[cIdx].oklab);
                                 if (d < minDistToCentroids) minDistToCentroids = d;
@@ -237,8 +388,23 @@ function extractColorsVisualized(imgEl) {
             }
         }
         
-        const newImageData = new ImageData(width, height);
-        newImageData.data.fill(255); 
+        const newImageData = new ImageData(new Uint8ClampedArray(originalData), width, height);
+        
+        if (selDomRect) {
+            for (let i = 0; i < newImageData.data.length; i += 4) {
+                let x = (i / 4) % width;
+                let y = Math.floor((i / 4) / width);
+                if (!(x >= extractRect.x && x < extractRect.x + extractRect.w &&
+                      y >= extractRect.y && y < extractRect.y + extractRect.h)) {
+                    let r = newImageData.data[i], g = newImageData.data[i+1], b = newImageData.data[i+2];
+                    let luma = r * 0.299 + g * 0.587 + b * 0.114;
+                    newImageData.data[i] = luma * 0.3;
+                    newImageData.data[i+1] = luma * 0.3;
+                    newImageData.data[i+2] = luma * 0.3;
+                }
+            }
+        }
+        
         for (let pIdx = 0; pIdx < pixels.length; pIdx++) {
             const cIdx = pixelAssignments[pIdx];
             const color = centroids[cIdx];
@@ -254,6 +420,9 @@ function extractColorsVisualized(imgEl) {
             setTimeout(() => requestAnimationFrame(runFrame), 50);
         } else {
             let finalCentroids = centroids.map(c => ({r: c.r, g: c.g, b: c.b}));
+            while (finalCentroids.length < k) {
+                finalCentroids.push({r:0, g:0, b:0});
+            }
             finalCentroids.sort((a, b) => getBrightness(a) - getBrightness(b));
             
             const theme = {};
@@ -349,10 +518,153 @@ function downloadConfig(content, filename, btn) {
 
 btnExportTailwind.addEventListener('click', exportToTailwind);
 btnExportCss.addEventListener('click', exportToCSS);
+if (btnExportImage) btnExportImage.addEventListener('click', exportToImage);
+
+function exportToImage(e) {
+    if (!currentTheme.bg) return;
+    
+    const canvas = document.createElement('canvas');
+    canvas.width = 1200;
+    canvas.height = 1200;
+    const ctx = canvas.getContext('2d');
+    
+    ctx.fillStyle = '#F5F0E8';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    ctx.fillStyle = 'rgba(26, 26, 26, 0.15)';
+    for (let i = 40; i < canvas.width; i += 40) {
+        for (let j = 40; j < canvas.height; j += 40) {
+            ctx.beginPath();
+            ctx.arc(i, j, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+    
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.strokeRect(60, 60, 1080, 1080);
+    
+    ctx.font = 'bold 80px "Space Grotesk", sans-serif';
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillText('PALETTE EXTRACTOR', 100, 160);
+    
+    ctx.font = 'bold 24px "IBM Plex Mono", monospace';
+    ctx.fillText('ZINE EDITION // SYSTEM EXPORT // ' + new Date().toISOString().split('T')[0], 100, 210);
+    
+    ctx.beginPath();
+    ctx.moveTo(60, 260);
+    ctx.lineTo(1140, 260);
+    ctx.stroke();
+    
+    const imgSize = 460;
+    const imgX = 100;
+    const imgY = 320;
+    
+    let dw = imgSize;
+    let dh = imgSize;
+    if (currentImgEl) {
+        const imgAspect = currentImgEl.naturalWidth / currentImgEl.naturalHeight;
+        if (imgAspect > 1) {
+            dw = imgSize; dh = imgSize / imgAspect;
+        } else {
+            dh = imgSize; dw = imgSize * imgAspect;
+        }
+    }
+    
+    ctx.fillStyle = currentTheme.primary || '#ef4444';
+    ctx.fillRect(imgX + 16, imgY + 16, dw, dh);
+    
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(imgX, imgY, dw, dh);
+    
+    if (currentImgEl) {
+        ctx.drawImage(currentImgEl, imgX, imgY, dw, dh);
+    } else {
+        ctx.fillStyle = '#F5F0E8';
+        ctx.fillRect(imgX + 4, imgY + 4, dw - 8, dh - 8);
+        ctx.fillStyle = '#1a1a1a';
+        ctx.font = 'bold 24px "IBM Plex Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('NO SOURCE', imgX + dw / 2, imgY + dh / 2);
+        ctx.textAlign = 'left';
+    }
+    ctx.strokeRect(imgX, imgY, dw, dh);
+    
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    const l = 20;
+    ctx.moveTo(imgX - l, imgY); ctx.lineTo(imgX, imgY);
+    ctx.moveTo(imgX, imgY - l); ctx.lineTo(imgX, imgY);
+    ctx.moveTo(imgX + dw + l, imgY); ctx.lineTo(imgX + dw, imgY);
+    ctx.moveTo(imgX + dw, imgY - l); ctx.lineTo(imgX + dw, imgY);
+    ctx.moveTo(imgX - l, imgY + dh); ctx.lineTo(imgX, imgY + dh);
+    ctx.moveTo(imgX, imgY + dh + l); ctx.lineTo(imgX, imgY + dh);
+    ctx.moveTo(imgX + dw + l, imgY + dh); ctx.lineTo(imgX + dw, imgY + dh);
+    ctx.moveTo(imgX + dw, imgY + dh + l); ctx.lineTo(imgX + dw, imgY + dh);
+    ctx.stroke();
+    
+    const paletteX = 620;
+    const paletteY = 320;
+    const swatchW = 480;
+    
+    const k = Object.keys(currentTheme).length;
+    const names = roleNames[k];
+    const swatchH = Math.min(100, 660 / k - 20);
+    
+    Object.values(currentTheme).forEach((color, i) => {
+        const y = paletteY + i * (swatchH + 20);
+        
+        ctx.fillStyle = '#1a1a1a';
+        ctx.fillRect(paletteX + 8, y + 8, swatchW, swatchH);
+        
+        ctx.fillStyle = color;
+        ctx.fillRect(paletteX, y, swatchW, swatchH);
+        ctx.lineWidth = 4;
+        ctx.strokeRect(paletteX, y, swatchW, swatchH);
+        
+        const hex = color.replace('#', '');
+        const r = parseInt(hex.substring(0,2), 16);
+        const g = parseInt(hex.substring(2,4), 16);
+        const b = parseInt(hex.substring(4,6), 16);
+        const brightness = getBrightness({r, g, b});
+        ctx.fillStyle = brightness > 128 ? '#1a1a1a' : '#F5F0E8';
+        
+        ctx.font = 'bold 28px "Space Grotesk", sans-serif';
+        ctx.fillText(names[i], paletteX + 24, y + swatchH / 2 + 10);
+        
+        ctx.font = 'bold 24px "IBM Plex Mono", monospace';
+        ctx.fillText(color.toUpperCase(), paletteX + swatchW - 140, y + swatchH / 2 + 8);
+    });
+    
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(60, 1020, 1080, 120);
+    ctx.fillStyle = '#F5F0E8';
+    ctx.font = 'bold 40px "Space Grotesk", sans-serif';
+    ctx.fillText('PROCESS COMPLETE', 100, 1090);
+    
+    ctx.font = 'bold 24px "IBM Plex Mono", monospace';
+    ctx.fillText('INK COVERAGE SIMULATION', 740, 1085);
+    
+    const url = canvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'palette-card.png';
+    a.click();
+    
+    if (e && e.target) {
+        const btn = e.target;
+        const originalText = btn.textContent;
+        btn.textContent = 'SAVED';
+        setTimeout(() => { btn.textContent = originalText; }, 2000);
+    }
+}
 
 // ---- UI Updates ----
 function updateUI(theme, rawColors, saveToHistory = false) {
     currentTheme = theme;
+    currentRawColors = rawColors;
+    
+    updateStarButtonUI();
     
     // 1. Update CSS Variables
     root.style.setProperty('--secondary-color', theme.secondary || theme.bg);
@@ -379,14 +691,10 @@ function updateUI(theme, rawColors, saveToHistory = false) {
         }
         swatch.style.color = textColor;
         
-        let ratingText = '';
-        if (rawColors && rawColors[index] && rawColors[0] && index > 0) {
-            const contrast = getContrastRatio(rawColors[index], rawColors[0]);
-            let rating = contrast >= 7 ? 'AAA' : (contrast >= 4.5 ? 'AA' : 'FAIL');
-            ratingText = `<div class="swatch-rating">R: ${contrast.toFixed(1)} [${rating}]</div>`;
-        } else if (index === 0) {
-            ratingText = `<div class="swatch-rating">BASE PAPER</div>`;
-        }
+        // Use ntc.js to name the color
+        const ntcMatch = ntc.name(color);
+        const colorName = ntcMatch[1].toUpperCase();
+        let ratingText = `<div class="swatch-rating"><span>${colorName}</span></div>`;
         
         swatch.innerHTML = `
             <div class="swatch-content">
@@ -443,16 +751,16 @@ function updateUI(theme, rawColors, saveToHistory = false) {
         badge.textContent = '0%';
         
         const targetProgress = Math.floor(Math.random() * 40) + 40; 
-        const targetBadge = Math.floor(Math.random() * 20) + 5;
         
         setTimeout(() => {
             progress.style.width = `${targetProgress}%`;
             let currentBadge = 0;
+            const intervalTime = Math.max(10, 500 / targetProgress);
             const badgeInterval = setInterval(() => {
                 currentBadge++;
                 badge.textContent = `${currentBadge}%`;
-                if (currentBadge >= targetBadge) clearInterval(badgeInterval);
-            }, 30);
+                if (currentBadge >= targetProgress) clearInterval(badgeInterval);
+            }, intervalTime);
         }, 100);
     }
 }
@@ -486,6 +794,65 @@ function renderHistory() {
     });
 }
 
+function isCurrentStarred() {
+    if (!currentTheme.bg) return false;
+    const themeStr = JSON.stringify(currentTheme);
+    return starred.some(item => JSON.stringify(item.theme) === themeStr);
+}
+
+function updateStarButtonUI() {
+    if (!btnStarCurrent) return;
+    if (isCurrentStarred()) {
+        btnStarCurrent.textContent = '★ STARRED';
+        btnStarCurrent.style.color = 'var(--bg-color)';
+        btnStarCurrent.style.background = 'var(--text-color)';
+    } else {
+        btnStarCurrent.textContent = '☆ STAR';
+        btnStarCurrent.style.color = '';
+        btnStarCurrent.style.background = '';
+    }
+}
+
+if (btnStarCurrent) {
+    btnStarCurrent.addEventListener('click', () => {
+        if (!currentTheme.bg) return;
+        const themeStr = JSON.stringify(currentTheme);
+        if (isCurrentStarred()) {
+            starred = starred.filter(item => JSON.stringify(item.theme) !== themeStr);
+        } else {
+            starred.unshift({ theme: currentTheme, rawColors: currentRawColors });
+        }
+        localStorage.setItem('starredPalettes', JSON.stringify(starred));
+        updateStarButtonUI();
+        renderFavorites();
+    });
+}
+
+function renderFavorites() {
+    if (!favoritesContainer) return;
+    favoritesContainer.innerHTML = '';
+    if (starred.length === 0) {
+        favoritesContainer.innerHTML = '<div class="mono-text" style="opacity:0.5; font-size:0.85rem; padding: 1rem 0;">NO STARRED PALETTES YET.</div>';
+        return;
+    }
+    starred.forEach((item) => {
+        const div = document.createElement('div');
+        div.className = 'history-item';
+        Object.values(item.theme).forEach(color => {
+            const colorDiv = document.createElement('div');
+            colorDiv.className = 'history-color';
+            colorDiv.style.backgroundColor = color;
+            div.appendChild(colorDiv);
+        });
+        div.addEventListener('click', () => {
+            currentK = Object.keys(item.theme).length;
+            if(kSlider) { kSlider.value = currentK; kValue.textContent = currentK; }
+            updateUI(item.theme, item.rawColors, false);
+        });
+        favoritesContainer.appendChild(div);
+    });
+}
+
 // Initial default render
 const defaultTheme = {
     bg: '#1a1a1a',
@@ -503,3 +870,4 @@ const defaultRaw = [
 ];
 updateUI(defaultTheme, defaultRaw, false);
 renderHistory();
+renderFavorites();

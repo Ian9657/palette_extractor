@@ -109,6 +109,16 @@ h1, h2, h3, .title, .mockup-title {
     background: rgba(0,0,0,0.05);
 }
 
+.selection-box {
+    position: absolute;
+    border: 2px dashed var(--text-color);
+    background: rgba(0, 0, 0, 0.1);
+    display: none;
+    z-index: 5;
+    pointer-events: none;
+    mix-blend-mode: difference;
+}
+
 .crop-mark {
     position: absolute;
     width: 20px;
@@ -228,7 +238,11 @@ h2 { font-size: 1.5rem; letter-spacing: -0.02em; }
     padding-bottom: 4px;
     font-family: 'Space Grotesk', sans-serif;
     letter-spacing: -0.02em;
-    font-size: 1rem;
+    font-size: clamp(0.65rem, 1.2vw, 1rem);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-right: 10px;
 }
 
 .swatch-footer {
@@ -238,20 +252,24 @@ h2 { font-size: 1.5rem; letter-spacing: -0.02em; }
 }
 
 .swatch-hex {
-    font-size: 0.9rem;
+    font-size: clamp(0.7rem, 1.2vw, 0.9rem);
     font-weight: 600;
 }
 
 .swatch-rating {
-    font-size: 0.7rem;
+    font-size: clamp(0.6rem, 1vw, 0.7rem);
     border-top: 1px solid currentColor;
     padding-top: 4px;
+    height: 20px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .color-input-wrapper {
     position: absolute;
-    top: 0.75rem;
-    right: 0.75rem;
+    top: 0.5rem;
+    right: 0.5rem;
     width: 20px; height: 20px;
     border: 2px solid currentColor;
     display: flex; justify-content: center; align-items: center;
@@ -335,6 +353,7 @@ h2 { font-size: 1.5rem; letter-spacing: -0.02em; }
 }
 
 .history-container { display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem; }
+.favorites-wrap { flex-wrap: wrap; overflow-x: visible; }
 .history-item {
     min-width: 80px; height: 40px;
     border: 2px solid var(--border-color);

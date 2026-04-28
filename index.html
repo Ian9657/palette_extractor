@@ -42,6 +42,8 @@
                 <div class="section-header">
                     <h2>COLOR BAR</h2>
                     <div class="export-actions">
+                        <button id="btn-star-current" class="btn-export">☆ STAR</button>
+                        <button id="btn-export-image" class="btn-export" style="background: var(--text-color); color: var(--bg-color);">SAVE IMG</button>
                         <button id="btn-export-figma" class="btn-export">FIGMA</button>
                         <button id="btn-export-tailwind" class="btn-export">TAILWIND</button>
                         <button id="btn-export-css" class="btn-export">CSS</button>
@@ -76,9 +78,17 @@
                 <div id="history-container" class="history-container">
                     <!-- History blocks dynamically inserted here -->
                 </div>
+
+                <div class="section-header" style="margin-top: 2rem;">
+                    <h2>FAVORITES</h2>
+                </div>
+                <div id="favorites-container" class="history-container favorites-wrap">
+                    <!-- Starred blocks dynamically inserted here -->
+                </div>
             </div>
         </main>
     </div>
+    <script src="ntc.js"></script>
     <script src="main.js"></script>
 </body>
 </html>
