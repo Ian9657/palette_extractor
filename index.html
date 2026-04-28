@@ -22,7 +22,7 @@
 
         <main class="main-section">
             <div class="left-col">
-                <div id="drop-zone" class="drop-zone">
+                <div id="drop-zone" class="drop-zone" role="button" tabindex="0" aria-label="Upload an image to extract palette" aria-description="Drag and drop an image here or press Enter to select a file">
                     <div class="crop-mark top-left"></div>
                     <div class="crop-mark top-right"></div>
                     <div class="crop-mark bottom-left"></div>
@@ -34,9 +34,9 @@
                         <span class="drop-text">UPLOAD SOURCE</span>
                         <span class="drop-sub">JPG / PNG / WEBP</span>
                     </div>
-                    <input type="file" id="file-input" accept="image/*" hidden>
+                    <input type="file" id="file-input" accept="image/*" class="sr-only" tabindex="-1">
                     <canvas id="preview-canvas"></canvas>
-                    <div id="loading-overlay" class="loading-overlay" hidden>
+                    <div id="loading-overlay" class="loading-overlay" style="display: none;">
                         <span class="loading-text">PROCESSING...</span>
                     </div>
                 </div>
