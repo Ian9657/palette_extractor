@@ -41,6 +41,8 @@ h1, h2, h3, .title, .mockup-title {
     position: relative;
     /* Risograph offset overprint effect */
     box-shadow: 4px 4px 0 var(--accent-color);
+    /* Compensate shadow for visual centering */
+    transform: translateX(-2px);
 }
 
 .header-section {
@@ -569,8 +571,8 @@ h2 { font-size: 2rem; letter-spacing: -0.02em; }
 }
 
 @media (max-width: 600px) {
-    body { padding: 0.5rem; overflow-x: hidden; }
-    .grid-layout { padding: 1.5rem; gap: 1.5rem; box-shadow: none; }
+    body { padding: 0.5rem; }
+    .grid-layout { padding: 1.5rem; gap: 1.5rem; }
     
     .title { font-size: 2.2rem; }
     
