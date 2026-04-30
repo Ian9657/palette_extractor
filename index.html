@@ -70,11 +70,32 @@
                     <h2>PRINT PROOF</h2>
                 </div>
                 <div class="ui-mockup" id="ui-mockup">
-                    <div class="mockup-header">
-                        <h3 class="mockup-title">SYSTEM LOAD</h3>
-                        <span id="mockup-badge" class="badge">14%</span>
+                    <div id="proof-strip" class="proof-strip">
+                        <!-- Color strip populated by JS -->
                     </div>
-                    <p class="mockup-text mono-text">DATA PROPAGATED AUTOMATICALLY VIA K-MEANS PLUS PLUS INITIALIZATION. INK COVERAGE SIMULATION.</p>
+                    <div class="mockup-header">
+                        <h3 class="mockup-title">INK COVERAGE</h3>
+                        <span id="mockup-badge" class="badge">0%</span>
+                    </div>
+                    <div class="proof-meta mono-text">
+                        <div class="proof-meta-row">
+                            <span class="proof-label">REV.</span>
+                            <span id="proof-rev" class="proof-value">001</span>
+                            <span class="proof-sep">·</span>
+                            <span id="proof-date" class="proof-value">2026-04-30</span>
+                            <span class="proof-sep">·</span>
+                            <span class="proof-value">sRGB → OKLab</span>
+                        </div>
+                        <div class="proof-meta-row">
+                            <span class="proof-label">K</span>
+                            <span id="proof-k" class="proof-value">5</span>
+                            <span class="proof-sep">·</span>
+                            <span class="proof-label">ITER</span>
+                            <span id="proof-iter" class="proof-value">15</span>
+                            <span class="proof-sep">·</span>
+                            <span class="proof-value">CHROMA WEIGHTED</span>
+                        </div>
+                    </div>
                     <div class="progress-track">
                         <div id="mockup-progress" class="progress-fill"></div>
                     </div>

@@ -10,6 +10,7 @@ let currentK = 5;
 let currentImgEl = null;
 let history = JSON.parse(localStorage.getItem('paletteHistory') || '[]');
 let starred = JSON.parse(localStorage.getItem('starredPalettes') || '[]');
+let revCount = parseInt(localStorage.getItem('proofRevCount') || '0');
 
 const loadingOverlay = document.getElementById('loading-overlay');
 const btnExportTailwind = document.getElementById('btn-export-tailwind');
@@ -484,7 +485,7 @@ function extractColorsVisualized(imgEl, selDomRect = null) {
                 while (finalCentroids.length < currentK_snapshot) {
                     finalCentroids.push({r:0, g:0, b:0});
                 }
-                finalCentroids.sort((a, b) => getBrightness(a) - getBrightness(b));
+                finalCentroids = assignSemanticRoles(finalCentroids, currentK_snapshot);
                 
                 const theme = {};
                 const keys = roleKeys[currentK_snapshot];
@@ -531,6 +532,110 @@ function getContrastRatio(c1, c2) {
 
 function rgbToHex({r, g, b}) {
     return "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1).toUpperCase();
+}
+
+function rgbToOklabMain(r, g, b) {
+    let r_l = r / 255, g_l = g / 255, b_l = b / 255;
+    r_l = r_l > 0.04045 ? Math.pow((r_l + 0.055) / 1.055, 2.4) : r_l / 12.92;
+    g_l = g_l > 0.04045 ? Math.pow((g_l + 0.055) / 1.055, 2.4) : g_l / 12.92;
+    b_l = b_l > 0.04045 ? Math.pow((b_l + 0.055) / 1.055, 2.4) : b_l / 12.92;
+    let l = 0.4122214708 * r_l + 0.5363325363 * g_l + 0.0514459929 * b_l;
+    let m = 0.2119034982 * r_l + 0.6806995451 * g_l + 0.1073969566 * b_l;
+    let s = 0.0883024619 * r_l + 0.2817188376 * g_l + 0.6299787005 * b_l;
+    let l_ = Math.cbrt(Math.max(0, l)), m_ = Math.cbrt(Math.max(0, m)), s_ = Math.cbrt(Math.max(0, s));
+    return {
+        L: 0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_,
+        a: 1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_,
+        b: 0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_
+    };
+}
+
+/**
+ * Semantic role assignment via OKLab perceptual analysis.
+ * Greedy constraint-satisfaction: most constrained roles assigned first.
+ *
+ * Priority order:
+ *   bg       → extreme lightness + lowest chroma
+ *   text     → max contrast vs bg + low chroma
+ *   primary  → highest chroma
+ *   accent   → high chroma + max hue distance from primary
+ *   highlight→ high chroma + high lightness
+ *   surface  → close lightness to bg + low chroma
+ *   muted    → low chroma + mid lightness
+ *   secondary→ remaining
+ */
+function assignSemanticRoles(centroids, k) {
+    const keys = roleKeys[k];
+
+    const colors = centroids.map((c, i) => {
+        const ok = rgbToOklabMain(c.r, c.g, c.b);
+        return { r: c.r, g: c.g, b: c.b, L: ok.L,
+                 C: Math.sqrt(ok.a * ok.a + ok.b * ok.b),
+                 H: Math.atan2(ok.b, ok.a), idx: i };
+    });
+
+    const assigned = new Map();
+    const used = new Set();
+
+    function pick(scoreFn) {
+        let best = null, bestS = -Infinity;
+        for (const c of colors) {
+            if (used.has(c.idx)) continue;
+            const s = scoreFn(c);
+            if (s > bestS) { bestS = s; best = c; }
+        }
+        return best;
+    }
+    function assign(role, c) {
+        if (c && keys.includes(role)) { assigned.set(role, c); used.add(c.idx); }
+    }
+
+    // 1. bg — extreme lightness + neutral
+    const avgL = colors.reduce((s, c) => s + c.L, 0) / colors.length;
+    const light = avgL > 0.5;
+    assign('bg', pick(c => (light ? c.L : 1 - c.L) * 3 - c.C * 5));
+
+    // 2. text — max contrast vs bg + neutral
+    const bg = assigned.get('bg');
+    assign('text', pick(c => Math.abs(c.L - bg.L) * 4 - c.C * 2));
+
+    // 3. primary — highest chroma
+    assign('primary', pick(c => c.C * 5));
+
+    // 4. accent — high chroma + hue diversity vs primary
+    const pri = assigned.get('primary');
+    if (keys.includes('accent')) {
+        assign('accent', pick(c => {
+            let hd = pri ? Math.abs(c.H - pri.H) : 0;
+            if (hd > Math.PI) hd = 2 * Math.PI - hd;
+            return c.C * 2 + (hd / Math.PI) * 4;
+        }));
+    }
+
+    // 5. highlight — chromatic + bright
+    if (keys.includes('highlight')) {
+        assign('highlight', pick(c => c.C * 2 + c.L * 3));
+    }
+
+    // 6. surface — close to bg + neutral
+    if (keys.includes('surface')) {
+        assign('surface', pick(c => -Math.abs(c.L - bg.L) * 4 - c.C * 3));
+    }
+
+    // 7. muted — desaturated + mid lightness
+    if (keys.includes('muted')) {
+        assign('muted', pick(c => -c.C * 4 + (1 - Math.abs(c.L - 0.5) * 2) * 2));
+    }
+
+    // 8. secondary — remaining
+    if (keys.includes('secondary') && !assigned.has('secondary')) {
+        assign('secondary', pick(() => 0));
+    }
+
+    return keys.map(key => {
+        const c = assigned.get(key);
+        return c ? { r: c.r, g: c.g, b: c.b } : { r: 0, g: 0, b: 0 };
+    });
 }
 
 // ---- Export Capabilities ----
@@ -738,20 +843,49 @@ function updateUI(theme, rawColors, saveToHistory = false) {
     root.style.setProperty('--primary-color', theme.primary);
     root.style.setProperty('--accent-color', theme.accent || theme.primary);
     
-    // 2. Update UI Mockup specific variables (so it previews the full theme without breaking the main page)
+    // 2. Update UI Mockup — live color preview + proof metadata
     const mockup = document.getElementById('ui-mockup');
     if (mockup) {
         mockup.style.setProperty('--bg-color', theme.bg);
         mockup.style.setProperty('--text-color', theme.text);
         mockup.style.setProperty('--border-color', theme.text);
+        mockup.style.setProperty('--primary-color', theme.primary);
+        mockup.style.setProperty('--accent-color', theme.accent || theme.primary);
+        mockup.style.setProperty('--secondary-color', theme.secondary || theme.bg);
     }
-    
-    // 2. Render color swatches
+
+    // Color strip
+    const strip = document.getElementById('proof-strip');
+    if (strip) {
+        strip.innerHTML = '';
+        Object.values(theme).forEach(color => {
+            const div = document.createElement('div');
+            div.className = 'proof-strip-color';
+            div.style.backgroundColor = color;
+            strip.appendChild(div);
+        });
+    }
+
+    // 3. Render color swatches
     paletteContainer.innerHTML = '';
     const k = Object.keys(theme).length;
     const names = roleNames[k];
     const keys = roleKeys[k];
-    
+
+    // Proof metadata
+    if (saveToHistory) {
+        revCount++;
+        localStorage.setItem('proofRevCount', revCount);
+    }
+    const proofRev = document.getElementById('proof-rev');
+    const proofDate = document.getElementById('proof-date');
+    const proofK = document.getElementById('proof-k');
+    const proofIter = document.getElementById('proof-iter');
+    if (proofRev) proofRev.textContent = String(revCount).padStart(3, '0');
+    if (proofDate) proofDate.textContent = new Date().toISOString().split('T')[0];
+    if (proofK) proofK.textContent = k;
+    if (proofIter) proofIter.textContent = '15';
+
     Object.values(theme).forEach((color, index) => {
         const swatch = document.createElement('div');
         swatch.className = 'swatch';
