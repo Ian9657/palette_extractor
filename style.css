@@ -33,7 +33,7 @@ h1, h2, h3, .title, .mockup-title {
     width: 100%;
     max-width: 1200px;
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 2rem;
     border: 2px solid var(--border-color);
     padding: 3rem;
@@ -563,7 +563,7 @@ h2 { font-size: 2rem; letter-spacing: -0.02em; }
 }
 
 @media (max-width: 900px) {
-    .main-section { grid-template-columns: 1fr; }
+    .main-section { grid-template-columns: minmax(0, 1fr); }
     .header-section { flex-direction: column; align-items: flex-start; gap: 1rem; }
     .title { font-size: 3rem; }
     .left-col { position: relative; } /* Disable sticky in single-column layout */
