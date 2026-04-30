@@ -26,6 +26,7 @@ let selectionRectDom = null;
 const kValue = document.getElementById('k-value');
 const historyContainer = document.getElementById('history-container');
 const favoritesContainer = document.getElementById('favorites-container');
+const a11yMatrix = document.getElementById('a11y-matrix');
 
 const roleNames = {
     3: ['BASE', 'PRIMARY', 'TEXT'],
@@ -45,6 +46,7 @@ const roleKeys = {
     8: ['bg', 'surface', 'secondary', 'muted', 'primary', 'accent', 'highlight', 'text']
 };
 
+const workerCode = `
 function rgbToOklab(r, g, b) {
     let r_l = (r / 255); let g_l = (g / 255); let b_l = (b / 255);
     r_l = r_l > 0.04045 ? Math.pow((r_l + 0.055) / 1.055, 2.4) : r_l / 12.92;
@@ -78,6 +80,108 @@ function initializeCentroidsKMeansPlusPlus(pixels, k) {
     return centroids;
 }
 
+self.onmessage = function(e) {
+    const { rawPixels, k, MAX_ITER = 15 } = e.data;
+    
+    if (!rawPixels || rawPixels.length === 0) {
+        self.postMessage({ type: 'done' });
+        return;
+    }
+
+    const pixels = rawPixels.map(p => {
+        const oklab = rgbToOklab(p.r, p.g, p.b);
+        const chroma = Math.sqrt(oklab.a * oklab.a + oklab.b * oklab.b);
+        const weight = 1 + Math.min(chroma * 10, 5); 
+        return { r: p.r, g: p.g, b: p.b, oklab, weight, index: p.index };
+    });
+    
+    let centroids = initializeCentroidsKMeansPlusPlus(pixels, Math.min(k, pixels.length));
+    
+    let iter = 0;
+    
+    function runNext() {
+        const clusters = Array.from({ length: k }, () => []);
+        const pixelAssignments = new Uint8Array(pixels.length);
+        
+        for (let pIdx = 0; pIdx < pixels.length; pIdx++) {
+            const pixel = pixels[pIdx];
+            let minDist = Infinity; let clusterIdx = 0;
+            for (let j = 0; j < k; j++) {
+                const dist = colorDistanceOklab(pixel.oklab, centroids[j].oklab);
+                if (dist < minDist) { minDist = dist; clusterIdx = j; }
+            }
+            clusters[clusterIdx].push(pixel);
+            pixelAssignments[pIdx] = clusterIdx;
+        }
+        
+        centroids = clusters.map((cluster, j) => {
+            if (cluster.length === 0) return centroids[j];
+            let sumR = 0, sumG = 0, sumB = 0, sumW = 0;
+            for (const p of cluster) {
+                sumR += p.r * p.weight;
+                sumG += p.g * p.weight;
+                sumB += p.b * p.weight;
+                sumW += p.weight;
+            }
+            const r = Math.round(sumR / sumW);
+            const g = Math.round(sumG / sumW);
+            const b = Math.round(sumB / sumW);
+            return { r, g, b, oklab: rgbToOklab(r, g, b) };
+        });
+        
+        const cLen = centroids.length;
+        if (iter < MAX_ITER - 2 && cLen > 1) {
+            let merged = false;
+            for (let a = 0; a < cLen && !merged; a++) {
+                for (let b = a + 1; b < cLen && !merged; b++) {
+                    if (colorDistanceOklab(centroids[a].oklab, centroids[b].oklab) < 0.07) {
+                        const toReplace = clusters[a].length < clusters[b].length ? a : b;
+                        let maxScore = -1; let bestPixel = null;
+                        
+                        for (let i = 0; i < pixels.length; i += 7) {
+                            const pixel = pixels[i];
+                            let minDistToCentroids = Infinity;
+                            for (let cIdx = 0; cIdx < cLen; cIdx++) {
+                                if (cIdx === toReplace) continue;
+                                const d = colorDistanceOklab(pixel.oklab, centroids[cIdx].oklab);
+                                if (d < minDistToCentroids) minDistToCentroids = d;
+                            }
+                            
+                            let score = minDistToCentroids * Math.min(pixel.weight, 3);
+                            if (score > maxScore) { maxScore = score; bestPixel = pixel; }
+                        }
+                        if (bestPixel) {
+                            centroids[toReplace] = { r: bestPixel.r, g: bestPixel.g, b: bestPixel.b, oklab: bestPixel.oklab };
+                            merged = true;
+                        }
+                    }
+                }
+            }
+        }
+        
+        self.postMessage({
+            type: 'frame',
+            iter,
+            MAX_ITER,
+            centroids: centroids.map(c => ({r: c.r, g: c.g, b: c.b})),
+            pixelAssignments: pixelAssignments.buffer
+        }, [pixelAssignments.buffer]);
+        
+        iter++;
+        if (iter < MAX_ITER) {
+            setTimeout(runNext, 0);
+        } else {
+            self.postMessage({ type: 'done' });
+        }
+    }
+    
+    runNext();
+};
+`;
+
+const workerBlob = new Blob([workerCode], { type: 'application/javascript' });
+const worker = new Worker(URL.createObjectURL(workerBlob));
+
 let currentTheme = {};
 let currentRawColors = null;
 
@@ -102,6 +206,27 @@ dropZone.addEventListener('drop', (e) => {
     }
 });
 
+// ---- Clipboard Paste Support ----
+document.addEventListener('paste', (e) => {
+    if (isExtracting) return;
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+        if (item.type.startsWith('image/')) {
+            e.preventDefault();
+            const file = item.getAsFile();
+            if (file) {
+                dropZone.classList.add('paste-flash');
+                dropZone.addEventListener('animationend', () => {
+                    dropZone.classList.remove('paste-flash');
+                }, { once: true });
+                processImage(file);
+            }
+            break;
+        }
+    }
+});
+
 dropZone.addEventListener('click', (e) => {
     if (wasDragging) return;
     if (currentImgEl && selectionRectDom) {
@@ -112,6 +237,13 @@ dropZone.addEventListener('click', (e) => {
         return;
     }
     fileInput.click();
+});
+
+dropZone.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        fileInput.click();
+    }
 });
 
 dropZone.addEventListener('mousedown', (e) => {
@@ -254,6 +386,7 @@ function extractColorsVisualized(imgEl, selDomRect = null) {
     isExtracting = true;
     
     loadingOverlay.hidden = false;
+    loadingOverlay.style.display = 'flex';
     loadingOverlay.style.background = 'transparent';
     
     const ctx = previewCanvas.getContext('2d', { willReadFrequently: true });
@@ -312,133 +445,67 @@ function extractColorsVisualized(imgEl, selDomRect = null) {
         selDomRect = null;
     }
 
-    const k = currentK;
-    const pixels = rawPixels.map(p => {
-        const oklab = rgbToOklab(p.r, p.g, p.b);
-        // Strategy 2: Weighted sampling by saturation (chroma)
-        const chroma = Math.sqrt(oklab.a * oklab.a + oklab.b * oklab.b);
-        const weight = 1 + Math.min(chroma * 10, 5); 
-        return { r: p.r, g: p.g, b: p.b, oklab, weight, index: p.index };
-    });
-    let centroids = initializeCentroidsKMeansPlusPlus(pixels, Math.min(k, pixels.length));
-    
-    let iter = 0;
-    const MAX_ITER = 15;
-    
-    function runFrame() {
-        const clusters = Array.from({ length: k }, () => []);
-        const pixelAssignments = new Array(pixels.length);
-        
-        for (let pIdx = 0; pIdx < pixels.length; pIdx++) {
-            const pixel = pixels[pIdx];
-            let minDist = Infinity; let clusterIdx = 0;
-            for (let j = 0; j < k; j++) {
-                const dist = colorDistanceOklab(pixel.oklab, centroids[j].oklab);
-                if (dist < minDist) { minDist = dist; clusterIdx = j; }
-            }
-            clusters[clusterIdx].push(pixel);
-            pixelAssignments[pIdx] = clusterIdx;
-        }
-        
-        centroids = clusters.map((cluster, j) => {
-            if (cluster.length === 0) return centroids[j];
-            let sumR = 0, sumG = 0, sumB = 0, sumW = 0;
-            for (const p of cluster) {
-                sumR += p.r * p.weight;
-                sumG += p.g * p.weight;
-                sumB += p.b * p.weight;
-                sumW += p.weight;
-            }
-            const r = Math.round(sumR / sumW);
-            const g = Math.round(sumG / sumW);
-            const b = Math.round(sumB / sumW);
-            return { r, g, b, oklab: rgbToOklab(r, g, b) };
-        });
-        
-        // Strategy 3: In-flight deduplication
-        const cLen = centroids.length;
-        if (iter < MAX_ITER - 2 && cLen > 1) {
-            let merged = false;
-            for (let a = 0; a < cLen && !merged; a++) {
-                for (let b = a + 1; b < cLen && !merged; b++) {
-                    if (colorDistanceOklab(centroids[a].oklab, centroids[b].oklab) < 0.07) {
-                        const toReplace = clusters[a].length < clusters[b].length ? a : b;
-                        let maxScore = -1; let bestPixel = null;
-                        
-                        // Sample pixels (step by 7) to avoid isolated 1-px noise
-                        for (let i = 0; i < pixels.length; i += 7) {
-                            const pixel = pixels[i];
-                            let minDistToCentroids = Infinity;
-                            for (let cIdx = 0; cIdx < cLen; cIdx++) {
-                                if (cIdx === toReplace) continue;
-                                const d = colorDistanceOklab(pixel.oklab, centroids[cIdx].oklab);
-                                if (d < minDistToCentroids) minDistToCentroids = d;
-                            }
-                            
-                            // Score blends distance with capped vividness
-                            let score = minDistToCentroids * Math.min(pixel.weight, 3);
-                            if (score > maxScore) { maxScore = score; bestPixel = pixel; }
-                        }
-                        if (bestPixel) {
-                            centroids[toReplace] = { r: bestPixel.r, g: bestPixel.g, b: bestPixel.b, oklab: bestPixel.oklab };
-                            merged = true;
-                        }
+    const currentK_snapshot = currentK;
+
+    worker.onmessage = function(e) {
+        if (e.data.type === 'frame') {
+            const { iter, MAX_ITER, centroids, pixelAssignments: paBuffer } = e.data;
+            const pixelAssignments = new Uint8Array(paBuffer);
+            
+            const newImageData = new ImageData(new Uint8ClampedArray(originalData), width, height);
+            
+            if (selDomRect) {
+                for (let i = 0; i < newImageData.data.length; i += 4) {
+                    let x = (i / 4) % width;
+                    let y = Math.floor((i / 4) / width);
+                    if (!(x >= extractRect.x && x < extractRect.x + extractRect.w &&
+                          y >= extractRect.y && y < extractRect.y + extractRect.h)) {
+                        let r = newImageData.data[i], g = newImageData.data[i+1], b = newImageData.data[i+2];
+                        let luma = r * 0.299 + g * 0.587 + b * 0.114;
+                        newImageData.data[i] = luma * 0.3;
+                        newImageData.data[i+1] = luma * 0.3;
+                        newImageData.data[i+2] = luma * 0.3;
                     }
                 }
             }
-        }
-        
-        const newImageData = new ImageData(new Uint8ClampedArray(originalData), width, height);
-        
-        if (selDomRect) {
-            for (let i = 0; i < newImageData.data.length; i += 4) {
-                let x = (i / 4) % width;
-                let y = Math.floor((i / 4) / width);
-                if (!(x >= extractRect.x && x < extractRect.x + extractRect.w &&
-                      y >= extractRect.y && y < extractRect.y + extractRect.h)) {
-                    let r = newImageData.data[i], g = newImageData.data[i+1], b = newImageData.data[i+2];
-                    let luma = r * 0.299 + g * 0.587 + b * 0.114;
-                    newImageData.data[i] = luma * 0.3;
-                    newImageData.data[i+1] = luma * 0.3;
-                    newImageData.data[i+2] = luma * 0.3;
+            
+            for (let pIdx = 0; pIdx < rawPixels.length; pIdx++) {
+                const cIdx = pixelAssignments[pIdx];
+                const color = centroids[cIdx];
+                const dataIdx = rawPixels[pIdx].index;
+                newImageData.data[dataIdx] = color.r;
+                newImageData.data[dataIdx+1] = color.g;
+                newImageData.data[dataIdx+2] = color.b;
+            }
+            ctx.putImageData(newImageData, 0, 0);
+            
+            if (iter === MAX_ITER - 1) {
+                let finalCentroids = [...centroids];
+                while (finalCentroids.length < currentK_snapshot) {
+                    finalCentroids.push({r:0, g:0, b:0});
                 }
+                finalCentroids.sort((a, b) => getBrightness(a) - getBrightness(b));
+                
+                const theme = {};
+                const keys = roleKeys[currentK_snapshot];
+                keys.forEach((key, i) => {
+                    theme[key] = rgbToHex(finalCentroids[i]);
+                });
+                
+                updateUI(theme, finalCentroids, true);
+                
+                loadingOverlay.hidden = true;
+                loadingOverlay.style.display = 'none';
+                isExtracting = false;
             }
         }
-        
-        for (let pIdx = 0; pIdx < pixels.length; pIdx++) {
-            const cIdx = pixelAssignments[pIdx];
-            const color = centroids[cIdx];
-            const dataIdx = pixels[pIdx].index;
-            newImageData.data[dataIdx] = color.r;
-            newImageData.data[dataIdx+1] = color.g;
-            newImageData.data[dataIdx+2] = color.b;
-        }
-        ctx.putImageData(newImageData, 0, 0);
-        
-        iter++;
-        if (iter < MAX_ITER) {
-            setTimeout(() => requestAnimationFrame(runFrame), 50);
-        } else {
-            let finalCentroids = centroids.map(c => ({r: c.r, g: c.g, b: c.b}));
-            while (finalCentroids.length < k) {
-                finalCentroids.push({r:0, g:0, b:0});
-            }
-            finalCentroids.sort((a, b) => getBrightness(a) - getBrightness(b));
-            
-            const theme = {};
-            const keys = roleKeys[k];
-            keys.forEach((key, i) => {
-                theme[key] = rgbToHex(finalCentroids[i]);
-            });
-            
-            updateUI(theme, finalCentroids, true);
-            
-            loadingOverlay.hidden = true;
-            isExtracting = false;
-        }
-    }
-    
-    setTimeout(() => requestAnimationFrame(runFrame), 600);
+    };
+
+    worker.postMessage({
+        rawPixels: rawPixels.map(p => ({ r: p.r, g: p.g, b: p.b, index: p.index })),
+        k: currentK_snapshot,
+        MAX_ITER: 15
+    });
 }
 
 // ---- Helpers & A11y ----
@@ -666,10 +733,18 @@ function updateUI(theme, rawColors, saveToHistory = false) {
     
     updateStarButtonUI();
     
-    // 1. Update CSS Variables
+    // 1. Update Global CSS Variables (Accents only)
     root.style.setProperty('--secondary-color', theme.secondary || theme.bg);
     root.style.setProperty('--primary-color', theme.primary);
     root.style.setProperty('--accent-color', theme.accent || theme.primary);
+    
+    // 2. Update UI Mockup specific variables (so it previews the full theme without breaking the main page)
+    const mockup = document.getElementById('ui-mockup');
+    if (mockup) {
+        mockup.style.setProperty('--bg-color', theme.bg);
+        mockup.style.setProperty('--text-color', theme.text);
+        mockup.style.setProperty('--border-color', theme.text);
+    }
     
     // 2. Render color swatches
     paletteContainer.innerHTML = '';
@@ -744,6 +819,9 @@ function updateUI(theme, rawColors, saveToHistory = false) {
         addToHistory(theme, rawColors);
     }
 
+    // Render A11Y contrast matrix
+    renderA11yMatrix(theme, rawColors, k, names);
+
     const badge = document.getElementById('mockup-badge');
     const progress = document.getElementById('mockup-progress');
     if (badge && progress) {
@@ -765,8 +843,97 @@ function updateUI(theme, rawColors, saveToHistory = false) {
     }
 }
 
+// ---- A11Y Contrast Matrix ----
+function renderA11yMatrix(theme, rawColors, k, names) {
+    if (!a11yMatrix) return;
+    
+    const colors = Object.values(theme);
+    const n = colors.length;
+    
+    // Parse hex to RGB
+    const rgbs = colors.map(hex => {
+        const h = hex.replace('#', '');
+        return {
+            r: parseInt(h.substring(0, 2), 16),
+            g: parseInt(h.substring(2, 4), 16),
+            b: parseInt(h.substring(4, 6), 16)
+        };
+    });
+    
+    // Build table
+    let html = '<table>';
+    
+    // Header row
+    html += '<tr><th></th>';
+    for (let i = 0; i < n; i++) {
+        html += `<th><div style="width:14px;height:14px;background:${colors[i]};border:1px solid var(--border-color);margin:0 auto 3px;"></div>${names[i]}</th>`;
+    }
+    html += '</tr>';
+    
+    // Data rows
+    let aaCount = 0;
+    let totalPairs = 0;
+    
+    for (let row = 0; row < n; row++) {
+        html += `<tr><th><div style="width:14px;height:14px;background:${colors[row]};border:1px solid var(--border-color);margin:0 auto 3px;"></div>${names[row]}</th>`;
+        
+        for (let col = 0; col < n; col++) {
+            if (row === col) {
+                html += '<td class="a11y-cell a11y-cell--self">—</td>';
+            } else {
+                const ratio = getContrastRatio(rgbs[row], rgbs[col]);
+                const ratioStr = ratio.toFixed(1);
+                totalPairs++;
+                
+                let cellClass = 'a11y-cell--fail';
+                let badge = 'FAIL';
+                
+                if (ratio >= 7) {
+                    cellClass = 'a11y-cell--aaa';
+                    badge = 'AAA';
+                    aaCount++;
+                } else if (ratio >= 4.5) {
+                    cellClass = 'a11y-cell--aa';
+                    badge = 'AA';
+                    aaCount++;
+                } else if (ratio >= 3) {
+                    cellClass = 'a11y-cell--aa-large';
+                    badge = 'AA 18+';
+                }
+                
+                html += `<td class="a11y-cell ${cellClass}" title="${names[row]} on ${names[col]}: ${ratioStr}:1">`;
+                html += `<div class="a11y-cell-ratio">${ratioStr}</div>`;
+                html += `<div class="a11y-cell-badge">${badge}</div>`;
+                html += '</td>';
+            }
+        }
+        html += '</tr>';
+    }
+    
+    html += '</table>';
+    
+    // Legend
+    const pairCount = totalPairs / 2; // Each pair counted twice in matrix
+    const passRate = Math.round((aaCount / totalPairs) * 100);
+    
+    html += '<div class="a11y-legend">';
+    html += `<span class="a11y-legend-item"><span class="a11y-legend-swatch" style="background:#1a1a1a;"></span> AAA ≥7:1</span>`;
+    html += `<span class="a11y-legend-item"><span class="a11y-legend-swatch" style="background:#3b6;"></span> AA ≥4.5:1</span>`;
+    html += `<span class="a11y-legend-item"><span class="a11y-legend-swatch" style="background:#e8c840;"></span> AA 18pt+ ≥3:1</span>`;
+    html += `<span class="a11y-legend-item" style="margin-left:auto; opacity:0.6;">PASS RATE: ${passRate}%</span>`;
+    html += '</div>';
+    
+    a11yMatrix.innerHTML = html;
+}
+
 function addToHistory(theme, rawColors) {
-    if (history.length > 0 && JSON.stringify(history[0].theme) === JSON.stringify(theme)) return;
+    const themeStr = JSON.stringify(theme);
+    // Deduplicate against ALL history entries, not just the most recent
+    const existingIdx = history.findIndex(item => JSON.stringify(item.theme) === themeStr);
+    if (existingIdx !== -1) {
+        // Remove the old duplicate so we can re-insert at position 0
+        history.splice(existingIdx, 1);
+    }
     history.unshift({ theme, rawColors });
     if (history.length > 8) history.pop();
     localStorage.setItem('paletteHistory', JSON.stringify(history));
@@ -832,7 +999,7 @@ function renderFavorites() {
     if (!favoritesContainer) return;
     favoritesContainer.innerHTML = '';
     if (starred.length === 0) {
-        favoritesContainer.innerHTML = '<div class="mono-text" style="opacity:0.5; font-size:0.85rem; padding: 1rem 0;">NO STARRED PALETTES YET.</div>';
+        favoritesContainer.innerHTML = '<div class="mono-text" style="opacity:0.4; font-size:0.85rem; padding: 2rem 0; color: var(--secondary-color);">NO STARRED PALETTES YET.</div>';
         return;
     }
     starred.forEach((item) => {
