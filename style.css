@@ -36,7 +36,7 @@ h1, h2, h3, .title, .mockup-title {
     grid-template-columns: 1fr;
     gap: 2rem;
     border: 2px solid var(--border-color);
-    padding: 2rem;
+    padding: 3rem;
     background: var(--bg-color);
     position: relative;
     /* Risograph offset overprint effect */
@@ -57,13 +57,14 @@ h1, h2, h3, .title, .mockup-title {
     font-size: clamp(3rem, 5vw, 5rem);
     line-height: 0.9;
     letter-spacing: -0.05em;
-    margin-bottom: 0.5rem;
+    margin-bottom: 1rem;
 }
 
 .subtitle {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 0.85rem;
     font-weight: 600;
+    letter-spacing: 0.05em;
 }
 
 .settings-bar {
@@ -74,7 +75,7 @@ h1, h2, h3, .title, .mockup-title {
     font-weight: 600;
     padding: 0.5rem 1rem;
     border: 2px solid var(--border-color);
-    box-shadow: 2px 2px 0 var(--primary-color);
+    box-shadow: 2px 2px 0 var(--accent-color);
     background: var(--bg-color);
 }
 
@@ -85,16 +86,22 @@ h1, h2, h3, .title, .mockup-title {
 
 .main-section {
     display: grid;
-    grid-template-columns: 1fr 1.5fr;
+    grid-template-columns: minmax(0, 0.5fr) minmax(0, 1fr);
     gap: 3rem;
+    align-items: start;
+}
+
+.left-col {
+    position: sticky;
+    top: 2rem;
 }
 
 /* Crop marks for drop zone */
 .drop-zone {
     position: relative;
     width: 100%;
-    min-height: 500px;
-    height: 100%;
+    aspect-ratio: 4/5;
+    max-height: 80vh;
     border: 2px dotted var(--border-color);
     display: flex;
     justify-content: center;
@@ -134,10 +141,45 @@ h1, h2, h3, .title, .mockup-title {
 .drop-content {
     text-align: center;
     z-index: 2;
+    padding: 0 1rem;
 }
 .drop-content[hidden] { display: none !important; }
-.drop-text { font-weight: 600; font-size: 1.25rem; font-family: 'Space Grotesk', sans-serif;}
-.drop-text small { font-size: 0.75rem; font-weight: 400; opacity: 0.7; font-family: 'IBM Plex Mono', monospace;}
+
+.upload-graphic {
+    width: 64px;
+    height: 64px;
+    border: 2px solid var(--border-color);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0 auto 1.5rem auto;
+    background: transparent;
+    color: var(--border-color);
+    transition: all 0.2s ease;
+}
+.drop-zone:hover .upload-graphic {
+    transform: translateY(-2px);
+    background: var(--border-color);
+    color: var(--bg-color);
+}
+
+.drop-text { 
+    font-weight: 700; 
+    font-size: 1.15rem; 
+    font-family: 'Space Grotesk', sans-serif;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+.drop-sub { 
+    font-size: 0.75rem; 
+    font-weight: 600; 
+    opacity: 0.5; 
+    font-family: 'IBM Plex Mono', monospace;
+    line-height: 1.4;
+    display: block;
+    white-space: nowrap;
+}
 
 #preview-canvas {
     position: absolute;
@@ -157,7 +199,20 @@ h1, h2, h3, .title, .mockup-title {
     display: flex; justify-content: center; align-items: center;
     z-index: 10;
 }
-.loading-overlay[hidden] { display: none !important; }
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+    opacity: 0;
+    pointer-events: none;
+}
 .loading-text {
     font-family: 'Space Grotesk', sans-serif;
     font-size: 2rem;
@@ -172,7 +227,7 @@ h1, h2, h3, .title, .mockup-title {
     margin-bottom: 1rem;
 }
 
-h2 { font-size: 1.5rem; letter-spacing: -0.02em; }
+h2 { font-size: 2rem; letter-spacing: -0.02em; }
 
 .export-actions { display: flex; gap: 0.5rem; }
 .btn-export {
@@ -209,10 +264,11 @@ h2 { font-size: 1.5rem; letter-spacing: -0.02em; }
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 0.75rem;
+    padding: clamp(0.25rem, 5cqw, 0.75rem);
     font-size: 0.75rem;
     cursor: pointer;
     overflow: hidden;
+    container-type: inline-size;
     /* Ink bleed animation */
     animation: inkBleed 0.6s cubic-bezier(0, 0, 0, 1) backwards;
     mix-blend-mode: multiply; /* Risograph overlapping color effect */
@@ -235,14 +291,13 @@ h2 { font-size: 1.5rem; letter-spacing: -0.02em; }
     font-weight: 600;
     text-transform: uppercase;
     border-bottom: 2px solid currentColor;
-    padding-bottom: 4px;
+    padding-bottom: 2px;
     font-family: 'Space Grotesk', sans-serif;
     letter-spacing: -0.02em;
-    font-size: clamp(0.65rem, 1.2vw, 1rem);
+    font-size: clamp(0.4rem, 16cqw, 1rem);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    padding-right: 10px;
 }
 
 .swatch-footer {
@@ -252,15 +307,16 @@ h2 { font-size: 1.5rem; letter-spacing: -0.02em; }
 }
 
 .swatch-hex {
-    font-size: clamp(0.7rem, 1.2vw, 0.9rem);
+    font-size: clamp(0.45rem, 15cqw, 0.9rem);
     font-weight: 600;
 }
 
 .swatch-rating {
-    font-size: clamp(0.6rem, 1vw, 0.7rem);
+    font-size: clamp(0.4rem, 12cqw, 0.7rem);
     border-top: 1px solid currentColor;
-    padding-top: 4px;
-    height: 20px;
+    padding-top: 2px;
+    height: auto;
+    min-height: 14px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -293,11 +349,12 @@ h2 { font-size: 1.5rem; letter-spacing: -0.02em; }
 .ui-mockup {
     border: 2px solid var(--border-color);
     background: var(--bg-color);
+    color: var(--text-color);
     padding: 2rem;
     margin-top: 1rem;
     position: relative;
     /* Offset shadow for Riso feel */
-    box-shadow: -4px 4px 0 var(--secondary-color), -8px 8px 0 var(--primary-color);
+    box-shadow: 4px 4px 0 var(--border-color);
 }
 
 .mockup-header { 
@@ -350,14 +407,16 @@ h2 { font-size: 1.5rem; letter-spacing: -0.02em; }
 .mockup-button {
     background: var(--border-color);
     color: var(--bg-color);
-    box-shadow: 4px 4px 0 var(--accent-color);
 }
 .mockup-button-secondary {
     background: transparent;
     color: var(--border-color);
     box-shadow: 4px 4px 0 var(--secondary-color);
 }
-.mockup-button:active, .mockup-button-secondary:active {
+.mockup-button:active {
+    transform: translate(2px, 2px);
+}
+.mockup-button-secondary:active {
     transform: translate(2px, 2px);
     box-shadow: 2px 2px 0 currentColor;
 }
@@ -365,7 +424,10 @@ h2 { font-size: 1.5rem; letter-spacing: -0.02em; }
 .history-container { display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem; }
 .favorites-wrap { flex-wrap: wrap; overflow-x: visible; }
 .history-item {
-    min-width: 80px; height: 40px;
+    width: 100px;
+    min-width: 100px;
+    height: 60px;
+    flex-shrink: 0;
     border: 2px solid var(--border-color);
     display: flex; cursor: pointer;
     box-shadow: 3px 3px 0 var(--border-color);
@@ -375,25 +437,153 @@ h2 { font-size: 1.5rem; letter-spacing: -0.02em; }
 .history-color { flex: 1; height: 100%; border-right: 2px solid var(--border-color); mix-blend-mode: multiply; }
 .history-color:last-child { border-right: none; }
 
+/* A11Y Contrast Matrix */
+.a11y-matrix {
+    border: 2px solid var(--border-color);
+    margin-top: 1rem;
+    overflow-x: auto;
+}
+
+.a11y-matrix table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 600;
+    table-layout: fixed;
+}
+
+.a11y-matrix th,
+.a11y-matrix td {
+    padding: 0.5rem 0.25rem;
+    text-align: center;
+    border: 1px solid var(--border-color);
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.a11y-matrix th {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.02em;
+    background: var(--bg-color);
+}
+
+.a11y-matrix td.a11y-cell {
+    position: relative;
+    cursor: default;
+    transition: transform 0.1s;
+}
+
+.a11y-matrix td.a11y-cell:hover {
+    transform: scale(1.05);
+    z-index: 2;
+    box-shadow: 2px 2px 0 var(--accent-color);
+}
+
+.a11y-cell-ratio {
+    font-size: 0.85rem;
+    font-weight: 600;
+    line-height: 1;
+}
+
+.a11y-cell-badge {
+    font-size: 0.6rem;
+    margin-top: 2px;
+    letter-spacing: 0.05em;
+    opacity: 0.8;
+}
+
+.a11y-cell--aaa {
+    background: #1a1a1a;
+    color: #F5F0E8;
+}
+
+.a11y-cell--aa {
+    background: #3b6;
+    color: #1a1a1a;
+    mix-blend-mode: multiply;
+}
+
+.a11y-cell--aa-large {
+    background: #e8c840;
+    color: #1a1a1a;
+    mix-blend-mode: multiply;
+}
+
+.a11y-cell--fail {
+    background: transparent;
+    color: var(--text-color);
+    opacity: 0.3;
+}
+
+.a11y-cell--self {
+    background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 3px,
+        rgba(0,0,0,0.06) 3px,
+        rgba(0,0,0,0.06) 6px
+    );
+    color: transparent;
+}
+
+.a11y-legend {
+    display: flex;
+    gap: 1rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    font-family: 'IBM Plex Mono', monospace;
+    border-top: 1px solid var(--border-color);
+    flex-wrap: wrap;
+}
+
+.a11y-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.a11y-legend-swatch {
+    width: 12px;
+    height: 12px;
+    border: 1px solid var(--border-color);
+}
+
+/* Paste feedback */
+.paste-flash {
+    animation: pasteFlash 0.4s ease-out;
+}
+@keyframes pasteFlash {
+    0% { box-shadow: inset 0 0 0 4px var(--accent-color); }
+    100% { box-shadow: inset 0 0 0 0 transparent; }
+}
+
 @media (max-width: 900px) {
     .main-section { grid-template-columns: 1fr; }
     .header-section { flex-direction: column; align-items: flex-start; gap: 1rem; }
     .title { font-size: 3rem; }
+    .left-col { position: relative; } /* Disable sticky in single-column layout */
     .drop-zone { min-height: 300px; }
 }
 
 @media (max-width: 600px) {
     body { padding: 0.5rem; }
-    .grid-layout { padding: 1rem; gap: 1.5rem; }
+    .grid-layout { padding: 1.5rem; gap: 1.5rem; }
     
     .title { font-size: 2.2rem; }
     
     .header-section { align-items: stretch; }
     .settings-bar { width: 100%; justify-content: space-between; }
     
-    .section-header { flex-direction: column; align-items: stretch; gap: 1rem; }
+    .section-header { flex-direction: column; align-items: stretch; gap: 0.5rem; }
+    
+    /* Export buttons: row 1 = STAR + SAVE IMG, row 2 = FIGMA + TAILWIND + CSS */
     .export-actions { flex-wrap: wrap; gap: 0.5rem; }
-    .btn-export { flex: 1 1 45%; }
+    .btn-export:nth-child(1),
+    .btn-export:nth-child(2) { flex: 1 1 45%; }
+    .btn-export:nth-child(n+3) { flex: 1 1 30%; }
     
     .palette {
         flex-direction: column;
@@ -439,6 +629,33 @@ h2 { font-size: 1.5rem; letter-spacing: -0.02em; }
         width: 24px;
         height: 24px;
         overflow: hidden;
+    }
+    
+    /* A11Y Matrix mobile: horizontal scroll, remove blend modes (Safari issue) */
+    .a11y-matrix {
+        -webkit-overflow-scrolling: touch;
+    }
+    .a11y-matrix table {
+        min-width: 360px;
+    }
+    .a11y-matrix th,
+    .a11y-matrix td {
+        padding: 0.35rem 0.15rem;
+        font-size: 0.65rem;
+    }
+    .a11y-cell-ratio {
+        font-size: 0.75rem;
+    }
+    .a11y-cell-badge {
+        font-size: 0.5rem;
+    }
+    .a11y-cell--aa,
+    .a11y-cell--aa-large {
+        mix-blend-mode: normal; /* Safari mobile blend mode fix */
+    }
+    .a11y-legend {
+        font-size: 0.6rem;
+        gap: 0.5rem;
     }
     
     .mockup-buttons { flex-direction: column; }
