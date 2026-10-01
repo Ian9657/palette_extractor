@@ -12,11 +12,12 @@
         <header class="header-section">
             <div>
                 <h1 class="title">PALETTE<br>EXTRACTOR</h1>
-                <p class="subtitle">DRAG & DROP OR PASTE (⌘V) IMAGE TO INITIATE COLOR SEPARATION.</p>
+                <p class="subtitle">DRAG & DROP OR PASTE (⌘/CTRL+V) IMAGE TO INITIATE COLOR SEPARATION.</p>
             </div>
             <div class="settings-bar">
                 <label for="k-slider" class="mono-text">COLORS: <span id="k-value">5</span></label>
                 <input type="range" id="k-slider" min="3" max="8" value="5">
+                <button id="btn-reroll" class="btn-export" title="Re-run clustering with the next seed">↻ REROLL</button>
             </div>
         </header>
 
@@ -47,6 +48,7 @@
                     <h2>COLOR BAR</h2>
                     <div class="export-actions">
                         <button id="btn-star-current" class="btn-export">☆ STAR</button>
+                        <button id="btn-copy-link" class="btn-export" title="Copy a link that reopens this palette">LINK</button>
                         <button id="btn-export-image" class="btn-export" style="background: var(--text-color); color: var(--bg-color);">SAVE IMG</button>
                         <button id="btn-export-figma" class="btn-export">FIGMA</button>
                         <button id="btn-export-tailwind" class="btn-export">TAILWIND</button>
@@ -57,17 +59,22 @@
                 <div id="palette-container" class="palette">
                     <!-- Swatches dynamically inserted here -->
                 </div>
+                <div id="palette-notes" class="palette-notes mono-text" hidden></div>
 
                 <div class="section-header" style="margin-top: 2rem;">
                     <h2>A11Y MATRIX</h2>
-                    <span class="mono-text" style="font-size: 0.75rem; font-weight: 600; opacity: 0.5;">WCAG 2.1</span>
+                    <button id="btn-contrast-model" class="btn-export" title="Switch between WCAG 2.1 ratio and APCA lightness contrast">WCAG 2.1 ⇄</button>
                 </div>
                 <div id="a11y-matrix" class="a11y-matrix">
                     <!-- Contrast matrix dynamically inserted here -->
                 </div>
+                <div id="cvd-panel" class="cvd-panel mono-text">
+                    <!-- Colour-vision deficiency simulation inserted here -->
+                </div>
 
                 <div class="section-header" style="margin-top: 2rem;">
                     <h2>PRINT PROOF</h2>
+                    <button id="btn-invert" class="btn-export">◐ LIGHT</button>
                 </div>
                 <div class="ui-mockup" id="ui-mockup">
                     <div id="proof-strip" class="proof-strip">
@@ -92,6 +99,9 @@
                             <span class="proof-sep">·</span>
                             <span class="proof-label">ITER</span>
                             <span id="proof-iter" class="proof-value">15</span>
+                            <span class="proof-sep">·</span>
+                            <span class="proof-label">SEED</span>
+                            <span id="proof-seed" class="proof-value">—</span>
                             <span class="proof-sep">·</span>
                             <span class="proof-value">CHROMA WEIGHTED</span>
                         </div>
@@ -122,6 +132,7 @@
         </main>
     </div>
     <script src="ntc.js"></script>
+    <script src="color.js"></script>
     <script src="main.js"></script>
 </body>
 </html>
