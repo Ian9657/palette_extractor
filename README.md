@@ -4,7 +4,7 @@
 
 Live: [palette.etarc.net](https://palette.etarc.net)
 
-<!-- TODO: add a screenshot or GIF here -->
+![Palette Extractor screenshot](screenshot.png)
 
 ## What makes it different
 
