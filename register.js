@@ -101,7 +101,7 @@ function renderPlates(theme) {
 // eases on its own, the front one fastest and the back one slowest, so the
 // stack fans out slightly as it moves. Rates are spread by relative position
 // (front = FRONT_RATE, back = BACK_RATE), so 3 or 8 plates feel the same.
-const FRONT_RATE = 0.45, BACK_RATE = 0.3;
+const FRONT_RATE = 0.585, BACK_RATE = 0.39;
 let aimX = 0, aimY = 0, tiltRaf = null;
 let plateTilt = [];   // per plate: [x, y]
 
