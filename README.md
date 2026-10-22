@@ -4,7 +4,20 @@
 
 Live: [palette.etarc.net](https://palette.etarc.net)
 
-![Palette Extractor screenshot](screenshot.png)
+| Day edition | Night edition |
+| --- | --- |
+| ![Day edition](screenshot-day.jpg) | ![Night edition](screenshot-night.jpg) |
+
+## Editions
+
+The homepage is laid out like a magazine feature about the image you deposit: a masthead, an opener whose headline is the name of the photo's primary colour, then numbered figures for the palette, its contrast relations, a print proof and the archive.
+
+- **Day / Night.** One layout, two sets of colour tokens: warm paper and ink by day, Night City blue-black with a cyan signal by night. Your choice is remembered. Only the interface changes — photos, swatches and every computed value stay as extracted.
+- **The lens.** In Fig. 1 the original photo is shown; a small frame drifts across it (or follows your mouse) and shows the same spot in its catalogued colours, with the role it belongs to.
+- **Press marks.** Registration marks at the corners, a specimen strip of the current palette in the margin, and the OKLCH value of every swatch.
+- **Classic edition.** The original page is kept at [palette.etarc.net/classic](https://palette.etarc.net/classic). Both editions share the same archive and favourites.
+
+![Classic edition](screenshot-classic.png)
 
 ## What makes it different
 
@@ -43,6 +56,12 @@ node --test test/color.test.js   # unit tests for the colour logic
 | File | Purpose |
 | --- | --- |
 | `color.js` | All colour logic (OKLab, k-means, roles, contrast, CVD, APCA). No DOM. |
-| `main.js` | The app UI |
+| `main.js` | The app UI (panels, exports, history) — shared by both editions |
+| `index.html` | Magazine edition (homepage) |
+| `register.css` / `register.js` | Accession record and the colour plates under the sheet |
+| `edition.css` / `edition.js` | Magazine layout, Day/Night tokens, Fig. 1 lens, press marks |
+| `classic.html` | The original page |
+| `style.css` | Base styles and the panels, used by both editions |
+| `prototypes/` | Design steps between the two editions |
 | `gallery.html` / `gallery.js` | Regression gallery |
 | `ntc.js` | Colour naming ("Name that Color") |
