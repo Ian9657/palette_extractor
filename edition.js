@@ -245,28 +245,28 @@ const editionCopy = {
     day: {
         name: 'DAY EDITION',
         kicker: 'ACCESSION — AWAITING DEPOSIT',
-        labels: ['Intake', 'Specimen', 'Relations', 'Proof', 'Storage'],
+        labels: ['Intake', 'Specimen', 'Relations', 'Record'],
         caps: [
             'The source image as received. Drop, paste or click to deposit it.',
             'Colours listed by role. Click a plate to copy it; ⇄ trades two roles.',
             'Every pair measured for contrast, with colour-vision checks below.',
-            'A proof sheet printed in the extracted inks.',
-            'Objects catalogued before this one. Hover to preview; star to keep.'
+            'A proof sheet, followed by the local archive.'
         ],
-        titles: ['COLOR BAR', 'A11Y MATRIX', 'PRINT PROOF', 'ARCHIVE']
+        titles: ['COLOR BAR', 'A11Y MATRIX', 'RECORD'],
+        archive: 'ARCHIVE'
     },
     night: {
         name: 'NIGHT EDITION',
         kicker: 'CAPTURE — AWAITING SOURCE SIGNAL',
-        labels: ['Capture', 'Signal', 'Diagnostics', 'Output', 'Archive'],
+        labels: ['Capture', 'Signal', 'Diagnostics', 'Output'],
         caps: [
             'Lock a source image. The signal is sampled, clustered and filed below.',
             'Captured colours in role order. Click to copy; REROLL advances the seed.',
             'Contrast, APCA and colour-vision collisions for the current signal.',
-            'Live output with the extraction parameters and current ready state.',
-            'Previous captures and stored signals. Hover to inspect the source.'
+            'Live output with the extraction parameters; the archive is below.'
         ],
-        titles: ['SIGNAL PLATES', 'DIAGNOSTICS', 'SIGNAL OUTPUT', 'SIGNAL ARCHIVE']
+        titles: ['SIGNAL PLATES', 'DIAGNOSTICS', 'SIGNAL OUTPUT'],
+        archive: 'SIGNAL ARCHIVE'
     }
 };
 
@@ -279,6 +279,7 @@ function applyEditionCopy(edition) {
     copy.labels.forEach((label, i) => mag(`entry-label-${i + 1}`).textContent = label);
     copy.caps.forEach((caption, i) => mag(`fig${i + 1}-cap`).textContent = caption);
     copy.titles.forEach((title, i) => mag(`section-title-${i + 2}`).textContent = title);
+    mag('archive-title').textContent = copy.archive;
     if (!palette.isDefault) writeFeature(palette, !currentImgEl);
 }
 

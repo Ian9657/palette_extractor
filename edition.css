@@ -190,6 +190,26 @@ body::after {
     pointer-events: auto;
     user-select: auto;
 }
+
+/* Archive belongs to the final record, but stays folded so the main story
+   ends without making the page longer than the reading requires. */
+.record-archive {
+    margin-top: var(--s6);
+    border-top: 1px solid var(--border-color);
+}
+.record-archive > summary {
+    cursor: pointer;
+    list-style: none;
+    padding: var(--s3) 0;
+}
+.record-archive > summary::-webkit-details-marker { display: none; }
+.record-archive > summary h2::after {
+    content: ' +';
+    color: var(--signal-ink);
+}
+.record-archive[open] > summary h2::after { content: ' −'; }
+.archive-toggle { color: var(--signal-ink); }
+.record-archive[open] .archive-toggle { color: var(--text-color); }
 .plate { transition: background-color 0.8s var(--ease-smooth); }
 
 /* ---- 01 Intake: a 9-column subgrid inside the body (figure 5, text 4) ---- */

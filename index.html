@@ -189,12 +189,12 @@
             <section class="entry pending">
                 <div class="entry-margin">
                     <span class="entry-no">04</span>
-                    <span class="entry-label" id="entry-label-4">Proof</span>
-                    <p class="entry-cap mono-text"><b>FIG. 4</b> <span id="fig4-cap">A proof sheet, printed in the extracted inks.</span></p>
+                    <span class="entry-label" id="entry-label-4">Record</span>
+                    <p class="entry-cap mono-text"><b>FIG. 4</b> <span id="fig4-cap">A proof sheet, followed by the local archive.</span></p>
                 </div>
                 <div class="entry-body">
                     <div class="section-header">
-                        <h2 id="section-title-4">PRINT PROOF</h2>
+                        <h2 id="section-title-4">RECORD</h2>
                         <button id="btn-invert" class="btn-export">◐ LIGHT</button>
                     </div>
                     <div class="ui-mockup" id="ui-mockup">
@@ -233,19 +233,11 @@
                             <span class="mockup-button-secondary">FILED</span>
                         </div>
                     </div>
-                </div>
-            </section>
-
-            <section class="entry pending">
-                <div class="entry-margin">
-                    <span class="entry-no">05</span>
-                    <span class="entry-label" id="entry-label-5">Storage</span>
-                    <p class="entry-cap mono-text"><b>FIG. 5</b> <span id="fig5-cap">Objects catalogued before this one. Hover one to see its source. Starred objects are kept below.</span></p>
-                </div>
-                <div class="entry-body">
-                    <div class="section-header">
-                        <h2 id="section-title-5">ARCHIVE</h2>
-                    </div>
+                    <details class="record-archive" id="record-archive">
+                        <summary class="section-header">
+                            <h2 id="archive-title">ARCHIVE</h2>
+                            <span class="archive-toggle mono-text">OPEN</span>
+                        </summary>
                     <div id="history-container" class="history-container"></div>
                     <p id="thumb-note" class="thumb-note mono-text"></p>
 
@@ -256,6 +248,7 @@
                         <div id="favorites-container" class="history-container favorites-wrap"></div>
                         <p class="favorites-empty mono-text">FAVORITES — none yet. ☆ STAR a palette to keep it here, beyond the last eight.</p>
                     </div>
+                    </details>
                 </div>
             </section>
         </main>
