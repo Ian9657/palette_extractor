@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Palette Extractor | Zine Edition</title>
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Space+Grotesk:wght@700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="grid-layout">
+        <header class="header-section">
+            <div>
+                <h1 class="title">PALETTE<br>EXTRACTOR</h1>
+                <p class="subtitle">DRAG & DROP OR PASTE (⌘/CTRL+V) IMAGE TO INITIATE COLOR SEPARATION.</p>
+            </div>
+            <div class="settings-bar">
+                <label for="k-slider" class="mono-text">COLORS: <span id="k-value">5</span></label>
+                <input type="range" id="k-slider" min="3" max="8" value="5">
+                <button id="btn-reroll" class="btn-export" title="Re-run clustering with the next seed">↻ REROLL</button>
+            </div>
+        </header>
+
+        <main class="main-section">
+            <div class="left-col">
+                <div id="drop-zone" class="drop-zone" role="button" tabindex="0" aria-label="Upload an image to extract palette" aria-description="Drag and drop an image here or press Enter to select a file">
+                    <div class="crop-mark top-left"></div>
+                    <div class="crop-mark top-right"></div>
+                    <div class="crop-mark bottom-left"></div>
+                    <div class="crop-mark bottom-right"></div>
+                    <div id="drop-content" class="drop-content">
+                        <div class="upload-graphic">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        </div>
+                        <span class="drop-text">UPLOAD SOURCE</span>
+                        <span class="drop-sub">JPG / PNG / WEBP</span>
+                    </div>
+                    <input type="file" id="file-input" accept="image/*" class="sr-only" tabindex="-1">
+                    <canvas id="preview-canvas"></canvas>
+                    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+                        <span class="loading-text">PROCESSING...</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="right-col">
+                <div class="section-header">
+                    <h2>COLOR BAR</h2>
+                    <div class="export-actions">
+                        <button id="btn-star-current" class="btn-export">☆ STAR</button>
+                        <button id="btn-copy-link" class="btn-export" title="Copy a link that reopens this palette">LINK</button>
+                        <button id="btn-export-image" class="btn-export" style="background: var(--text-color); color: var(--bg-color);">SAVE IMG</button>
+                        <button id="btn-export-figma" class="btn-export">FIGMA</button>
+                        <button id="btn-export-tailwind" class="btn-export">TAILWIND</button>
+                        <button id="btn-export-css" class="btn-export">CSS</button>
+                    </div>
+                </div>
+                
+                <div id="palette-container" class="palette">
+                    <!-- Swatches dynamically inserted here -->
+                </div>
+                <div id="palette-notes" class="palette-notes mono-text" hidden></div>
+
+                <div class="section-header" style="margin-top: 2rem;">
+                    <h2>A11Y MATRIX</h2>
+                    <button id="btn-contrast-model" class="btn-export" title="Switch between WCAG 2.1 ratio and APCA lightness contrast">WCAG 2.1 ⇄</button>
+                </div>
+                <div id="a11y-matrix" class="a11y-matrix">
+                    <!-- Contrast matrix dynamically inserted here -->
+                </div>
+                <div id="cvd-panel" class="cvd-panel mono-text">
+                    <!-- Colour-vision deficiency simulation inserted here -->
+                </div>
+
+                <div class="section-header" style="margin-top: 2rem;">
+                    <h2>PRINT PROOF</h2>
+                    <button id="btn-invert" class="btn-export">◐ LIGHT</button>
+                </div>
+                <div class="ui-mockup" id="ui-mockup">
+                    <div id="proof-strip" class="proof-strip">
+                        <!-- Color strip populated by JS -->
+                    </div>
+                    <div class="mockup-header">
+                        <h3 class="mockup-title">INK COVERAGE</h3>
+                        <span id="mockup-badge" class="badge">0%</span>
+                    </div>
+                    <div class="proof-meta mono-text">
+                        <div class="proof-meta-row">
+                            <span class="proof-label">REV.</span>
+                            <span id="proof-rev" class="proof-value">001</span>
+                            <span class="proof-sep">·</span>
+                            <span id="proof-date" class="proof-value">2026-04-30</span>
+                            <span class="proof-sep">·</span>
+                            <span class="proof-value">sRGB → OKLab</span>
+                        </div>
+                        <div class="proof-meta-row">
+                            <span class="proof-label">K</span>
+                            <span id="proof-k" class="proof-value">5</span>
+                            <span class="proof-sep">·</span>
+                            <span class="proof-label">ITER</span>
+                            <span id="proof-iter" class="proof-value">15</span>
+                            <span class="proof-sep">·</span>
+                            <span class="proof-label">SEED</span>
+                            <span id="proof-seed" class="proof-value">—</span>
+                            <span class="proof-sep">·</span>
+                            <span class="proof-value">CHROMA WEIGHTED</span>
+                        </div>
+                    </div>
+                    <div class="progress-track">
+                        <div id="mockup-progress" class="progress-fill"></div>
+                    </div>
+                    <div class="mockup-buttons">
+                        <button class="mockup-button">DEPLOY</button>
+                        <button class="mockup-button-secondary">SYS_CONFIG</button>
+                    </div>
+                </div>
+
+                <div class="section-header" style="margin-top: 2rem;">
+                    <h2>ARCHIVE</h2>
+                </div>
+                <div id="history-container" class="history-container">
+                    <!-- History blocks dynamically inserted here -->
+                </div>
+
+                <div class="section-header" style="margin-top: 2rem;">
+                    <h2>FAVORITES</h2>
+                </div>
+                <div id="favorites-container" class="history-container favorites-wrap">
+                    <!-- Starred blocks dynamically inserted here -->
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="ntc.js"></script>
+    <script src="color.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
