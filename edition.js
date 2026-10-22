@@ -254,3 +254,35 @@ if (palette.isDefault) {
     mag('specimen-strip-label').textContent = `DEFAULT · ${Object.keys(palette.theme).length}`;
     mag('headline-rule').style.setProperty('--headline-colour', palette.theme.primary);
 }
+
+// ---- Compact empty states ----
+// The accession record stays folded until there is something to record, and
+// FAVORITES shrinks to one line while it is empty.
+const recordCard = document.querySelector('.accession-card');
+recordCard.classList.toggle('collapsed', palette.isDefault);
+const prevSetPaletteFold = setPalette;
+setPalette = function (next, saveToHistory = false) {
+    prevSetPaletteFold(next, saveToHistory);
+    if (!next.isDefault) recordCard.classList.remove('collapsed');
+};
+// processImage fills the record before the palette lands; open it then too
+const prevProcessFold = processImage;
+processImage = function (file) {
+    recordCard.classList.remove('collapsed');
+    prevProcessFold(file);
+};
+
+const favoritesBlock = mag('favorites-block');
+const prevRenderFavorites = renderFavorites;
+renderFavorites = function () {
+    prevRenderFavorites();
+    favoritesBlock.classList.toggle('is-empty', starred.length === 0);
+};
+renderFavorites();
+
+// EXPORT menu: close after a choice, on Escape and on any click outside
+const exportMenu = mag('export-menu');
+exportMenu.querySelectorAll('.export-menu-list button').forEach(btn =>
+    btn.addEventListener('click', () => setTimeout(() => { exportMenu.open = false; }, 900)));
+document.addEventListener('click', e => { if (!exportMenu.contains(e.target)) exportMenu.open = false; });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') exportMenu.open = false; });

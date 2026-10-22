@@ -767,3 +767,45 @@ body::after {
 /* Fig. 1 showing an archived thumbnail (no live image yet) */
 .drop-zone.archived .fig-original { opacity: 1; }
 .drop-zone.archived .drop-content { display: none; }
+
+/* ---- Compact empty states ---- */
+.accession-card.collapsed .accession-fields { display: none; }
+.favorites-empty { display: none; margin-top: var(--s3); font-size: var(--fs-micro); letter-spacing: 0.04em; opacity: 0.75; }
+.favorites-block.is-empty > :not(.favorites-empty) { display: none; }
+.favorites-block.is-empty .favorites-empty { display: block; }
+
+/* ---- EXPORT menu: secondary exports folded behind one button ---- */
+.export-menu { position: relative; }
+.export-menu > summary { list-style: none; display: inline-block; }
+.export-menu > summary::-webkit-details-marker { display: none; }
+.export-menu[open] > summary { background: var(--text-color); color: var(--bg-color); }
+.export-menu-list {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    min-width: 13rem;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+}
+.export-menu-list .btn-export {
+    border: none;
+    border-bottom: 1px solid var(--hairline);
+    text-align: left;
+    padding: 0.55rem 0.8rem;
+}
+.export-menu-list .btn-export:last-child { border-bottom: none; }
+.export-menu-list .btn-export:hover { transform: none; box-shadow: none; }
+
+/* ---- Colour-blindness rows: two columns of short strips, not four full-width bars ---- */
+.cvd-panel {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--s4);
+}
+.cvd-row { margin-bottom: 6px; }
+.cvd-strip { height: 14px; border-width: 1px; }
+.cvd-warning, .cvd-ok { grid-column: 1 / -1; }
+@media (max-width: 600px) { .cvd-panel { grid-template-columns: minmax(0, 1fr); } }

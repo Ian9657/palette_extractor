@@ -153,11 +153,16 @@
                         <h2>COLOR BAR</h2>
                         <div class="export-actions">
                             <button id="btn-star-current" class="btn-export">☆ STAR</button>
-                            <button id="btn-copy-link" class="btn-export" title="Copy a link that reopens this palette">LINK</button>
                             <button id="btn-export-image" class="btn-export" style="background: var(--text-color); color: var(--bg-color);">SAVE IMG</button>
-                            <button id="btn-export-figma" class="btn-export">FIGMA</button>
-                            <button id="btn-export-tailwind" class="btn-export">TAILWIND</button>
-                            <button id="btn-export-css" class="btn-export">CSS</button>
+                            <details class="export-menu" id="export-menu">
+                                <summary class="btn-export">EXPORT ▾</summary>
+                                <div class="export-menu-list">
+                                    <button id="btn-copy-link" class="btn-export" title="Copy a link that reopens this palette">COPY LINK</button>
+                                    <button id="btn-export-css" class="btn-export">CSS VARIABLES</button>
+                                    <button id="btn-export-tailwind" class="btn-export">TAILWIND CONFIG</button>
+                                    <button id="btn-export-figma" class="btn-export">FIGMA TOKENS</button>
+                                </div>
+                            </details>
                         </div>
                     </div>
                     <div id="palette-container" class="palette"></div>
@@ -244,10 +249,13 @@
                     <div id="history-container" class="history-container"></div>
                     <p id="thumb-note" class="thumb-note mono-text"></p>
 
-                    <div class="section-header" style="margin-top: 2rem;">
-                        <h2>FAVORITES</h2>
+                    <div id="favorites-block" class="favorites-block">
+                        <div class="section-header" style="margin-top: 2rem;">
+                            <h2>FAVORITES</h2>
+                        </div>
+                        <div id="favorites-container" class="history-container favorites-wrap"></div>
+                        <p class="favorites-empty mono-text">FAVORITES — none yet. ☆ STAR a palette to keep it here, beyond the last eight.</p>
                     </div>
-                    <div id="favorites-container" class="history-container favorites-wrap"></div>
                 </div>
             </section>
         </main>
