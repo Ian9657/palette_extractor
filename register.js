@@ -105,8 +105,8 @@ function applyTilt() {
     objectEl.style.setProperty('--dy', `${(step * (1 - tiltY * 0.5)).toFixed(2)}px`);
 }
 function tiltLoop() {
-    tiltX += (aimX - tiltX) * 0.08;
-    tiltY += (aimY - tiltY) * 0.08;
+    tiltX += (aimX - tiltX) * 0.2;
+    tiltY += (aimY - tiltY) * 0.2;
     applyTilt();
     tiltRaf = Math.abs(aimX - tiltX) + Math.abs(aimY - tiltY) > 0.002 ? requestAnimationFrame(tiltLoop) : null;
 }
