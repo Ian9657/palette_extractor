@@ -39,7 +39,7 @@ function track(ctx, em) { if ('letterSpacing' in ctx) ctx.letterSpacing = em; }
 
 async function renderCover() {
     await Promise.all([
-        document.fonts.load('700 100px "Space Grotesk"'),
+        document.fonts.load('700 100px "Chakra Petch"'),
         document.fonts.load('500 100px "Space Grotesk"'),
         document.fonts.load('600 20px "IBM Plex Mono"'),
         document.fonts.load('400 20px "IBM Plex Mono"')
@@ -81,16 +81,16 @@ async function renderCover() {
     // Nameplate with the off-register plate, sized to leave room for EXTRACTOR
     const sideW = 260;
     let plate = 262;
-    track(ctx, '-0.065em');
-    ctx.font = `700 ${plate}px "Space Grotesk"`;
+    track(ctx, '-0.045em');
+    ctx.font = `700 ${plate}px "Chakra Petch"`;
     while (ctx.measureText('PALETTE').width > W - 2 * M - sideW - 24 && plate > 120) {
         plate -= 4;
-        ctx.font = `700 ${plate}px "Space Grotesk"`;
+        ctx.font = `700 ${plate}px "Chakra Petch"`;
     }
     ctx.fillStyle = T.signal; ctx.fillText('PALETTE', M - 6 + plate * 0.035, 352 + plate * 0.025);
     ctx.fillStyle = T.ink; ctx.fillText('PALETTE', M - 6, 352);
     ctx.textAlign = 'right';
-    ctx.font = '700 46px "Space Grotesk"'; track(ctx, '-0.03em');
+    ctx.font = '700 46px "Chakra Petch"'; track(ctx, '-0.03em');
     ctx.fillText('EXTRACTOR', W - M, 318);
     ctx.font = '600 15px "IBM Plex Mono"'; track(ctx, '0.12em');
     ctx.fillText('A REGISTER OF COLOUR', W - M, 348);
@@ -134,11 +134,11 @@ async function renderCover() {
     ctx.fillStyle = theme.primary; ctx.fillRect(colX, y, 84, 12);
     y += 30;
     const headline = ntc.name(theme.primary)[1].toUpperCase();
-    ctx.fillStyle = T.ink; track(ctx, '-0.05em');
+    ctx.fillStyle = T.ink; track(ctx, '-0.02em');
     let size = 92;
-    ctx.font = `700 ${size}px "Space Grotesk"`;
+    ctx.font = `700 ${size}px "Chakra Petch"`;
     let lines = wrapLines(ctx, headline, colW);
-    while (lines.length > 3 && size > 54) { size -= 6; ctx.font = `700 ${size}px "Space Grotesk"`; lines = wrapLines(ctx, headline, colW); }
+    while (lines.length > 3 && size > 54) { size -= 6; ctx.font = `700 ${size}px "Chakra Petch"`; lines = wrapLines(ctx, headline, colW); }
     for (const line of lines) { y += size * 0.9; ctx.fillText(line, colX, y); }
     y += 40;
     ctx.font = '500 23px "Space Grotesk"'; track(ctx, '-0.01em');
@@ -168,7 +168,7 @@ async function renderCover() {
         ctx.fillStyle = hex; ctx.fillRect(x, sy, sw, sh);
         const on = inkOn(hex);
         ctx.fillStyle = on;
-        ctx.font = '700 26px "Space Grotesk"'; track(ctx, '-0.01em');
+        ctx.font = '700 26px "Chakra Petch"'; track(ctx, '-0.01em');
         ctx.fillText(names[i], x + 20, sy + 44);
         ctx.fillRect(x + 20, sy + 58, sw - 40, 2);
         ctx.font = '600 24px "IBM Plex Mono"'; track(ctx, '0');

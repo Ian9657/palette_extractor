@@ -10,6 +10,10 @@
     --gutter: 1.5rem;
     --margin-span: 3;                 /* margin column = cols 1–3 */
 
+    /* Type families — DESIGN.md §5 */
+    --font-display: 'Chakra Petch', 'Space Grotesk', sans-serif;   /* nameplate, headings, numerals */
+    --font-text: 'Space Grotesk', sans-serif;                       /* body copy */
+
     /* Spacing scale (8px base) */
     --s1: 0.5rem;
     --s2: 1rem;
@@ -888,3 +892,17 @@ body::after {
     .proof-rig, .proof-layer { transition: none; }
     .proof-stage.locked::after { animation: none; }
 }
+
+/* ---- Display face: Chakra Petch for everything that is a heading or a mark;
+   body copy stays Space Grotesk, data stays IBM Plex Mono (DESIGN.md §5) ---- */
+h1, h2, h3, .title, .mockup-title,
+.nameplate-title, .nameplate-sub, .headline,
+.entry-no, .entry-label, .register-total,
+.drop-text, .loading-text, .swatch-header,
+.a11y-matrix th, .fs-big {
+    font-family: var(--font-display);
+}
+.standfirst, .fs-body { font-family: var(--font-text); }
+.nameplate-title { letter-spacing: -0.045em; }
+.headline { letter-spacing: -0.02em; }
+.entry-no { letter-spacing: -0.03em; }

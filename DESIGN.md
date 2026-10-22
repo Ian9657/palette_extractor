@@ -43,7 +43,11 @@ Identity in one line: **a strictly typeset register, viewed through a night-city
 
 ## 5. Type
 
-- **Two families only:** Space Grotesk (display, headings, body) and IBM Plex Mono (labels, numbers, captions, data). No serif, no italic, no third font, no pixel/Japanese decorative type.
+- **Three families, three jobs:**
+  - **Chakra Petch** (`--font-display`) — nameplate, headings, section numerals, panel titles, role names. Its chamfered corners are the page's cyberpunk voice in type.
+  - **Space Grotesk** (`--font-text`) — body copy: standfirst, specimen sentences.
+  - **IBM Plex Mono** — labels, numbers, captions, data readouts.
+- No serif, no italic, no fourth font, no pixel/Japanese decorative type. Classic keeps Space Grotesk throughout.
 - Scale tokens only: `--fs-display` (nameplate only), `--fs-title` (opener headline, entry numerals), `--fs-heading` (panel h2), `--fs-body`, `--fs-label` (12 px), `--fs-micro` (10 px, the floor).
 - Mono labels: uppercase, letter-spacing 0.08–0.14em. Numbers: `font-variant-numeric: tabular-nums`.
 
@@ -92,7 +96,7 @@ Adding a new effect requires: which screen-side object it belongs to, its durati
 2. **01 Intake** — Fig. 1 (4:3 drop zone; controls COLORS/REROLL directly under it) + opener: kicker, primary-colour rule, headline = primary colour's name, factual standfirst, accession record (folded until an object exists).
 3. **02 Specimen** — COLOR BAR; actions: STAR, SAVE IMG, EXPORT ▾ (link, CSS, Tailwind, Figma). OKLCH line under each swatch.
 4. **03 Relations** — contrast matrix (WCAG/APCA) with type-specimen hover; CVD strips in two columns.
-5. **04 Proof** — the proof panel; archive and favourites follow, folded. *(Proof redesign is pending a discussion with the owner — don't redesign it unasked.)*
+5. **04 Proof** — the deposited photo re-rendered as one anime cel in the palette's inks (`proof.js`), in five production layers (colour, shadow, tone, line, composite). Static; EJECT / INSTALL / drag separate the layers in steps. Archive and favourites follow, folded.
 6. **Colophon** — fonts, method, link to classic.
 
 Section names must be consistent: a label used in the margin is not repeated as the panel's h2.
@@ -104,7 +108,7 @@ Section names must be consistent: a label used in the margin is not repeated as 
 - Whole-sheet grid pattern, whole-sheet glow, soft halos on the frame.
 - Outer-frame experiments: chamfered corners with bezels, trim marks, slug rails, holographic parallax layers, depth rails, extruded/faceted slabs (kept in `git stash`, all rejected).
 - Decorative text outside the content: vertical rails, mood phrases, fake HUD chatter, Japanese decorative type.
-- Serif or italic type ("花体").
+- Serif or italic type ("花体"); a fourth typeface.
 - Hand-made collage props: tape, staples, rubber stamps, scissor cuts, tilted cards.
 - Labelling meaning ("Harmony", "Opposition" rooms).
 - Glitching the whole page or glitching continuously.
