@@ -1,18 +1,16 @@
-// Proof: the current palette as a still frame of Night City, in five layers
-// that can be taken apart like a cyberware install. The language is borrowed
-// from Edgerunners (season 1), not its imagery: flat cel colour with hard
-// two-step shading, screen-tone dots instead of gradients, a low angle up
-// converging megabuildings, a flat moon, chromatic fringes on the brightest
-// edges, and Sandevistan-style afterimages — one per palette colour.
-// Every pixel is a palette colour (DESIGN.md §6.2). Nothing animates; the
-// only motion is taking it apart (EJECT / INSTALL / drag), in steps.
+// Proof: the deposited photo re-rendered as one cel of anime, using only the
+// palette (DESIGN.md §6.2). The five layers are the stages a cel goes through,
+// so EJECT shows how the frame is built:
 //
-//   L1 SKY          night, moon, screen-tone halo
-//   L2 MEGABUILDING two towers rising to a vanishing point above the frame
-//   L3 NEON         signs and hard light planes; a sign whose colour fails 3:1
-//                   against its plate is drawn with dead segments
-//   L4 AFTERIMAGE   an elevated train and its trail, one colour per echo
-//   L5 RAIN         straight, still strokes
+//   L1 COLOUR    flat fills — every area takes its nearest palette colour
+//   L2 SHADOW    one hard shadow step, in the next darker palette colour
+//   L3 TONE      screen-tone dots where a gradient would have been
+//   L4 LINE      ink lines from cel boundaries and strong edges
+//   L5 COMPOSITE chromatic fringes on the brightest cel, tone glow around the
+//                most vivid one, and Sandevistan afterimages trailing the
+//                most salient shapes — one palette colour per echo
+//
+// Static: nothing animates. Taking it apart (EJECT / INSTALL / drag) moves in steps.
 (() => {
     const W = 960, H = 540;
     const STEPS = 6;
@@ -21,11 +19,11 @@
     const stage = $('proof-stage'), rig = $('proof-rig');
 
     const LAYERS = [
-        { key: 'sky', name: 'L1 SKY' },
-        { key: 'mega', name: 'L2 MEGABUILDING' },
-        { key: 'neon', name: 'L3 NEON' },
-        { key: 'after', name: 'L4 AFTERIMAGE' },
-        { key: 'rain', name: 'L5 RAIN' }
+        { key: 'fill', name: 'L1 COLOUR' },
+        { key: 'shadow', name: 'L2 SHADOW' },
+        { key: 'tone', name: 'L3 TONE' },
+        { key: 'line', name: 'L4 LINE' },
+        { key: 'fx', name: 'L5 COMPOSITE' }
     ];
     LAYERS.forEach((L, i) => {
         const wrap = document.createElement('div');
@@ -41,199 +39,259 @@
     });
     const ctxOf = key => LAYERS.find(L => L.key === key).ctx;
 
-    // ---- Inks: chosen from the palette by job ----
-    let inks;
-    function pickInks(theme) {
-        const keys = ROLE_KEYS[Object.keys(theme).length];
-        const names = ROLE_NAMES[keys.length];
-        const all = keys.map((key, i) => {
-            const rgb = hexToRgb(theme[key]);
-            return { key, role: names[i], hex: theme[key], rgb, ...toLch(rgb) };
-        });
-        const byL = all.slice().sort((a, b) => a.L - b.L);
-        const night = byL[0], moon = byL[byL.length - 1];
-        const rest = all.filter(c => c !== night && c !== moon);
-        const vivid = rest.slice().sort((a, b) => b.C - a.C);
-        const neonA = vivid[0] || moon, neonB = vivid[1] || neonA;
-        // the towers' lit face: the darkest colour that isn't the night
-        const face = rest.slice().sort((a, b) => a.L - b.L)[0] || neonB;
-        return { all, night, moon, neonA, neonB, face };
-    }
+    // ---- Analysis: depends on the image and the extracted palette only ----
+    let cache = { img: null, key: '', a: null };
+    const labDist = (p, q) => {   // chroma counts double so hue boundaries survive
+        const dL = p.L - q.L, da = (p.a - q.a) * 2, db = (p.b - q.b) * 2;
+        return dL * dL + da * da + db * db;
+    };
 
-    // ---- Geometry: a low angle; verticals converge on a point above the frame ----
-    const VP = { x: 0.5 * W, y: -1.6 * H };
-    const toward = (x, y, t) => [x + (VP.x - x) * t, y + (VP.y - y) * t];
-    function poly(ctx, pts, fill) {
-        ctx.fillStyle = fill;
-        ctx.beginPath();
-        pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-        ctx.closePath();
-        ctx.fill();
-    }
-    // Screen-tone: dots on a grid, radius set by f(x, y) in 0..1
-    function tone(ctx, colour, x0, y0, x1, y1, f, step = 7) {
-        ctx.fillStyle = colour;
-        for (let y = y0; y < y1; y += step) {
-            for (let x = x0 + ((y / step) % 2) * step / 2; x < x1; x += step) {
-                const r = f(x, y) * step * 0.55;
-                if (r < 0.6) continue;
-                ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    function analyse(img, theme) {
+        const key = Object.values(theme).join('');
+        if (cache.img === img && cache.key === key) return cache.a;
+
+        const c = document.createElement('canvas');
+        c.width = W; c.height = H;
+        const x = c.getContext('2d', { willReadFrequently: true });
+        const s = Math.max(W / img.naturalWidth, H / img.naturalHeight);   // cover the 16:9 frame
+        const w = img.naturalWidth * s, h = img.naturalHeight * s;
+        x.drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
+        const data = x.getImageData(0, 0, W, H).data;
+        const n = W * H;
+
+        const L = new Float32Array(n), A = new Float32Array(n), B = new Float32Array(n);
+        for (let p = 0; p < n; p++) {
+            const ok = rgbToOklab(data[p * 4], data[p * 4 + 1], data[p * 4 + 2]);
+            L[p] = ok.L; A[p] = ok.a; B[p] = ok.b;
+        }
+        // detail L for tone/lines; heavily smoothed copies decide the cels
+        const Ls = Float32Array.from(L), As = Float32Array.from(A), Bs = Float32Array.from(B);
+        for (const ch of [L, A, B]) { boxBlur(ch, W, H, 1); boxBlur(ch, W, H, 1); }
+        for (const ch of [Ls, As, Bs]) { boxBlur(ch, W, H, 4); boxBlur(ch, W, H, 4); }
+
+        const keys = Object.keys(theme);
+        const pal = keys.map(k => { const ok = rgbToOklab(...Object.values(hexToRgb(theme[k]))); return ok; });
+
+        // Nearest palette colour per pixel, then three 5×5 majority passes to flatten speckle into cels
+        let label = new Uint8Array(n);
+        for (let p = 0; p < n; p++) {
+            const q = { L: Ls[p], a: As[p], b: Bs[p] };
+            let best = Infinity, bi = 0;
+            for (let j = 0; j < pal.length; j++) { const d = labDist(q, pal[j]); if (d < best) { best = d; bi = j; } }
+            label[p] = bi;
+        }
+        const votes = new Uint8Array(pal.length);
+        for (let pass = 0; pass < 3; pass++) {
+            const next = new Uint8Array(label);
+            for (let y = 2; y < H - 2; y++) {
+                for (let xx = 2; xx < W - 2; xx++) {
+                    votes.fill(0);
+                    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) votes[label[(y + dy) * W + xx + dx]]++;
+                    let m = 0, mi = label[y * W + xx];
+                    for (let j = 0; j < votes.length; j++) if (votes[j] > m) { m = votes[j]; mi = j; }
+                    next[y * W + xx] = mi;
+                }
+            }
+            label = next;
+        }
+
+        // Shadow and tone: how far each pixel sits below its cel's own lightness
+        const below = new Float32Array(n);
+        for (let p = 0; p < n; p++) below[p] = pal[label[p]].L - L[p];
+
+        // Edges: Sobel on lightness
+        const edge = new Float32Array(n);
+        for (let y = 1; y < H - 1; y++) {
+            for (let xx = 1; xx < W - 1; xx++) {
+                const i = y * W + xx;
+                const gx = L[i - W + 1] + 2 * L[i + 1] + L[i + W + 1] - L[i - W - 1] - 2 * L[i - 1] - L[i + W - 1];
+                const gy = L[i + W - 1] + 2 * L[i + W] + L[i + W + 1] - L[i - W - 1] - 2 * L[i - W] - L[i - W + 1];
+                edge[i] = Math.sqrt(gx * gx + gy * gy);
             }
         }
+
+        // Salient shapes for the afterimages: top 5% of saliency, outside the darkest cel
+        const sal = saliencyMap(data, W, H);
+        const sorted = Float32Array.from(sal).sort();
+        const cut = sorted[Math.floor(n * 0.95)];
+        const darkest = pal.reduce((m, q, j) => (q.L < pal[m].L ? j : m), 0);
+        // close the scattered salient pixels into shapes, then keep the two biggest
+        const blob = new Float32Array(n);
+        for (let p = 0; p < n; p++) blob[p] = sal[p] >= cut && label[p] !== darkest ? 1 : 0;
+        boxBlur(blob, W, H, 6); boxBlur(blob, W, H, 6);
+        const comp = new Int32Array(n).fill(-1), sizes = [];
+        const stack = [];
+        for (let p0 = 0; p0 < n; p0++) {
+            if (blob[p0] < 0.3 || comp[p0] >= 0) continue;
+            const id = sizes.length; let size = 0;
+            comp[p0] = id; stack.push(p0);
+            while (stack.length) {
+                const p = stack.pop(); size++;
+                const x = p % W;
+                for (const q of [p - 1, p + 1, p - W, p + W]) {
+                    if (q < 0 || q >= n || (q === p - 1 && x === 0) || (q === p + 1 && x === W - 1)) continue;
+                    if (comp[q] < 0 && blob[q] >= 0.3) { comp[q] = id; stack.push(q); }
+                }
+            }
+            sizes.push(size);
+        }
+        const keep = sizes.map((sz, id) => [sz, id]).sort((u, v) => v[0] - u[0]).slice(0, 2)
+            .filter(([sz]) => sz > n * 0.004).map(([, id]) => id);
+        const salient = new Uint8Array(n);
+        for (let p = 0; p < n; p++) salient[p] = comp[p] >= 0 && keep.includes(comp[p]) ? 1 : 0;
+
+        const a = { label, below, edge, salient, keys, pal, srcW: img.naturalWidth, srcH: img.naturalHeight };
+        cache = { img, key, a };
+        return a;
     }
 
-    // ---- L1: sky — flat night, flat moon with a chromatic fringe, tone halo ----
-    const MOON = { x: 0.5 * W, y: 0.3 * H, r: 0.21 * H };
-    function drawSky(ctx) {
-        ctx.fillStyle = inks.night.hex;
-        ctx.fillRect(0, 0, W, H);
-        tone(ctx, inks.face.hex, 0, 0, W, H, (x, y) => {
-            const d = Math.hypot(x - MOON.x, y - MOON.y) - MOON.r;
-            return d < 0 ? 0 : Math.max(0, 1 - d / (0.5 * H));
-        }, 8);
-        const disc = (dx, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(MOON.x + dx, MOON.y, MOON.r, 0, Math.PI * 2); ctx.fill(); };
-        disc(-5, inks.neonB.hex);
-        disc(5, inks.neonA.hex);
-        disc(0, inks.moon.hex);
+    // ---- Drawing ----
+    const rgbOf = hex => hexToRgb(hex);
+    function paintPixels(ctx, colourAt) {
+        const out = ctx.createImageData(W, H), d = out.data;
+        for (let p = 0; p < W * H; p++) {
+            const c = colourAt(p);
+            if (!c) continue;
+            d[p * 4] = c.r; d[p * 4 + 1] = c.g; d[p * 4 + 2] = c.b; d[p * 4 + 3] = 255;
+        }
+        ctx.putImageData(out, 0, 0);
     }
 
-    // ---- L2: megabuildings — two towers, two flat tones, rim light, window grid ----
-    function tower(ctx, xL, xR, height, litSide) {
-        const top = height;                                      // fraction of the way to the VP
-        const bl = [xL, H], br = [xR, H];
-        const tl = toward(xL, H, top * 0.62), tr = toward(xR, H, top * 0.62);
-        poly(ctx, [bl, br, tr, tl], inks.face.hex);
-        // the shadow half: a hard two-step shade, no gradient
-        const ml = [xL + (xR - xL) * (litSide === 'right' ? 0 : 0.58), H];
-        const mr = [xL + (xR - xL) * (litSide === 'right' ? 0.42 : 1), H];
-        const mtl = toward(ml[0], H, top * 0.62), mtr = toward(mr[0], H, top * 0.62);
-        poly(ctx, [ml, mr, mtr, mtl], inks.night.hex);
-        // windows: perspective columns and floors that crowd together as they rise
-        ctx.fillStyle = inks.night.hex;
-        const cols = 16, floors = 34;
-        for (let f = 0; f < floors; f++) {
-            const t0 = top * 0.62 * (1 - Math.pow(1 - f / floors, 1.6));
-            const t1 = top * 0.62 * (1 - Math.pow(1 - (f + 0.55) / floors, 1.6));
-            for (let c = 0; c < cols; c++) {
-                const xa = xL + (xR - xL) * (c + 0.2) / cols, xb = xL + (xR - xL) * (c + 0.75) / cols;
-                const q = [toward(xa, H, t0), toward(xb, H, t0), toward(xb, H, t1), toward(xa, H, t1)];
-                poly(ctx, q, (f * 7 + c * 3) % 11 === 0 ? inks.moon.hex : inks.night.hex);
+    function render(theme) {
+        const img = currentImgEl || keptThumb();
+        LAYERS.forEach(Lr => Lr.ctx.clearRect(0, 0, W, H));
+        if (!img) { renderEmpty(theme); return; }
+        const a = analyse(img, palette.theme);           // cels come from the extracted colours…
+        const ink = a.keys.map(k => rgbOf(theme[k]));    // …painted in the shown theme (or its opposite)
+        const inkHex = a.keys.map(k => theme[k]);
+        const byL = a.keys.map((k, j) => j).sort((i, j) => toLch(ink[i]).L - toLch(ink[j]).L);
+        const darkest = byL[0], lightest = byL[byL.length - 1];
+        const darker = j => byL[Math.max(0, byL.indexOf(j) - 1)];
+        const vivid = a.keys.map((k, j) => j).filter(j => j !== darkest && j !== lightest)
+            .sort((i, j) => toLch(ink[j]).C - toLch(ink[i]).C);
+        const { label, below, edge, salient } = a;
+
+        // L1 colour
+        paintPixels(ctxOf('fill'), p => ink[label[p]]);
+
+        // L2 shadow: one hard step
+        const SHADE = 0.07;
+        paintPixels(ctxOf('shadow'), p => (below[p] > SHADE && label[p] !== darkest ? ink[darker(label[p])] : null));
+
+        // L3 tone: dots where the pixel is a little below its cel but not yet in shadow
+        const tctx = ctxOf('tone');
+        tctx.fillStyle = inkHex[darkest];
+        const G = 6;
+        for (let y = G / 2; y < H; y += G) {
+            for (let x = G / 2 + ((y / G) % 2) * G / 2; x < W; x += G) {
+                const p = (y | 0) * W + (x | 0);
+                const t = (below[p] - 0.015) / (SHADE - 0.015);
+                if (t <= 0 || t >= 1 || label[p] === darkest) continue;
+                tctx.beginPath(); tctx.arc(x, y, 0.4 + t * G * 0.42, 0, Math.PI * 2); tctx.fill();
             }
         }
-        // rim light: one hard edge on the side facing the moon
-        ctx.strokeStyle = inks.moon.hex;
-        ctx.lineWidth = 3;
-        const edge = litSide === 'right' ? [br, tr] : [bl, tl];
-        ctx.beginPath(); ctx.moveTo(...edge[0]); ctx.lineTo(...edge[1]); ctx.stroke();
-        return { tl, tr };
-    }
-    function drawMega(ctx) {
-        ctx.clearRect(0, 0, W, H);
-        // the far tower first, cut against the moon; the near towers frame it
-        tower(ctx, 0.44 * W, 0.56 * W, 0.4, 'left');
-        tower(ctx, -0.34 * W, 0.2 * W, 0.62, 'right');
-        tower(ctx, 0.8 * W, 1.34 * W, 0.6, 'left');
-    }
 
-    // ---- L3: neon — signs on the towers, hard light planes ----
-    let signs = [];
-    function measureSigns() {
-        const plate = inks.night;
-        signs = [
-            { ink: inks.neonA, x: 0.2 * W, y: 0.12 * H, ratio: contrastRatio(inks.neonA.rgb, plate.rgb) },
-            { ink: inks.neonB, x: 0.76 * W, y: 0.18 * H, ratio: contrastRatio(inks.neonB.rgb, plate.rgb) }
-        ];
-        signs.forEach(s => { s.ok = s.ratio >= 3; s.text = s.ink.hex.slice(1); });
-        $('proof-signs').textContent = signs.map((s, i) => `${'AB'[i]} ${s.ratio.toFixed(1)}:1${s.ok ? '' : ' FAULT'}`).join(' · ');
-    }
-    function drawNeon(ctx) {
-        ctx.clearRect(0, 0, W, H);
-        // glow: a screen-tone halo in the sign's own ink, not a gradient
-        for (const s of signs) {
-            const cx = s.x + 21, cy = s.y + 90;
-            tone(ctx, s.ink.hex, cx - 110, cy - 150, cx + 110, cy + 150,
-                (x, y) => Math.max(0, 0.8 - Math.hypot((x - cx) / 110, (y - cy) / 150)), 6);
+        // L4 line: cel boundaries plus strong edges, heavier where the edge is strong
+        const T = 0.42;
+        const line = new Uint8Array(W * H);
+        for (let y = 1; y < H - 1; y++) {
+            for (let x = 1; x < W - 1; x++) {
+                const p = y * W + x;
+                const boundary = label[p] !== label[p + 1] || label[p] !== label[p + W];
+                if (boundary || edge[p] > T) {
+                    line[p] = 1;
+                    // heavier ink where a cel boundary meets a strong edge: weighted line, like a pen
+                    if (boundary && edge[p] > T * 0.6) { line[p + 1] = 1; line[p + W] = 1; }
+                }
+            }
         }
-        for (const s of signs) {
-            const glyph = 26, pad = 8, w = glyph + pad * 2, h = s.text.length * glyph + pad * 2;
-            ctx.fillStyle = inks.night.hex;
-            ctx.fillRect(s.x, s.y, w, h);
-            ctx.strokeStyle = s.ink.hex; ctx.lineWidth = 3;
-            ctx.strokeRect(s.x + 3, s.y + 3, w - 6, h - 6);
-            ctx.font = `700 ${glyph}px "IBM Plex Mono", monospace`;
-            ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-            [...s.text].forEach((ch, i) => {
-                if (!s.ok && i % 2 === 1) return;          // a failing sign has dead segments
-                ctx.fillStyle = s.ink.hex;
-                ctx.fillText(ch, s.x + w / 2, s.y + pad + i * glyph);
-            });
-        }
-    }
+        let lineCount = 0;
+        paintPixels(ctxOf('line'), p => (line[p] ? (lineCount++, ink[darkest]) : null));
 
-    // ---- L4: afterimage — elevated rail, a train, one echo per palette colour ----
-    function drawAfter(ctx) {
-        ctx.clearRect(0, 0, W, H);
-        const railY = 0.78 * H, slope = -0.06;
-        const y = x => railY + (x - W / 2) * slope;
-        // the rail deck
-        poly(ctx, [[0, y(0)], [W, y(W)], [W, y(W) + 26], [0, y(0) + 26]], inks.night.hex);
-        ctx.fillStyle = inks.night.hex;
-        for (let x = 40; x < W; x += 150) ctx.fillRect(x, y(x) + 20, 16, H - y(x));
-        // the train, then its echoes trailing back to the left
-        const car = (x0, len, col, h = 44) => poly(ctx, [[x0, y(x0) - h], [x0 + len, y(x0 + len) - h], [x0 + len, y(x0 + len)], [x0, y(x0)]], col);
-        const echoes = inks.all.filter(c => c !== inks.night);
-        const head = 0.58 * W, len = 330;
-        echoes.forEach((c, i) => car(head - (echoes.length - i) * 64, len, c.hex, 44 - (echoes.length - i) * 3));
-        car(head, len, inks.night.hex);
-        // the train's own windows and a hard rim along its roof
-        for (let x = head + 14; x < head + len - 20; x += 26) {
-            poly(ctx, [[x, y(x) - 34], [x + 16, y(x + 16) - 34], [x + 16, y(x + 16) - 18], [x, y(x) - 18]], inks.moon.hex);
+        // L5 composite
+        const fx = new Array(W * H).fill(null);
+        // Sandevistan: echoes trail left of the salient shapes, far ones first
+        const echoInks = vivid.length ? vivid.concat(lightest) : [lightest];
+        const ECHOES = 4, GAP = 18;
+        for (let k = ECHOES; k >= 1; k--) {
+            const c = ink[echoInks[(k - 1) % echoInks.length]];
+            const dx = k * GAP, dy = -k * 2;
+            for (let y = 0; y < H; y++) {
+                const sy = y - dy;
+                if (sy < 0 || sy >= H) continue;
+                for (let x = 0; x < W - dx; x++) {
+                    if (salient[sy * W + x + dx] && !salient[y * W + x]) fx[y * W + x] = c;
+                }
+            }
         }
-        ctx.strokeStyle = inks.moon.hex; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.moveTo(head, y(head) - 44); ctx.lineTo(head + len, y(head + len) - 44); ctx.stroke();
-    }
-
-    // ---- L5: rain — still straight strokes ----
-    function drawRain(ctx) {
-        ctx.clearRect(0, 0, W, H);
-        ctx.strokeStyle = inks.moon.hex; ctx.lineWidth = 1.5;
-        const r = mulberry32(3);
-        ctx.beginPath();
-        for (let i = 0; i < 120; i++) {
-            const x = r() * W, y = r() * H, l = 18 + r() * 26;
-            ctx.moveTo(x, y); ctx.lineTo(x - l * 0.28, y + l);
+        // Chromatic fringe on the brightest cel's edges
+        if (vivid.length) {
+            const left = ink[vivid[0]], right = ink[vivid[1] ?? vivid[0]];
+            for (let y = 0; y < H; y++) {
+                for (let x = 3; x < W - 3; x++) {
+                    const p = y * W + x;
+                    if (label[p] === lightest) continue;
+                    if (label[p + 3] === lightest) fx[p] = left;
+                    else if (label[p - 3] === lightest) fx[p] = right;
+                }
+            }
         }
-        ctx.stroke();
-    }
+        paintPixels(ctxOf('fx'), p => fx[p]);
+        // Tone glow around the most vivid cel, in its own ink
+        if (vivid.length) {
+            const v = vivid[0], mask = new Float32Array(W * H);
+            for (let p = 0; p < W * H; p++) mask[p] = label[p] === v ? 1 : 0;
+            boxBlur(mask, W, H, 10); boxBlur(mask, W, H, 10);
+            const g = ctxOf('fx');
+            g.fillStyle = inkHex[v];
+            for (let y = 4; y < H; y += 8) {
+                for (let x = 4 + ((y / 8) % 2) * 4; x < W; x += 8) {
+                    const p = y * W + x;
+                    if (label[p] === v) continue;
+                    const m = mask[p];
+                    if (m < 0.06 || m > 0.9) continue;
+                    g.beginPath(); g.arc(x, y, 0.6 + m * 2.6, 0, Math.PI * 2); g.fill();
+                }
+            }
+        }
 
-    // ---- Render ----
-    function render(theme, coverage) {
-        inks = pickInks(theme);
-        $('mockup-badge').textContent = coverage == null ? '—' : `${coverage}%`;
-        measureSigns();
-        drawSky(ctxOf('sky'));
-        drawMega(ctxOf('mega'));
-        drawNeon(ctxOf('neon'));
-        drawAfter(ctxOf('after'));
-        drawRain(ctxOf('rain'));
+        $('proof-source').textContent = `${a.srcW} × ${a.srcH}`;
+        $('proof-line').textContent = `${Math.round(lineCount / (W * H) * 1000) / 10}%`;
         const used = {
-            sky: [inks.night, inks.moon],
-            mega: [inks.face, inks.night],
-            neon: [inks.neonA, inks.neonB],
-            after: inks.all.filter(c => c !== inks.night),
-            rain: [inks.moon]
+            fill: a.keys.map(k => k.toUpperCase() === 'BG' ? 'BASE' : k.toUpperCase()).length + ' INKS',
+            shadow: 'ONE STEP DARKER', tone: inkHex[darkest], line: inkHex[darkest],
+            fx: `${ECHOES} ECHOES · FRINGE · GLOW`
         };
-        LAYERS.forEach(L => {
-            L.text = `${L.name} · ${used[L.key].map(c => c.role).join(' + ')}`;
-            if (explode > 0) L.tag.textContent = L.text;
+        LAYERS.forEach(Lr => {
+            Lr.text = `${Lr.name} · ${used[Lr.key]}`;
+            if (explode > 0) Lr.tag.textContent = Lr.text;
         });
     }
 
-    // The proof follows the theme main.js shows in the proof (extracted or its derived opposite)
+    // No image (default palette, or retrieved without a thumbnail): the palette as cels
+    function renderEmpty(theme) {
+        const f = ctxOf('fill'), hexes = Object.values(theme);
+        hexes.forEach((hex, i) => { f.fillStyle = hex; f.fillRect(Math.floor(i * W / hexes.length), 0, Math.ceil(W / hexes.length), H); });
+        $('proof-source').textContent = '—';
+        $('proof-line').textContent = '—';
+        LAYERS.forEach(Lr => { Lr.text = `${Lr.name} · NO SOURCE`; if (explode > 0) Lr.tag.textContent = Lr.text; });
+    }
+
+    function keptThumb() {
+        if (typeof thumbs !== 'object' || !palette) return null;
+        const t = thumbs[Object.values(palette.theme).join('')];
+        if (!t) return null;
+        if (!t.img) { t.img = new Image(); t.img.onload = () => applyMockupTheme(); t.img.src = t.src; }
+        return t.img.complete && t.img.naturalWidth ? t.img : null;
+    }
+
+    // The proof follows the theme main.js shows in it (extracted, or its derived opposite)
     const prevApplyMockup = applyMockupTheme;
     applyMockupTheme = function () {
         prevApplyMockup();
-        if (palette) render(proofInverted ? invertTheme(palette.theme) : palette.theme, palette.coverage);
+        if (!palette) return;
+        $('mockup-badge').textContent = palette.coverage == null ? '—' : `${palette.coverage}%`;
+        render(proofInverted ? invertTheme(palette.theme) : palette.theme);
     };
 
     // ---- Take apart / install ----
@@ -246,7 +304,7 @@
         stage.style.setProperty('--e', (n / STEPS).toFixed(3));
         stage.classList.toggle('apart', n > 0);
         FX.split(rig, 120);
-        if (opening) LAYERS.forEach((L, i) => setTimeout(() => FX.decode(L.tag, L.text, 260), i * 70));
+        if (opening) LAYERS.forEach((Lr, i) => setTimeout(() => FX.decode(Lr.tag, Lr.text, 260), i * 70));
         if (n === 0) { stage.classList.remove('locked'); void stage.offsetWidth; stage.classList.add('locked'); }
     }
     function runTo(target) {
