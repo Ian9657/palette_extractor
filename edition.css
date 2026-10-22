@@ -26,38 +26,26 @@
     --fs-label: 0.75rem;                        /* mono labels, captions, specs (12px) */
     --fs-micro: 0.625rem;                       /* colophon, lens readout (10px) */
 
-    /* Colour tokens (Phase 3). Everything below reads these; the editions
-       only swap values. --bg/--text/--border are style.css's own names. */
-    --desk: #ECE6DA;                       /* behind the sheet */
-    --hairline: rgba(26, 26, 26, 0.18);
-    --tint: rgba(0, 0, 0, 0.04);           /* faint fills: drop zone, hatching */
-    /* Three jobs, three colours (Night City Editorial):
+    /* Colour tokens — DESIGN.md §6.1. Three accents, three jobs:
        signal = the system at work (numerals, off-register plate, marks, lens)
-       alert  = look here (yellow tags with ink text — never as text on paper)
-       danger = errors only */
-    --signal: #00788A;                     /* large marks; 4.6:1 on paper */
-    --signal-ink: #00707F;                 /* small type; 5.1:1 on paper */
-    --alert: #F0EF00;
-    --alert-ink: #191C23;                  /* text on alert, 13.8:1 */
-    --danger: #FF4655;
-    --grain-blend: multiply;
-    --grain-opacity: 0.10;
-    --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-/* Night edition: the same sheet in Night City's blue-black; the signal lights up */
-:root[data-theme="night"] {
-    --bg-color: #111927;                   /* the sheet */
+       alert  = look here (yellow tags with ink text, never text colour)
+       danger = errors only
+       --bg/--text/--border are style.css's own names. */
+    --bg-color: #111927;                   /* the sheet, blue-black */
     --text-color: #F5F0E8;
     --border-color: #F5F0E8;
     --desk: #080D18;                       /* the space around it */
     --surface: #1A2333;
     --hairline: rgba(245, 240, 232, 0.18);
-    --tint: rgba(245, 240, 232, 0.05);
+    --tint: rgba(245, 240, 232, 0.05);     /* faint fills: drop zone, hatching */
     --signal: #00E5FF;                     /* 11.5:1 on the sheet */
     --signal-ink: #00E5FF;
+    --alert: #F0EF00;
+    --alert-ink: #191C23;                  /* text on alert, 13.8:1 */
+    --danger: #FF4655;
     --grain-blend: screen;
     --grain-opacity: 0.05;
+    --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
     color-scheme: dark;
 }
 
@@ -203,13 +191,10 @@ body::after {
     padding: var(--s3) 0;
 }
 .record-archive > summary::-webkit-details-marker { display: none; }
-.record-archive > summary h2::after {
-    content: ' +';
-    color: var(--signal-ink);
-}
-.record-archive[open] > summary h2::after { content: ' −'; }
-.archive-toggle { color: var(--signal-ink); }
+.archive-toggle { color: var(--signal-ink); font-size: var(--fs-label); font-weight: 600; letter-spacing: 0.12em; }
+.archive-toggle::after { content: 'OPEN'; }
 .record-archive[open] .archive-toggle { color: var(--text-color); }
+.record-archive[open] .archive-toggle::after { content: 'CLOSE'; }
 .plate { transition: background-color 0.8s var(--ease-smooth); }
 
 /* ---- 01 Intake: a 9-column subgrid inside the body (figure 5, text 4) ---- */
@@ -489,47 +474,26 @@ body::after {
     text-overflow: ellipsis;
 }
 
-/* ---- Edition switch ---- */
 .mast-end { display: flex; align-items: baseline; gap: var(--s2); }
-.edition-switch { display: inline-flex; border: 1px solid var(--border-color); }
-.edition-switch button {
-    font: inherit;
-    letter-spacing: inherit;
-    color: var(--text-color);
-    background: transparent;
-    border: none;
-    padding: 0.1rem 0.5rem;
-    cursor: pointer;
-}
-.edition-switch button + button { border-left: 1px solid var(--border-color); }
-:root[data-theme="day"] .edition-switch [data-edition="day"],
-:root[data-theme="night"] .edition-switch [data-edition="night"] {
-    background: var(--alert);
-    color: var(--alert-ink);
-}
 
 /* Lines and fills other stylesheets hard-code for paper */
 .entry, .mast-line { border-color: var(--border-color); }
 .accession-fields dt, .accession-fields dd { border-top-color: var(--hairline); }
 .drop-zone { background: var(--tint); }
-:root[data-theme="night"] .drop-zone:hover,
-:root[data-theme="night"] .drop-zone.dragover { background: rgba(245, 240, 232, 0.08); }
-/* Matrix: AAA cells are "solid ink", so they invert with the edition;
-   multiply would sink the AA fills into dark paper */
-:root[data-theme="night"] .a11y-cell--aaa { background: var(--text-color); color: var(--bg-color); }
-:root[data-theme="night"] .a11y-cell--aa,
-:root[data-theme="night"] .a11y-cell--aa-large,
-:root[data-theme="night"] .swatch,
-:root[data-theme="night"] .history-color,
-:root[data-theme="night"] .proof-strip-color { mix-blend-mode: normal; }
-:root[data-theme="night"] .a11y-cell--self {
+.drop-zone:hover,
+.drop-zone.dragover { background: rgba(245, 240, 232, 0.08); }
+/* Matrix: AAA cells are "solid ink", so they take the light ink;
+   multiply would sink the data fills into the dark sheet (DESIGN.md §6.2) */
+.a11y-cell--aaa { background: var(--text-color); color: var(--bg-color); }
+.a11y-cell--aa,
+.a11y-cell--aa-large,
+.swatch,
+.history-color,
+.proof-strip-color { mix-blend-mode: normal; }
+.a11y-cell--self {
     background: repeating-linear-gradient(45deg, transparent, transparent 3px, var(--tint) 3px, var(--tint) 6px);
 }
-:root[data-theme="night"] .a11y-legend-swatch[style*="#1a1a1a"] { background: var(--text-color) !important; }
-
-/* Edition change crossfades (View Transitions); colour data is untouched */
-::view-transition-old(root),
-::view-transition-new(root) { animation-duration: 0.45s; animation-timing-function: var(--ease-smooth); }
+.a11y-legend-swatch[style*="#1a1a1a"] { background: var(--text-color) !important; }
 
 /* ---- Narrower screens: same system, fewer columns ---- */
 @media (max-width: 1000px) {
@@ -557,12 +521,8 @@ body::after {
     .nameplate-side { align-items: flex-start; text-align: left; }
     .entry-margin { flex-direction: column; align-items: flex-start; }
 }
-@media (prefers-reduced-motion: reduce) {
-    ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
-}
-
-/* main.js colours the empty-list note with --secondary-color (#333 by default), unreadable on night paper */
-:root[data-theme="night"] .history-container .mono-text { color: var(--text-color) !important; }
+/* main.js colours the empty-list note with --secondary-color (#333 by default), unreadable on the dark sheet */
+.history-container .mono-text { color: var(--text-color) !important; }
 
 .colophon-site a { color: inherit; text-decoration: none; border-bottom: 1px solid currentColor; }
 .colophon-site a:hover { color: var(--signal-ink); }
@@ -741,8 +701,8 @@ body::after {
     background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.14) 0 1px, transparent 1px 3px);
     mix-blend-mode: multiply;
 }
-:root[data-theme="night"] .fp-window::before,
-:root[data-theme="night"] .drop-zone.scanning::after {
+.fp-window::before,
+.drop-zone.scanning::after {
     background: repeating-linear-gradient(0deg, rgba(0, 229, 255, 0.07) 0 1px, transparent 1px 3px);
     mix-blend-mode: screen;
 }
@@ -772,9 +732,9 @@ body::after {
     background: linear-gradient(to top, color-mix(in srgb, var(--signal) 32%, transparent), transparent);
 }
 
-/* Night: screen objects emit a little light; by day they are print and do not */
-:root[data-theme="night"] .fig-scan,
-:root[data-theme="night"] .fp-window::after {
+/* Screen objects emit a little light; the paper never does (DESIGN.md §3.3) */
+.fig-scan,
+.fp-window::after {
     filter: drop-shadow(0 0 4px var(--signal));
 }
 

@@ -1,5 +1,5 @@
-// SAVE IMG for the magazine edition: renders the current object as a 4:5
-// magazine cover in the current edition's inks (day or night) and downloads
+// SAVE IMG for the new edition: renders the current object as a 4:5
+// magazine cover in the page's own inks (DESIGN.md §6.1) and downloads
 // it. Replaces main.js's classic card on this page only.
 const COVER_W = 1200, COVER_H = 1500, COVER_M = 72;
 
@@ -9,7 +9,7 @@ function coverTokens() {
     return {
         paper: v('--bg-color'), ink: v('--text-color'), signal: v('--signal'),
         signalInk: v('--signal-ink'), alert: v('--alert'), alertInk: v('--alert-ink'),
-        night: document.documentElement.dataset.theme === 'night'
+        tint: v('--tint')
     };
 }
 
@@ -73,7 +73,7 @@ async function renderCover() {
     // Masthead line
     ctx.fillStyle = T.ink;
     ctx.font = '600 17px "IBM Plex Mono"'; track(ctx, '0.12em');
-    ctx.fillText(`VOL. 01 — ${T.night ? 'NIGHT' : 'DAY'} EDITION`, M, 104);
+    ctx.fillText('VOL. 01 — SIGNAL EDITION', M, 104);
     ctx.textAlign = 'center'; ctx.fillText(`ISSUE ${issue}`, W / 2, 104); ctx.textAlign = 'left';
     ctx.textAlign = 'right'; ctx.fillText(date, W - M, 104); ctx.textAlign = 'left';
     ctx.fillRect(M, 122, W - 2 * M, 1);
@@ -101,7 +101,7 @@ async function renderCover() {
     // Fig. 1 — the source, contained, with signal corner brackets
     const box = { x: M, y: 440, w: 620, h: 620 };
     const img = await coverSource();
-    ctx.fillStyle = T.night ? 'rgba(245,240,232,0.05)' : 'rgba(0,0,0,0.04)';
+    ctx.fillStyle = T.tint;
     ctx.fillRect(box.x, box.y, box.w, box.h);
     let r = box;
     if (img) {
@@ -190,7 +190,7 @@ async function renderCover() {
     ctx.globalAlpha = 0.6;
     ctx.fillText('OKLAB · SALIENCY · SUBMODULAR SELECTION', W - M, H - 52);
     ctx.globalAlpha = 1; ctx.textAlign = 'left';
-    return { canvas: c, name: `palette-${filed ? accNo : 'default'}-${T.night ? 'night' : 'day'}.png` };
+    return { canvas: c, name: `palette-${filed ? accNo : 'default'}.png` };
 }
 
 // Take over SAVE IMG before main.js's own listener sees the click
