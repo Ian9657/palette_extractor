@@ -20,7 +20,7 @@
     transform: none;
     box-shadow: none;
 }
-.plates { position: absolute; inset: 0; }
+.plates { position: absolute; inset: 0; z-index: 0; }   /* own stacking context: however many plates, all stay under the sheet (z 6) */
 .plate {
     position: absolute;
     inset: 0;
