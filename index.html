@@ -185,40 +185,25 @@
                         <h2>PRINT PROOF</h2>
                         <button id="btn-invert" class="btn-export">◐ LIGHT</button>
                     </div>
-                    <div class="ui-mockup" id="ui-mockup">
-                        <div id="proof-strip" class="proof-strip"></div>
-                        <div class="mockup-header">
-                            <h3 class="mockup-title">INK COVERAGE</h3>
-                            <span id="mockup-badge" class="badge">0%</span>
+                    <!-- Proof: the palette as a night-city frame, built from one layer per role.
+                         Drag to take it apart; INSTALL snaps it back. Drawn by proof.js. -->
+                    <div class="proof-screen" id="proof-screen">
+                        <div class="proof-stage" id="proof-stage" aria-label="Proof frame. Drag to separate its layers.">
+                            <div class="proof-rig" id="proof-rig"></div>
+                        </div>
+                        <div class="proof-controls mono-text">
+                            <button type="button" class="btn-export" id="proof-eject">EJECT LAYERS</button>
+                            <button type="button" class="btn-export" id="proof-install">INSTALL</button>
+                            <span class="proof-hint">DRAG THE FRAME TO SEPARATE IT</span>
                         </div>
                         <div class="proof-meta mono-text">
-                            <div class="proof-meta-row">
-                                <span class="proof-label">REV.</span>
-                                <span id="proof-rev" class="proof-value">001</span>
-                                <span class="proof-sep">·</span>
-                                <span id="proof-date" class="proof-value">—</span>
-                                <span class="proof-sep">·</span>
-                                <span class="proof-value">sRGB → OKLab</span>
-                            </div>
-                            <div class="proof-meta-row">
-                                <span class="proof-label">K</span>
-                                <span id="proof-k" class="proof-value">5</span>
-                                <span class="proof-sep">·</span>
-                                <span class="proof-label">ITER</span>
-                                <span id="proof-iter" class="proof-value">15</span>
-                                <span class="proof-sep">·</span>
-                                <span class="proof-label">SEED</span>
-                                <span id="proof-seed" class="proof-value">—</span>
-                                <span class="proof-sep">·</span>
-                                <span class="proof-value">CHROMA WEIGHTED</span>
-                            </div>
-                        </div>
-                        <div class="progress-track">
-                            <div id="mockup-progress" class="progress-fill"></div>
-                        </div>
-                        <div class="mockup-buttons">
-                            <span class="mockup-button">PROOF OK</span>
-                            <span class="mockup-button-secondary">FILED</span>
+                            <span class="proof-label">REV.</span> <span id="proof-rev" class="proof-value">001</span>
+                            <span class="proof-sep">·</span> <span id="proof-date" class="proof-value">—</span>
+                            <span class="proof-sep">·</span> <span class="proof-label">K</span> <span id="proof-k" class="proof-value">5</span>
+                            <span class="proof-sep">·</span> <span class="proof-label">ITER</span> <span id="proof-iter" class="proof-value">15</span>
+                            <span class="proof-sep">·</span> <span class="proof-label">SEED</span> <span id="proof-seed" class="proof-value">—</span>
+                            <span class="proof-sep">·</span> <span class="proof-label">LIT</span> <span id="mockup-badge" class="proof-value">—</span>
+                            <span class="proof-sep">·</span> <span class="proof-label">SIGNS</span> <span id="proof-signs" class="proof-value">—</span>
                         </div>
                     </div>
                     <details class="record-archive" id="record-archive">
@@ -284,5 +269,6 @@
     <script src="edition.js"></script>
     <script src="previews.js"></script>
     <script src="cover.js"></script>
+    <script src="proof.js"></script>
 </body>
 </html>

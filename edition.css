@@ -789,3 +789,102 @@ body::after {
 .cvd-strip { height: 14px; border-width: 1px; }
 .cvd-warning, .cvd-ok { grid-column: 1 / -1; }
 @media (max-width: 600px) { .cvd-panel { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---- 04 Proof: the palette as a night-city frame, in five removable layers ----
+   A screen object (DESIGN.md §3.3), so it may carry signal: stepped 3D
+   separation, an RGB split per step, decoded layer tags, a lock flash.
+   proof.js draws every pixel from the palette (§6.2). */
+.proof-screen { display: flex; flex-direction: column; gap: var(--s2); }
+.proof-stage {
+    --e: 0;                                   /* 0 assembled … 1 fully apart, set in steps */
+    position: relative;
+    aspect-ratio: 16 / 9;
+    perspective: 1800px;
+    cursor: grab;
+    touch-action: pan-y;
+    user-select: none;
+    border: 1px solid var(--border-color);
+    overflow: visible;
+}
+.proof-stage:active { cursor: grabbing; }
+.proof-rig {
+    position: absolute;
+    inset: 0;
+    transform-style: preserve-3d;
+    transform:
+        rotateX(calc(var(--e) * 56deg))
+        rotateZ(calc(var(--e) * -30deg))
+        scale(calc(1 - var(--e) * 0.46));
+    transition: transform 0.24s steps(3, end);
+}
+.proof-layer {
+    position: absolute;
+    inset: 0;
+    transform: translateZ(calc(var(--e) * var(--i) * 62px));
+    transition: transform 0.24s steps(3, end);
+}
+.proof-layer canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+.proof-stage.apart .proof-layer { outline: 1px solid var(--signal); outline-offset: -1px; }
+.proof-stage.apart .proof-layer:nth-child(n+2) canvas { filter: drop-shadow(0 0 4px var(--signal)); }
+
+/* Layer tags appear only while the frame is apart */
+.proof-tag {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform: translateY(-100%);
+    white-space: nowrap;
+    background: var(--alert);
+    color: var(--alert-ink);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: var(--fs-micro);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    padding: 0.15rem 0.9rem 0.15rem 0.4rem;
+    clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+    opacity: 0;
+}
+.proof-stage.apart .proof-tag { opacity: 1; }
+
+/* Lock: when the last layer seats, the stage's corners flash */
+.proof-stage::after {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    pointer-events: none;
+    --c: var(--signal);
+    background:
+        linear-gradient(var(--c), var(--c)) left top / 22px 2px,
+        linear-gradient(var(--c), var(--c)) left top / 2px 22px,
+        linear-gradient(var(--c), var(--c)) right top / 22px 2px,
+        linear-gradient(var(--c), var(--c)) right top / 2px 22px,
+        linear-gradient(var(--c), var(--c)) left bottom / 22px 2px,
+        linear-gradient(var(--c), var(--c)) left bottom / 2px 22px,
+        linear-gradient(var(--c), var(--c)) right bottom / 22px 2px,
+        linear-gradient(var(--c), var(--c)) right bottom / 2px 22px;
+    background-repeat: no-repeat;
+    opacity: 0;
+}
+.proof-stage.locked::after { animation: proof-lock 0.36s steps(3, end) 1; }
+@keyframes proof-lock {
+    0%   { opacity: 1; inset: -14px; filter: drop-shadow(0 0 5px var(--signal)); }
+    66%  { opacity: 1; inset: -6px; }
+    100% { opacity: 0; }
+}
+
+.proof-controls { display: flex; align-items: center; gap: var(--s1); flex-wrap: wrap; }
+.proof-hint { margin-left: auto; font-size: var(--fs-micro); letter-spacing: 0.12em; opacity: 0.6; }
+.proof-screen .proof-meta {
+    font-size: var(--fs-micro);
+    letter-spacing: 0.08em;
+    padding-top: var(--s1);
+    border-top: 1px solid var(--hairline);
+}
+.proof-screen .proof-label { opacity: 0.55; }
+.proof-screen .proof-sep { opacity: 0.4; margin: 0 0.3rem; }
+
+@media (max-width: 600px) { .proof-hint { display: none; } }
+@media (prefers-reduced-motion: reduce) {
+    .proof-rig, .proof-layer { transition: none; }
+    .proof-stage.locked::after { animation: none; }
+}
