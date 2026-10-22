@@ -122,12 +122,78 @@ function mulberry32(seed) {
     };
 }
 
+// ---- Saliency ----
+// Frequency-tuned saliency (Achanta et al., CVPR 2009), computed in OKLab:
+// a pixel is salient when its slightly blurred colour is far from the image's
+// mean colour. OKLab's a/b span far less than L, so chroma differences are
+// scaled by CHROMA_GAIN — otherwise lightness dominates and a yellow flower
+// centre on white scores below the dark leaves. Small bright lights on a dark field score high; large calm areas
+// near the mean score low. Returns a Float32Array in 0..1 (99th-percentile
+// normalised), one value per pixel; transparent pixels get 0.
+function saliencyMap(data, width, height) {
+    const n = width * height;
+    const L = new Float32Array(n), A = new Float32Array(n), B = new Float32Array(n);
+    let mL = 0, mA = 0, mB = 0, count = 0;
+    for (let p = 0; p < n; p++) {
+        const i = p * 4;
+        if (data[i + 3] < MIN_ALPHA) continue;
+        const ok = rgbToOklab(data[i], data[i + 1], data[i + 2]);
+        L[p] = ok.L; A[p] = ok.a; B[p] = ok.b;
+        mL += ok.L; mA += ok.a; mB += ok.b; count++;
+    }
+    if (count === 0) return new Float32Array(n);
+    mL /= count; mA /= count; mB /= count;
+    for (let p = 0; p < n; p++) {
+        if (data[p * 4 + 3] < MIN_ALPHA) { L[p] = mL; A[p] = mA; B[p] = mB; }
+    }
+    // Two passes of a separable box blur ≈ a small Gaussian; kills pixel noise
+    const r = Math.max(1, Math.round(Math.min(width, height) / 160));
+    for (const ch of [L, A, B]) { boxBlur(ch, width, height, r); boxBlur(ch, width, height, r); }
+    const CHROMA_GAIN = 2.5;
+    const sal = new Float32Array(n);
+    for (let p = 0; p < n; p++) {
+        const dL = L[p] - mL, dA = (A[p] - mA) * CHROMA_GAIN, dB = (B[p] - mB) * CHROMA_GAIN;
+        sal[p] = data[p * 4 + 3] < MIN_ALPHA ? 0 : Math.sqrt(dL * dL + dA * dA + dB * dB);
+    }
+    const sorted = Float32Array.from(sal).sort();
+    const top = sorted[Math.floor(n * 0.99)] || 1;
+    for (let p = 0; p < n; p++) sal[p] = Math.min(1, sal[p] / top);
+    return sal;
+}
+
+// In-place separable box blur of one channel
+function boxBlur(ch, width, height, r) {
+    const tmp = new Float32Array(Math.max(width, height));
+    const win = 2 * r + 1;
+    for (let y = 0; y < height; y++) {
+        const row = y * width;
+        let acc = 0;
+        for (let x = -r; x <= r; x++) acc += ch[row + Math.min(width - 1, Math.max(0, x))];
+        for (let x = 0; x < width; x++) {
+            tmp[x] = acc / win;
+            acc += ch[row + Math.min(width - 1, x + r + 1)] - ch[row + Math.max(0, x - r)];
+        }
+        for (let x = 0; x < width; x++) ch[row + x] = tmp[x];
+    }
+    for (let x = 0; x < width; x++) {
+        let acc = 0;
+        for (let y = -r; y <= r; y++) acc += ch[Math.min(height - 1, Math.max(0, y)) * width + x];
+        for (let y = 0; y < height; y++) {
+            tmp[y] = acc / win;
+            acc += ch[Math.min(height - 1, y + r + 1) * width + x] - ch[Math.max(0, y - r) * width + x];
+        }
+        for (let y = 0; y < height; y++) ch[y * width + x] = tmp[y];
+    }
+}
+
 // ---- Histogram: 5-bit-per-channel bins, each carrying the mean of its real pixels ----
+// Each bin also carries `sal`, the mean saliency of its pixels.
 function buildHistogram(data, width, height, rect) {
     rect = rect || { x: 0, y: 0, w: width, h: height };
     const x0 = Math.max(0, Math.floor(rect.x)), y0 = Math.max(0, Math.floor(rect.y));
     const x1 = Math.min(width, Math.ceil(rect.x + rect.w)), y1 = Math.min(height, Math.ceil(rect.y + rect.h));
 
+    const salMap = saliencyMap(data, width, height);
     const binOf = new Int32Array(32768).fill(-1);
     const sums = [];
     const offsets = [], pixelBins = [];
@@ -138,19 +204,19 @@ function buildHistogram(data, width, height, rect) {
             const r = data[i], g = data[i + 1], b = data[i + 2];
             const key = (r >> 3) << 10 | (g >> 3) << 5 | (b >> 3);
             let bin = binOf[key];
-            if (bin < 0) { bin = binOf[key] = sums.length; sums.push([0, 0, 0, 0]); }
+            if (bin < 0) { bin = binOf[key] = sums.length; sums.push([0, 0, 0, 0, 0]); }
             const s = sums[bin];
-            s[0] += r; s[1] += g; s[2] += b; s[3]++;
+            s[0] += r; s[1] += g; s[2] += b; s[3]++; s[4] += salMap[y * width + x];
             offsets.push(i);
             pixelBins.push(bin);
         }
     }
 
-    const bins = sums.map(([sr, sg, sb, n]) => {
+    const bins = sums.map(([sr, sg, sb, n, ss]) => {
         const r = Math.round(sr / n), g = Math.round(sg / n), b = Math.round(sb / n);
         const oklab = rgbToOklab(r, g, b);
         const chroma = Math.sqrt(oklab.a * oklab.a + oklab.b * oklab.b);
-        return { r, g, b, oklab, count: n, weight: n * (1 + Math.min(chroma * 10, 5)) };
+        return { r, g, b, oklab, count: n, weight: n * (1 + Math.min(chroma * 10, 5)), sal: ss / n };
     });
     return { bins, offsets: Int32Array.from(offsets), pixelBins: Int32Array.from(pixelBins), total: offsets.length };
 }
@@ -283,6 +349,123 @@ function kmeans(bins, k, opts) {
     emit(maxIter, true, counts);
 
     // error: mean OKLab distance from each pixel to its reported colour (lower = more faithful)
+    return { centroids: cents.map(c => ({ r: c.r, g: c.g, b: c.b })), assign, counts, error: errSum / total };
+}
+
+// ---- Palette selection (worker-safe) ----
+// Choose k of the candidate colours by greedily maximising
+//   F(S) = coverage(S) + λ · vividness(S)
+// coverage: facility location — each pixel is "covered" by its most similar
+//   chosen colour, sim = max(0, 1 − d/τ) in OKLab, weighted by pixel count;
+// vividness: how conspicuous each candidate's cluster is on average —
+//   saliency × how much it stands out, by chroma or by lightness (a white
+//   highlight or black type is as conspicuous as a neon light). It is an
+//   average, not a mass: area is coverage's job, and a mass term lets a big
+//   mildly-salient field outvote a small light. Standing out by colour counts
+//   fully, by lightness alone 0.6× (people favour colourful themes). Specks
+//   under 0.2% of the image get nothing;
+// diversity: the bonus fades for colours within DIVERSE of one already chosen
+//   (chroma-weighted distance), so three near-black greens can't take three
+//   slots from a yellow flower centre.
+// Saliency, coverage and diversity are the factors Lin & Hanrahan found people
+// weigh when picking colour themes (CHI 2013).
+// Facility location is monotone submodular, so greedy selection is within
+// (1 − 1/e) of the optimum for the coverage term; the vividness term is
+// modular, which keeps that guarantee. This lets a small neon light win a
+// slot over a fourth shade of grey, which plain k-means never does.
+function selectPalette(bins, centroids, assign, k) {
+    const m = centroids.length;
+    if (m <= k) return centroids.map((_, j) => j);
+    const TAU = 0.2, LAMBDA = 0.1, DIVERSE = 0.25, SPECK = 0.002, CHROMA_GAIN = 2.5;
+    const apart = (p, q) => {
+        const dL = p.L - q.L, da = (p.a - q.a) * CHROMA_GAIN, db = (p.b - q.b) * CHROMA_GAIN;
+        return Math.sqrt(dL * dL + da * da + db * db);
+    };
+    const C = centroids.map(c => rgbToOklab(c.r, c.g, c.b));
+    const n = bins.length;
+
+    let N = 0, meanL = 0;
+    for (let i = 0; i < n; i++) { N += bins[i].count; meanL += bins[i].count * bins[i].oklab.L; }
+    meanL /= N;
+    const vivid = new Float64Array(m), mass = new Float64Array(m);
+    for (let i = 0; i < n; i++) {
+        const b = bins[i];
+        const chroma = Math.sqrt(b.oklab.a * b.oklab.a + b.oklab.b * b.oklab.b);
+        const standOut = Math.max(Math.min(1, chroma / 0.15), 0.6 * Math.min(1, Math.abs(b.oklab.L - meanL) / 0.35));
+        vivid[assign[i]] += b.count * (b.sal || 0) * standOut;
+        mass[assign[i]] += b.count;
+    }
+    let V = 0;
+    for (let j = 0; j < m; j++) {
+        vivid[j] = mass[j] / N < SPECK ? 0 : vivid[j] / mass[j];
+        V = Math.max(V, vivid[j]);
+    }
+
+    const sim = new Float32Array(n * m);
+    for (let i = 0; i < n; i++) {
+        for (let j = 0; j < m; j++) {
+            sim[i * m + j] = Math.max(0, 1 - colorDistanceOklab(bins[i].oklab, C[j]) / TAU);
+        }
+    }
+
+    const covered = new Float64Array(n);
+    const chosen = [];
+    while (chosen.length < k) {
+        let best = -Infinity, pick = -1;
+        for (let j = 0; j < m; j++) {
+            if (chosen.includes(j)) continue;
+            let gain = 0;
+            for (let i = 0; i < n; i++) {
+                const d = sim[i * m + j] - covered[i];
+                if (d > 0) gain += bins[i].count * d;
+            }
+            let near = Infinity;
+            for (const c of chosen) near = Math.min(near, apart(C[j], C[c]));
+            const distinct = Math.min(1, near / DIVERSE);
+            const score = gain / N + (V > 0 ? LAMBDA * distinct * vivid[j] / V : 0);
+            if (score > best) { best = score; pick = j; }
+        }
+        chosen.push(pick);
+        for (let i = 0; i < n; i++) covered[i] = Math.max(covered[i], sim[i * m + pick]);
+    }
+    return chosen;
+}
+
+// Full extraction (worker-safe): over-cluster with saliency in the weights,
+// select k colours, then assign every bin to its nearest chosen colour.
+// Frames from the clustering are forwarded to onFrame for the animation; the
+// last frame (final: true) carries the k selected colours.
+function extractColors(bins, k, opts) {
+    opts = opts || {};
+    const n = bins.length;
+    const onFrame = opts.onFrame;
+    const maxIter = opts.maxIter || 15;
+    if (n === 0) return { centroids: [], assign: new Uint8Array(0), counts: [], error: 0 };
+
+    const weighted = bins.map(b => Object.assign({}, b, { weight: b.weight * (1 + 3 * (b.sal || 0)) }));
+    const cand = kmeans(weighted, Math.min(n, 2 * k + 4), {
+        seed: opts.seed, maxIter,
+        onFrame: onFrame && (f => { if (!f.final) onFrame(f); })
+    });
+
+    const chosen = selectPalette(bins, cand.centroids, cand.assign, k);
+    const cents = chosen.map(j => cand.centroids[j]);
+    const labs = cents.map(c => rgbToOklab(c.r, c.g, c.b));
+    const assign = new Uint8Array(n);
+    const counts = new Array(cents.length).fill(0);
+    let errSum = 0, total = 0;
+    for (let i = 0; i < n; i++) {
+        let best = Infinity, bi = 0;
+        for (let j = 0; j < labs.length; j++) {
+            const d = colorDistanceOklab(bins[i].oklab, labs[j]);
+            if (d < best) { best = d; bi = j; }
+        }
+        assign[i] = bi;
+        counts[bi] += bins[i].count;
+        errSum += bins[i].count * best;
+        total += bins[i].count;
+    }
+    if (onFrame) onFrame({ iter: maxIter, maxIter, final: true, counts, centroids: cents.map(c => ({ r: c.r, g: c.g, b: c.b })), assign: assign.slice() });
     return { centroids: cents.map(c => ({ r: c.r, g: c.g, b: c.b })), assign, counts, error: errSum / total };
 }
 
@@ -448,7 +631,7 @@ function buildPalette(centroids, counts, k) {
 function extractPalette(data, width, height, k, opts) {
     opts = opts || {};
     const hist = buildHistogram(data, width, height, opts.rect);
-    const km = kmeans(hist.bins, k, { seed: opts.seed, maxIter: opts.maxIter });
+    const km = extractColors(hist.bins, k, { seed: opts.seed, maxIter: opts.maxIter });
     return Object.assign(buildPalette(km.centroids, km.counts, k), { seed: opts.seed || 1, error: km.error });
 }
 
@@ -560,7 +743,7 @@ function apcaContrast(text, bg) {
 function workerMain() {
     self.onmessage = function (e) {
         const { bins, k, seed, maxIter } = e.data;
-        kmeans(bins, k, {
+        extractColors(bins, k, {
             seed, maxIter,
             onFrame(f) { self.postMessage(f, [f.assign.buffer]); }
         });
@@ -568,7 +751,7 @@ function workerMain() {
 }
 
 const WORKER_FUNCTIONS = [srgbToLinear, linearToSrgb, rgbToOklab, oklabToLinearRgb, oklabToRgb, colorDistanceOklab,
-    mulberry32, initKMeansPP, kmeans];
+    mulberry32, initKMeansPP, kmeans, selectPalette, extractColors];
 
 function createKMeansWorker() {
     const src = WORKER_FUNCTIONS.map(f => f.toString()).join('\n') + '\n(' + workerMain.toString() + ')();';
@@ -580,7 +763,7 @@ if (typeof module === 'object' && module.exports) {
         ROLE_NAMES, ROLE_KEYS, MIN_CONTRAST, LOW_CHROMA, SCALE_STEPS,
         rgbToOklab, oklabToRgb, lchToRgb, colorDistanceOklab, rgbToHex, hexToRgb,
         relativeLuminance, contrastRatio, inkOn, mulberry32,
-        buildHistogram, initKMeansPP, kmeans, toLch, hueDistance, assignRoles,
+        saliencyMap, buildHistogram, initKMeansPP, kmeans, selectPalette, extractColors, toLch, hueDistance, assignRoles,
         repairContrast, generateFills, buildPalette, extractPalette,
         isDarkTheme, invertTheme, tonalScale, oklchString,
         simulateCvd, cvdWarnings, apcaContrast

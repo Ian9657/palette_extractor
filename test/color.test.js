@@ -166,3 +166,54 @@ test('APCA reference values', () => {
     assert.ok(Math.abs(C.apcaContrast(white, black) + 107.88) < 0.1);
     assert.ok(Math.abs(C.apcaContrast({ r: 136, g: 136, b: 136 }, white) - 63.06) < 0.2);
 });
+
+// ---- Saliency + submodular selection ----
+
+// Several dark shades with a 2-column magenta light: k-means alone spends its
+// colours on the shades; selection must keep the light.
+function neonScene() {
+    return blocks([
+        { rgb: [18, 18, 24], w: 60 }, { rgb: [34, 32, 40], w: 50 }, { rgb: [52, 48, 58], w: 40 },
+        { rgb: [70, 66, 74], w: 30 }, { rgb: [255, 40, 170], w: 2 }, { rgb: [88, 84, 92], w: 20 }
+    ]);
+}
+
+test('saliency is high on a small vivid patch and low on the large field', () => {
+    const img = neonScene();
+    const sal = C.saliencyMap(img.data, img.width, img.height);
+    const at = x => sal[10 * img.width + x];
+    assert.ok(at(180) > 0.9, `neon saliency ${at(180)}`);   // the light is columns 180–181
+    assert.ok(at(180) > 2 * at(20), `neon ${at(180)} vs field ${at(20)}`);
+});
+
+test('a small vivid light survives selection for every seed, even at k = 3', () => {
+    const img = neonScene();
+    const hist = C.buildHistogram(img.data, img.width, img.height);
+    const isNeon = c => C.colorDistanceOklab(C.rgbToOklab(c.r, c.g, c.b), C.rgbToOklab(255, 40, 170)) < 0.08;
+    for (let seed = 1; seed <= 8; seed++) {
+        const picked = C.extractColors(hist.bins, 3, { seed });
+        assert.ok(picked.centroids.some(isNeon), `seed ${seed} dropped the neon`);
+    }
+});
+
+test('selection returns k distinct candidates and a consistent final frame', () => {
+    const img = neonScene();
+    const hist = C.buildHistogram(img.data, img.width, img.height);
+    let last;
+    const out = C.extractColors(hist.bins, 4, { seed: 2, onFrame: f => { last = f; } });
+    assert.equal(out.centroids.length, 4);
+    assert.equal(new Set(out.centroids.map(c => `${c.r},${c.g},${c.b}`)).size, 4);
+    assert.ok(last.final);
+    assert.equal(last.centroids.length, 4);
+    assert.deepEqual(last.counts, out.counts);
+});
+
+test('extraction still recovers known solid colours exactly', () => {
+    const truth = [[220, 40, 40], [30, 160, 70], [40, 70, 200]];
+    const img = blocks(truth.map(rgb => ({ rgb, w: 30 })));
+    const hist = C.buildHistogram(img.data, img.width, img.height);
+    const { centroids } = C.extractColors(hist.bins, 3, { seed: 1 });
+    for (const [r, g, b] of truth) {
+        assert.ok(centroids.some(c => c.r === r && c.g === g && c.b === b), `missing ${r},${g},${b}`);
+    }
+});
