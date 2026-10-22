@@ -97,18 +97,39 @@ function renderPlates(theme) {
     objectEl.dataset.plates = colors.length;
 }
 
-// Cursor tilts the object: the stack leans away from the pointer
-let tiltX = 0, tiltY = 0, aimX = 0, aimY = 0, tiltRaf = null;
+// Cursor tilts the object: the stack leans away from the pointer. Each plate
+// eases on its own, the front one fastest and the back one slowest, so the
+// stack fans out slightly as it moves. Rates are spread by relative position
+// (front = FRONT_RATE, back = BACK_RATE), so 3 or 8 plates feel the same.
+const FRONT_RATE = 0.45, BACK_RATE = 0.3;
+let aimX = 0, aimY = 0, tiltRaf = null;
+let plateTilt = [];   // per plate: [x, y]
+
+function plateRate(i, n) {
+    return n <= 1 ? FRONT_RATE : FRONT_RATE + (BACK_RATE - FRONT_RATE) * i / (n - 1);
+}
 function applyTilt() {
-    const step = DEPTH / platesEl.children.length;
-    objectEl.style.setProperty('--dx', `${(step * (1 - tiltX * 0.5)).toFixed(2)}px`);
-    objectEl.style.setProperty('--dy', `${(step * (1 - tiltY * 0.5)).toFixed(2)}px`);
+    const plates = [...platesEl.children];
+    const step = DEPTH / plates.length;
+    while (plateTilt.length < plates.length) plateTilt.push([aimX, aimY]);
+    plates.forEach((plate, i) => {
+        const [x, y] = plateTilt[i];
+        plate.style.setProperty('--dx', `${(step * (1 - x * 0.5)).toFixed(2)}px`);
+        plate.style.setProperty('--dy', `${(step * (1 - y * 0.5)).toFixed(2)}px`);
+    });
 }
 function tiltLoop() {
-    tiltX += (aimX - tiltX) * 0.2;
-    tiltY += (aimY - tiltY) * 0.2;
+    const n = platesEl.children.length;
+    let moving = false;
+    for (let i = 0; i < n; i++) {
+        const t = plateTilt[i] || (plateTilt[i] = [aimX, aimY]);
+        const r = plateRate(i, n);
+        t[0] += (aimX - t[0]) * r;
+        t[1] += (aimY - t[1]) * r;
+        if (Math.abs(aimX - t[0]) + Math.abs(aimY - t[1]) > 0.002) moving = true;
+    }
     applyTilt();
-    tiltRaf = Math.abs(aimX - tiltX) + Math.abs(aimY - tiltY) > 0.002 ? requestAnimationFrame(tiltLoop) : null;
+    tiltRaf = moving ? requestAnimationFrame(tiltLoop) : null;
 }
 const canTilt = window.matchMedia('(pointer: fine) and (prefers-reduced-motion: no-preference)').matches;
 if (canTilt) {
