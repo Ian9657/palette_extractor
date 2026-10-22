@@ -70,7 +70,6 @@ dropZone.addEventListener('drop', (e) => {
 
 // ---- Clipboard Paste Support ----
 document.addEventListener('paste', (e) => {
-    if (isExtracting) return;
     const items = e.clipboardData?.items;
     if (!items) return;
     for (const item of items) {
@@ -183,9 +182,39 @@ fileInput.addEventListener('change', (e) => {
     }
 });
 
+// ---- Requests during an extraction ----
+// A new image or a re-extraction (colour count, reroll, selection) that
+// arrives while the clustering animation plays is kept, not dropped, and runs
+// as soon as the current one finishes: a new file wins over a re-extraction,
+// and a re-extraction always uses the current image, count and selection.
+// Calls go through the global names so pages that wrap these functions
+// (the magazine edition) see the deferred call too.
+let pendingFile = null, pendingExtract = false;
+
+function flushPending() {
+    if (isExtracting) return;
+    if (pendingFile) {
+        const file = pendingFile;
+        pendingFile = null;
+        pendingExtract = false;
+        processImage(file);
+    } else if (pendingExtract) {
+        pendingExtract = false;
+        if (currentImgEl) extractColorsVisualized(currentImgEl, selectionRectDom);
+    }
+}
+
+function endExtraction() {
+    isExtracting = false;
+    loadingOverlay.hidden = true;
+    loadingOverlay.style.display = 'none';
+    setTimeout(flushPending, 0);
+}
+
 // ---- Image Processing ----
 function processImage(file) {
-    if (isExtracting) return;
+    if (isExtracting) { pendingFile = file; return; }
+    fileInput.value = '';   // so choosing the same file again still fires
 
     const img = new Image();
     img.onload = () => {
@@ -257,7 +286,7 @@ function mapDomRectToCanvas(domRect, canvas, dropZone) {
 
 // ---- K-Means Color Extraction Visualized ----
 function extractColorsVisualized(imgEl, selDomRect = null) {
-    if (isExtracting) return;
+    if (isExtracting) { pendingExtract = true; return; }
     isExtracting = true;
 
     loadingOverlay.hidden = false;
@@ -299,9 +328,7 @@ function extractColorsVisualized(imgEl, selDomRect = null) {
     }
 
     if (hist.total === 0) {
-        isExtracting = false;
-        loadingOverlay.hidden = true;
-        loadingOverlay.style.display = 'none';
+        endExtraction();
         return;
     }
 
@@ -335,9 +362,7 @@ function extractColorsVisualized(imgEl, selDomRect = null) {
 
         if (final) {
             setPalette({ ...buildPalette(centroids, counts, k), seed }, true);
-            loadingOverlay.hidden = true;
-            loadingOverlay.style.display = 'none';
-            isExtracting = false;
+            endExtraction();
         }
     }
 
@@ -358,6 +383,8 @@ function extractColorsVisualized(imgEl, selDomRect = null) {
         if (!playing) { playing = true; requestAnimationFrame(play); }
     };
 
+    // A worker failure would otherwise leave isExtracting stuck and the page dead
+    worker.onerror = e => { e.preventDefault(); endExtraction(); };
     worker.postMessage({ bins: hist.bins, k, seed, maxIter: MAX_ITER });
 }
 

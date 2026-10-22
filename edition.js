@@ -35,52 +35,26 @@ function writeFeature(p, fromStorage) {
 }
 
 // ---- Hooks (wrapping the register.js wrappers) ----
-// main.js ignores requests that arrive while an extraction is playing, which
-// left the slider and the palette out of step. Here the latest request is
-// kept and run as soon as the current one finishes: a new file wins over a
-// re-extraction, and a re-extraction always uses the current image, colour
-// count and selection.
-let pendingFile = null, pendingExtract = false;
-
-function flushPending() {
-    if (isExtracting) return;
-    if (pendingFile) {
-        const file = pendingFile;
-        pendingFile = null;
-        pendingExtract = false;
-        processImage(file);
-    } else if (pendingExtract) {
-        pendingExtract = false;
-        if (currentImgEl) extractColorsVisualized(currentImgEl, selectionRectDom);
-    }
-}
-
 const prevProcessImage = processImage;
 processImage = function (file) {
-    if (isExtracting) { pendingFile = file; return; }
+    if (isExtracting) { prevProcessImage(file); return; }   // main.js queues it
     dropZoneEl.classList.remove('lensed');
     originalEl.src = URL.createObjectURL(file);
     prevProcessImage(file);
-    fileInput.value = '';   // so choosing the same file again still fires
 };
 
 const prevExtract = extractColorsVisualized;
 extractColorsVisualized = function (...args) {
-    if (isExtracting) { pendingExtract = true; return; }
+    if (isExtracting) { prevExtract(...args); return; }   // main.js queues it
     dropZoneEl.classList.remove('lensed');   // let the clustering play out full-frame
     prevExtract(...args);
     if (isExtracting) startScan();
 };
 
-// A worker failure would otherwise leave isExtracting stuck and the page dead
-worker.addEventListener('error', e => {
-    e.preventDefault();
-    isExtracting = false;
-    loadingOverlay.hidden = true;
-    loadingOverlay.style.display = 'none';
+// On a worker failure main.js ends the extraction; clear the scan here
+worker.addEventListener('error', () => {
     endScan();
     dropZoneEl.classList.toggle('lensed', !!currentImgEl);
-    flushPending();
 });
 
 // ---- Scan development ----
@@ -154,7 +128,6 @@ setPalette = function (next, saveToHistory = false) {
     if (next.isDefault) return;
     renderStrip(next.theme);
     writeFeature(next, !saveToHistory && !currentImgEl);
-    if (saveToHistory) setTimeout(flushPending, 0);   // main.js clears isExtracting right after this
     if (saveToHistory && currentImgEl) startLens();
 };
 

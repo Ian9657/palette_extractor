@@ -35,7 +35,7 @@ function renderCondition(p) {
 
 const originalProcessImage = processImage;
 processImage = function (file) {
-    if (isExtracting) return;
+    if (isExtracting) { originalProcessImage(file); return; }   // main.js queues it
     accessionCount++;
     localStorage.setItem('accessionCount', accessionCount);
     pendingSource = { name: file.name && file.name !== 'image.png' ? file.name : 'PASTED FROM CLIPBOARD', received: new Date() };
