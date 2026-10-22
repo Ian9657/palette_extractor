@@ -15,6 +15,8 @@ The homepage is laid out like a magazine feature about the image you deposit: a 
 - **Day / Night.** One layout, two sets of colour tokens: warm paper and ink by day, Night City blue-black with a cyan signal by night. Your choice is remembered. Only the interface changes — photos, swatches and every computed value stay as extracted.
 - **The lens.** In Fig. 1 the original photo is shown; a small frame drifts across it (or follows your mouse) and shows the same spot in its catalogued colours, with the role it belongs to.
 - **Press marks.** Registration marks at the corners, a specimen strip of the current palette in the margin, and the OKLCH value of every swatch.
+- **Cover export.** SAVE IMG prints the current object as a 4:5 magazine cover in the current edition's inks.
+- **Archive previews.** Hover an archived palette to see its source photo; hover a matrix cell for a type specimen of that pair. Thumbnails are kept only in your browser (localStorage `palette.thumbs`) and can be cleared from the page.
 - **Classic edition.** The original page, built in April 2026, is kept at [palette.etarc.net/classic](https://palette.etarc.net/classic). Both editions share the same archive and favourites.
 
 ![Classic edition](screenshot-classic.png)
@@ -24,6 +26,7 @@ The homepage is laid out like a magazine feature about the image you deposit: a 
 - **Roles, not just swatches.** Colours are assigned to roles (BASE, TEXT, PRIMARY, ACCENT…) by scoring every possible assignment, so the background is the largest calm colour and the primary is the most vivid one.
 - **Contrast repair.** If TEXT or PRIMARY is too faint against BASE, only its lightness is moved (hue kept), and the swatch says it was adjusted.
 - **Real colours only.** Clusters are computed in OKLab, then snapped to the nearest colour that actually exists in the image — no averaged mud.
+- **Small, vivid colours survive.** A frequency-tuned saliency map (Achanta et al., 2009) marks what catches the eye; the image is over-clustered into candidates, and the final palette is chosen by greedy submodular maximisation of coverage + conspicuity + diversity — the factors Lin & Hanrahan (2013) found people weigh when picking colour themes. A neon sign on a dark street now gets its slot instead of a fourth shade of grey. On the 15 regression images, recall of the most salient 2% of pixels rose from 84% to 97% with the same average fidelity error.
 - **Accessibility built in.** WCAG 2.1 and APCA contrast matrix, protan/deutan/tritan simulation with collision warnings, one-click light/dark theme.
 - **Reproducible.** Seeded k-means: same image + seed = same palette. REROLL tries the next seed.
 
@@ -60,7 +63,9 @@ node --test test/color.test.js   # unit tests for the colour logic
 | `index.html` | Magazine edition (homepage) |
 | `register.css` / `register.js` | Accession record and the colour plates under the sheet |
 | `edition.css` / `edition.js` | Magazine layout, Day/Night tokens, Fig. 1 lens, press marks |
-| `classic.html` | The original page |
+| `classic.html` / `color-classic.js` | The original page, with its original algorithm frozen |
+| `previews.js`, `cover.js` | Archive/matrix previews; magazine-cover export |
+| `follow.js`, `fx.js` | Cursor follow and screen-signal effects (no dependencies) |
 | `style.css` | Base styles and the panels, used by both editions |
 | `prototypes/` | Design steps between the two editions |
 | `gallery.html` / `gallery.js` | Regression gallery |
