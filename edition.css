@@ -260,24 +260,22 @@ body::after {
 }
 .spec .accession-fields dt { padding-right: var(--s3); }
 
-.feature-text .settings-bar {
-    align-self: stretch;
+/* The colour controls act on the image, so they sit under it */
+.fig-source .settings-bar {
+    margin-top: var(--s2);
     justify-content: space-between;
     border-width: 1px;
     box-shadow: none;
 }
-.feature-text .settings-bar label,
-.feature-text .settings-bar button { white-space: nowrap; }
-.feature-text .settings-bar input[type="range"] { flex: 1; min-width: 0; }
+.fig-source .settings-bar label,
+.fig-source .settings-bar button { white-space: nowrap; }
+.fig-source .settings-bar input[type="range"] { flex: 1; min-width: 0; }
 
 /* ---- Fig. 1: the original photo, with its extracted twin seen through a lens ---- */
-.feature { align-items: stretch; }
-.fig-source { display: flex; }
+/* A fixed landscape frame rather than one stretched to the text column */
 .fig-source .drop-zone {
-    aspect-ratio: auto;
-    max-height: none;
-    min-height: 420px;
-    flex: 1;
+    aspect-ratio: 4 / 3;
+    max-height: 70vh;
 }
 .fig-original {
     position: absolute;
@@ -516,7 +514,6 @@ body::after {
 /* ---- Narrower screens: same system, fewer columns ---- */
 @media (max-width: 1000px) {
     .fig, .feature-text { grid-column: 1 / -1; }
-    .fig-source .drop-zone { height: auto; min-height: 0; aspect-ratio: 4 / 3; }
 }
 @media (max-width: 760px) {
     .mast-line, .entry, .colophon { grid-template-columns: minmax(0, 1fr); }
@@ -766,3 +763,7 @@ body::after {
     .fig-lens.lock .lens-brackets { animation: none; }
     .fp-caption::after, .fig-lens-readout::after { animation: none; }
 }
+
+/* Fig. 1 showing an archived thumbnail (no live image yet) */
+.drop-zone.archived .fig-original { opacity: 1; }
+.drop-zone.archived .drop-content { display: none; }

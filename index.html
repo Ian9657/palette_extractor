@@ -110,6 +110,11 @@
                                 <span class="loading-text">CATALOGUING...</span>
                             </div>
                         </div>
+                        <div class="settings-bar">
+                            <label for="k-slider" class="mono-text">COLORS: <span id="k-value">5</span></label>
+                            <input type="range" id="k-slider" min="3" max="8" value="5">
+                            <button id="btn-reroll" class="btn-export" title="Re-run clustering with the next seed">↻ REROLL</button>
+                        </div>
                     </figure>
                     <div class="feature-text">
                         <span class="kicker mono-text" id="feature-kicker">ACCESSION — AWAITING DEPOSIT</span>
@@ -133,11 +138,6 @@
                             </dl>
                         </div>
 
-                        <div class="settings-bar">
-                            <label for="k-slider" class="mono-text">COLORS: <span id="k-value">5</span></label>
-                            <input type="range" id="k-slider" min="3" max="8" value="5">
-                            <button id="btn-reroll" class="btn-export" title="Re-run clustering with the next seed">↻ REROLL</button>
-                        </div>
                     </div>
                 </div>
             </section>

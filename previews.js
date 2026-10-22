@@ -46,12 +46,28 @@ function renderThumbNote() {
     if (btn) btn.addEventListener('click', () => { thumbs = {}; saveThumbs(); renderThumbNote(); });
 }
 
+// Retrieved from storage with no live image: show the kept thumbnail in Fig. 1
+// (a deposit replaces it). With a live image on the page, Fig. 1 keeps that.
+function showArchivedSource(kept) {
+    const zone = pv('drop-zone'), img = pv('fig-original');
+    if (currentImgEl) return;
+    zone.classList.toggle('archived', !!kept);
+    if (kept) {
+        img.src = kept.src;
+        pv('acc-no').textContent = kept.no;
+        pv('feature-kicker').textContent = `ACCESSION — ${kept.no}`;
+        pv('feature-standfirst').textContent = `${Object.keys(palette.theme).length} colours, retrieved from storage. Only a ${THUMB_SIZE}px thumbnail of the source was kept, in this browser.`;
+        pv('fig1-cap').textContent = `${kept.no}, as archived — a ${THUMB_SIZE}px thumbnail. Drop, paste or click to deposit a new image.`;
+    }
+}
+
 // File a thumbnail whenever an object is catalogued (also on reroll / colour count)
 const prevSetPalettePv = setPalette;
 setPalette = function (next, saveToHistory = false) {
     prevSetPalettePv(next, saveToHistory);
     if (next.isDefault) return;
     if (saveToHistory && currentImgEl) {
+        pv('drop-zone').classList.remove('archived');
         thumbs[themeKey(next.theme)] = {
             src: makeThumb(currentImgEl),
             no: pv('acc-no').textContent,
@@ -62,7 +78,9 @@ setPalette = function (next, saveToHistory = false) {
             ? `SAVED IN THIS BROWSER (localStorage › ${THUMBS_KEY})`
             : 'NOT SAVED — BROWSER STORAGE UNAVAILABLE';
     } else if (!saveToHistory) {
-        pv('acc-thumb').textContent = thumbs[themeKey(next.theme)] ? 'KEPT IN THIS BROWSER' : 'NONE KEPT';
+        const kept = thumbs[themeKey(next.theme)];
+        pv('acc-thumb').textContent = kept ? 'KEPT IN THIS BROWSER' : 'NONE KEPT';
+        showArchivedSource(kept);
     }
     renderThumbNote();
 };
@@ -71,6 +89,12 @@ setPalette = function (next, saveToHistory = false) {
 pv('btn-star-current').addEventListener('click', () => { pruneThumbs(); saveThumbs(); renderThumbNote(); });
 
 renderThumbNote();
+// A shared or reloaded link (#p=…) opens a stored palette before this script ran
+if (!palette.isDefault && !currentImgEl) {
+    const kept = thumbs[themeKey(palette.theme)];
+    pv('acc-thumb').textContent = kept ? 'KEPT IN THIS BROWSER' : 'NONE KEPT';
+    showArchivedSource(kept);
+}
 
 // ---- Floating previews ----
 if (Follow.enabled) {
