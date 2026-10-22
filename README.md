@@ -4,18 +4,17 @@
 
 Live: [palette.etarc.net](https://palette.etarc.net)
 
-| Day edition | Night edition |
-| --- | --- |
-| ![Day edition](screenshot-day.jpg) | ![Night edition](screenshot-night.jpg) |
+![Palette Extractor — Signal Edition](screenshot.jpg)
 
 ## Editions
 
-The homepage is laid out like a magazine feature about the image you deposit: a masthead, an opener whose headline is the name of the photo's primary colour, then numbered figures for the palette, its contrast relations, a print proof and the archive.
+There are two editions: the **Signal Edition** (the homepage) and the **Classic edition** it grew out of.
 
-- **Day / Night.** One layout, two sets of colour tokens: warm paper and ink by day, Night City blue-black with a cyan signal by night. Your choice is remembered. Only the interface changes — photos, swatches and every computed value stay as extracted.
+The Signal Edition is laid out like a magazine feature about the image you deposit — a masthead, an opener whose headline is the name of the photo's primary colour, then numbered figures for the palette, its contrast relations, and a print proof with the archive — set on a Night City blue-black sheet with one cyan signal colour. The interface stays quiet so the extracted colours are always the loudest thing on the page. Design rules live in [DESIGN.md](DESIGN.md).
+
 - **The lens.** In Fig. 1 the original photo is shown; a small frame drifts across it (or follows your mouse) and shows the same spot in its catalogued colours, with the role it belongs to.
 - **Press marks.** Registration marks at the corners, a specimen strip of the current palette in the margin, and the OKLCH value of every swatch.
-- **Cover export.** SAVE IMG prints the current object as a 4:5 magazine cover in the current edition's inks.
+- **Cover export.** SAVE IMG prints the current object as a 4:5 magazine cover.
 - **Archive previews.** Hover an archived palette to see its source photo; hover a matrix cell for a type specimen of that pair. Thumbnails are kept only in your browser (localStorage `palette.thumbs`) and can be cleared from the page.
 - **Classic edition.** The original page, built in April 2026, is kept at [palette.etarc.net/classic](https://palette.etarc.net/classic). Both editions share the same archive and favourites.
 
@@ -62,7 +61,8 @@ node --test test/color.test.js   # unit tests for the colour logic
 | `main.js` | The app UI (panels, exports, history) — shared by both editions |
 | `index.html` | Magazine edition (homepage) |
 | `register.css` / `register.js` | Accession record and the colour plates under the sheet |
-| `edition.css` / `edition.js` | Magazine layout, Day/Night tokens, Fig. 1 lens, press marks |
+| `edition.css` / `edition.js` | Magazine layout, colour tokens, Fig. 1 lens, press marks |
+| `DESIGN.md` | Design rules: tokens, principles, rejected directions, working agreement |
 | `classic.html` / `color-classic.js` | The original page, with its original algorithm frozen |
 | `previews.js`, `cover.js` | Archive/matrix previews; magazine-cover export |
 | `follow.js`, `fx.js` | Cursor follow and screen-signal effects (no dependencies) |
