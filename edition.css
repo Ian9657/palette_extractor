@@ -294,7 +294,13 @@ body::after {
 #preview-canvas { z-index: 2; mix-blend-mode: normal; }
 /* Once filed, the extracted version shows only inside the lens */
 .drop-zone.lensed #preview-canvas {
-    clip-path: inset(var(--lt) var(--lr) var(--lb) var(--ll));
+    clip-path: polygon(
+        calc(var(--ll) + 10px) var(--lt),
+        calc(100% - var(--lr)) var(--lt),
+        calc(100% - var(--lr)) calc(100% - var(--lb) - 10px),
+        calc(100% - var(--lr) - 10px) calc(100% - var(--lb)),
+        var(--ll) calc(100% - var(--lb)),
+        var(--ll) calc(var(--lt) + 10px));
 }
 .fig-lens {
     position: absolute;
@@ -306,32 +312,76 @@ body::after {
     pointer-events: none;
     display: none;
     --c: var(--signal);
-    background:
-        linear-gradient(var(--c), var(--c)) left top / 16px 2px,
-        linear-gradient(var(--c), var(--c)) left top / 2px 16px,
-        linear-gradient(var(--c), var(--c)) right top / 16px 2px,
-        linear-gradient(var(--c), var(--c)) right top / 2px 16px,
-        linear-gradient(var(--c), var(--c)) left bottom / 16px 2px,
-        linear-gradient(var(--c), var(--c)) left bottom / 2px 16px,
-        linear-gradient(var(--c), var(--c)) right bottom / 16px 2px,
-        linear-gradient(var(--c), var(--c)) right bottom / 2px 16px;
-    background-repeat: no-repeat;
 }
 .drop-zone.lensed .fig-lens { display: block; }
-.fig-lens-readout {
+.fig-lens > span:not(.lens-tag) { position: absolute; inset: 0; }
+
+/* Virtual glass (from the cyber prototype): whatever is under it — here the
+   clustered twin — turns into its neon negative, with cyan scanlines.
+   The readout below still reports the true colour. */
+.lens-glass {
+    clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+    -webkit-backdrop-filter: invert(1) hue-rotate(180deg) saturate(2.4) contrast(1.15);
+    backdrop-filter: invert(1) hue-rotate(180deg) saturate(2.4) contrast(1.15);
+    background:
+        repeating-linear-gradient(0deg, rgba(0, 229, 255, 0.12) 0 1px, transparent 1px 3px),
+        linear-gradient(90deg, rgba(0, 229, 255, 0.06), rgba(240, 239, 0, 0.05));
+}
+
+/* Crosshair in the alert yellow */
+.lens-cross {
+    background:
+        linear-gradient(var(--alert), var(--alert)) center / 16px 2px no-repeat,
+        linear-gradient(var(--alert), var(--alert)) center / 2px 16px no-repeat;
+}
+
+/* Glowing corner brackets; they snap in when the lens locks onto a new role */
+.lens-brackets {
+    --c: #00E5FF;   /* screen cyan in both editions: the lens is the one lit object */
+    background:
+        linear-gradient(var(--c), var(--c)) left top / 22px 2px,
+        linear-gradient(var(--c), var(--c)) left top / 2px 22px,
+        linear-gradient(var(--c), var(--c)) right top / 22px 2px,
+        linear-gradient(var(--c), var(--c)) right top / 2px 22px,
+        linear-gradient(var(--c), var(--c)) left bottom / 22px 2px,
+        linear-gradient(var(--c), var(--c)) left bottom / 2px 22px,
+        linear-gradient(var(--c), var(--c)) right bottom / 22px 2px,
+        linear-gradient(var(--c), var(--c)) right bottom / 2px 22px;
+    background-repeat: no-repeat;
+    filter: drop-shadow(0 0 4px #00E5FF);
+}
+.fig-lens.lock .lens-brackets { animation: lens-lock 0.32s var(--ease-smooth); }
+@keyframes lens-lock {
+    0%   { inset: 0; }
+    35%  { inset: 7px; }
+    100% { inset: 0; }
+}
+
+/* Readout tag: sampled colour chip, role and hex, chamfered end */
+.lens-tag {
     position: absolute;
     left: 0;
     top: calc(100% + 4px);
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
     white-space: nowrap;
-    background: var(--text-color);
-    color: var(--bg-color);
+    background: var(--alert);
+    color: var(--alert-ink);
     font-family: 'IBM Plex Mono', monospace;
     font-size: var(--fs-micro);
     font-weight: 600;
     letter-spacing: 0.08em;
-    padding: 0.15rem 0.45rem;
+    padding: 0.2rem 1rem 0.2rem 0.3rem;
+    clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
 }
-.fig-lens.flip .fig-lens-readout { top: auto; bottom: calc(100% + 4px); }
+.fig-lens.flip .lens-tag { top: auto; bottom: calc(100% + 4px); }
+.lens-chip {
+    width: 0.9rem;
+    height: 0.9rem;
+    border: 1px solid var(--alert-ink);
+    transition: background-color 0.15s linear;
+}
 
 /* ---- Colophon ---- */
 .colophon {
@@ -499,3 +549,220 @@ body::after {
 
 .colophon-site a { color: inherit; text-decoration: none; border-bottom: 1px solid currentColor; }
 .colophon-site a:hover { color: var(--signal-ink); }
+
+/* ---- Scan development (Fig. 1, while k-means runs) ----
+   Above the signal line the photo is already in its clustered colours. */
+.drop-zone.scanning #preview-canvas { clip-path: inset(0 0 var(--scan-rest, 100%) 0); }
+.fig-scan {
+    position: absolute;
+    z-index: 3;
+    left: 0; top: 0;
+    width: var(--scan-w, 0);
+    height: 1px;
+    translate: var(--scan-x, 0) var(--scan-y, 0);
+    background: var(--signal);
+    pointer-events: none;
+    display: none;
+}
+.drop-zone.scanning .fig-scan { display: block; }
+.fig-scan span {
+    position: absolute;
+    right: 0;
+    bottom: 3px;
+    background: var(--signal);
+    color: var(--bg-color);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: var(--fs-micro);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    padding: 0.1rem 0.4rem;
+    white-space: nowrap;
+}
+/* the loading overlay text would sit on top of the sweep; the line says it all */
+.drop-zone.scanning .loading-text { display: none; }
+
+/* ---- Floating previews (follow.js positions them; desktop only) ---- */
+.float-preview {
+    --w: 15rem;
+    position: fixed;
+    left: 0; top: 0;
+    z-index: 120;
+    width: 0;
+    overflow: hidden;
+    pointer-events: none;
+    transform: translate(20px, calc(-100% - 20px));   /* sits above-right of the pointer */
+    transition: width 0.45s var(--ease-smooth);
+}
+.float-preview.active { width: var(--w); }
+.fp-window {
+    position: relative;
+    width: var(--w);
+    height: var(--w);
+    overflow: hidden;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+}
+.fp-window::after {   /* corner brackets, same as the Fig. 1 lens */
+    content: '';
+    position: absolute;
+    inset: 6px;
+    --c: var(--signal);
+    background:
+        linear-gradient(var(--c), var(--c)) left top / 14px 2px,
+        linear-gradient(var(--c), var(--c)) left top / 2px 14px,
+        linear-gradient(var(--c), var(--c)) right top / 14px 2px,
+        linear-gradient(var(--c), var(--c)) right top / 2px 14px,
+        linear-gradient(var(--c), var(--c)) left bottom / 14px 2px,
+        linear-gradient(var(--c), var(--c)) left bottom / 2px 14px,
+        linear-gradient(var(--c), var(--c)) right bottom / 14px 2px,
+        linear-gradient(var(--c), var(--c)) right bottom / 2px 14px;
+    background-repeat: no-repeat;
+}
+.fp-track {
+    transform: translateY(calc(var(--index, 0) * -100% / var(--count, 1)));
+    transition: transform 0.6s cubic-bezier(0.65, 0, 0.35, 1);
+}
+.fp-frame { width: var(--w); height: var(--w); }
+.fp-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fp-empty {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: var(--s1);
+    padding: var(--s3);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: var(--fs-micro);
+    letter-spacing: 0.1em;
+}
+.fp-bars { display: flex; flex: 1; border: 1px solid var(--border-color); }
+.fp-bars span { flex: 1; }
+.fp-caption {
+    width: var(--w);
+    background: var(--text-color);
+    color: var(--bg-color);
+    font-size: var(--fs-micro);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    padding: 0.3rem 0.5rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Matrix specimen: text colour on background colour, at real sizes */
+.float-specimen { --w: 19rem; transform: translate(20px, 20px); }
+.fs-sheet {
+    width: var(--w);
+    display: flex;
+    flex-direction: column;
+    gap: var(--s1);
+    padding: var(--s3);
+    border: 1px solid var(--border-color);
+    transition: background-color 0.3s var(--ease-smooth), color 0.3s var(--ease-smooth);
+}
+.fs-big {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 3.5rem;
+    line-height: 0.9;
+    letter-spacing: -0.04em;
+}
+.fs-body { font-family: 'Space Grotesk', sans-serif; font-weight: 500; font-size: 1rem; }
+.fs-small { font-family: 'IBM Plex Mono', monospace; font-size: var(--fs-micro); }
+
+/* Thumbnail storage notice under the archive */
+.thumb-note {
+    margin-top: var(--s2);
+    font-size: var(--fs-micro);
+    line-height: 1.6;
+    letter-spacing: 0.04em;
+    opacity: 0.75;
+}
+.thumb-note code { font-family: inherit; font-weight: 600; }
+.thumb-note button {
+    font: inherit;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--text-color);
+    background: transparent;
+    border: 1px solid var(--border-color);
+    padding: 0 0.4rem;
+    margin-left: var(--s1);
+    cursor: pointer;
+}
+.thumb-note button:hover { background: var(--alert); color: var(--alert-ink); border-color: var(--alert-ink); }
+
+@media (hover: none) { .float-preview { display: none; } }
+@media (prefers-reduced-motion: reduce) {
+    .float-preview, .fp-track, .fs-sheet { transition: none; }
+}
+
+/* ---- Screen-side texture (lens, scan, floating previews only) ----
+   The paper stays calm; anything that is a "screen" carries signal:
+   stepped openings, scanlines, channel split, decoded text, a blinking caret. */
+.fx-split { filter: url(#rgb-split); animation: fx-jitter 0.28s steps(3) 1; }
+@keyframes fx-jitter {
+    0%   { translate: 0 0; }
+    33%  { translate: -2px 0; }
+    66%  { translate: 2px 0; }
+    100% { translate: 0 0; }
+}
+/* the drop zone already uses translate for nothing, but the track/canvas jitter must not fight follow.js */
+.float-preview.fx-split { animation: none; }
+
+/* Digital wipe instead of a smooth one */
+.float-preview { transition: width 0.3s steps(6, end); }
+
+/* Scanlines on screen surfaces */
+.fp-window::before,
+.drop-zone.scanning::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.14) 0 1px, transparent 1px 3px);
+    mix-blend-mode: multiply;
+}
+:root[data-theme="night"] .fp-window::before,
+:root[data-theme="night"] .drop-zone.scanning::after {
+    background: repeating-linear-gradient(0deg, rgba(0, 229, 255, 0.07) 0 1px, transparent 1px 3px);
+    mix-blend-mode: screen;
+}
+.fp-window::after { z-index: 3; }
+
+/* Caption as a terminal line: blinking block caret */
+.fp-caption::after,
+.fig-lens-readout::after {
+    content: '';
+    display: inline-block;
+    width: 0.5em;
+    height: 0.9em;
+    margin-left: 0.35em;
+    vertical-align: -0.1em;
+    background: currentColor;
+    animation: fx-caret 1s steps(1) infinite;
+}
+@keyframes fx-caret { 50% { opacity: 0; } }
+
+/* Scan line leaves a fading trail of signal above it */
+.fig-scan::before {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    bottom: 1px;
+    height: 36px;
+    background: linear-gradient(to top, color-mix(in srgb, var(--signal) 32%, transparent), transparent);
+}
+
+/* Night: screen objects emit a little light; by day they are print and do not */
+:root[data-theme="night"] .fig-scan,
+:root[data-theme="night"] .fp-window::after {
+    filter: drop-shadow(0 0 4px var(--signal));
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .float-preview { transition: none; }
+    .fig-lens.lock .lens-brackets { animation: none; }
+    .fp-caption::after, .fig-lens-readout::after { animation: none; }
+}

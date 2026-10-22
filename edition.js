@@ -7,6 +7,7 @@ const originalEl = mag('fig-original');
 const canvasEl = mag('preview-canvas');
 const lensEl = mag('fig-lens');
 const lensReadoutEl = mag('fig-lens-readout');
+const lensChipEl = mag('fig-lens-chip');
 
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 const dateLine = d => `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
@@ -47,7 +48,45 @@ extractColorsVisualized = function (...args) {
     if (isExtracting) return;
     dropZoneEl.classList.remove('lensed');   // let the clustering play out full-frame
     prevExtract(...args);
+    if (isExtracting) startScan();
 };
+
+// ---- Scan development ----
+// While k-means runs, a signal line sweeps down the photo: above it the image
+// is already in its clustered colours (the frames main.js paints), below it
+// still the original. Timed to main.js's playback: MAX_ITER frames at FRAME_MS.
+const scanEl = mag('fig-scan');
+const scanLabelEl = mag('fig-scan-label');
+let scanStart = 0, scanRaf = null;
+
+function startScan() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    cancelAnimationFrame(scanRaf);
+    scanStart = performance.now();
+    dropZoneEl.classList.add('scanning');
+    scanRaf = requestAnimationFrame(scanFrame);
+}
+
+function scanFrame(t) {
+    const duration = (MAX_ITER + 1) * FRAME_MS;
+    const p = Math.min(1, (t - scanStart) / duration);
+    const r = imageRect();
+    const y = r.y + p * r.h;
+    const st = dropZoneEl.style;
+    st.setProperty('--scan-y', y + 'px');
+    st.setProperty('--scan-x', r.x + 'px');
+    st.setProperty('--scan-w', r.w + 'px');
+    st.setProperty('--scan-rest', (r.H - y) + 'px');
+    const iter = Math.min(MAX_ITER, Math.floor(p * MAX_ITER) + 1);
+    scanLabelEl.textContent = `ITER ${String(iter).padStart(2, '0')} / ${MAX_ITER}`;
+    if (p < 1 && isExtracting) scanRaf = requestAnimationFrame(scanFrame);
+    else endScan();
+}
+
+function endScan() {
+    cancelAnimationFrame(scanRaf);
+    dropZoneEl.classList.remove('scanning');
+}
 
 // ---- Press marks: specimen strip + OKLCH under each swatch ----
 function renderStrip(theme) {
@@ -127,7 +166,7 @@ function lensFrame(t) {
         aimCX = 0.5 + 0.3 * Math.sin(s * 0.21);
         aimCY = 0.5 + 0.28 * Math.sin(s * 0.29 + 1.1);
     }
-    const ease = t - lensPointerAt > 2500 ? 0.03 : 0.2;
+    const ease = t - lensPointerAt > 2500 ? 0.03 : 1 / Follow.DELAY.mid;   // same feel as the floating previews
     lensCX += (aimCX - lensCX) * ease;
     lensCY += (aimCY - lensCY) * ease;
 
@@ -151,12 +190,30 @@ function lensFrame(t) {
         const py = Math.floor((ly + lh / 2 - r.y) / r.h * canvasEl.height);
         const [R, G, B] = canvasEl.getContext('2d', { willReadFrequently: true }).getImageData(px, py, 1, 1).data;
         const hex = rgbToHex({ r: R, g: G, b: B });
-        lensReadoutEl.textContent = `${nearestRole(hex)} · ${hex}`;
+        const role = nearestRole(hex);
+        // Coordinates in the source image's own pixels, not the 400px working canvas
+        const sx = Math.round(px * currentImgEl.naturalWidth / canvasEl.width);
+        const sy = Math.round(py * currentImgEl.naturalHeight / canvasEl.height);
+        const reading = `${role} · ${hex} · X${String(sx).padStart(4, '0')} Y${String(sy).padStart(4, '0')}`;
+        lensChipEl.style.background = hex;   // the true colour; the glass above shows its virtual negative
+        if (role !== lensReadoutEl.dataset.role) {        // new role under the lens: lock on, decode it in
+            lensReadoutEl.dataset.role = role;
+            FX.decode(lensReadoutEl, reading, 220);
+            lensEl.classList.remove('lock');
+            void lensEl.offsetWidth;
+            lensEl.classList.add('lock');
+        } else if (reading !== lensReadoutEl.dataset.reading) {
+            lensReadoutEl.textContent = reading;
+        }
+        lensReadoutEl.dataset.reading = reading;
     }
     requestAnimationFrame(lensFrame);
 }
 
 function startLens() {
+    const wasScanning = dropZoneEl.classList.contains('scanning');
+    endScan();
+    if (wasScanning) FX.split(dropZoneEl, 320);   // registration shift: the plates land, slip, settle
     dropZoneEl.classList.add('lensed');
     if (!lensRunning) { lensRunning = true; requestAnimationFrame(lensFrame); }
 }

@@ -83,8 +83,12 @@
                             <input type="file" id="file-input" accept="image/*" class="sr-only" tabindex="-1">
                             <img id="fig-original" class="fig-original" alt="">
                             <canvas id="preview-canvas"></canvas>
+                            <div id="fig-scan" class="fig-scan" aria-hidden="true"><span id="fig-scan-label"></span></div>
                             <div id="fig-lens" class="fig-lens" aria-hidden="true">
-                                <span id="fig-lens-readout" class="fig-lens-readout"></span>
+                                <span class="lens-glass"></span>
+                                <span class="lens-brackets"></span>
+                                <span class="lens-cross"></span>
+                                <span class="lens-tag"><i id="fig-lens-chip" class="lens-chip"></i><span id="fig-lens-readout" class="fig-lens-readout"></span></span>
                             </div>
                             <div id="loading-overlay" class="loading-overlay" style="display: none;">
                                 <span class="loading-text">CATALOGUING...</span>
@@ -109,6 +113,7 @@
                                 <dt>DIMENSIONS</dt> <dd id="acc-dims">—</dd>
                                 <dt>MEDIUM</dt>     <dd id="acc-medium">—</dd>
                                 <dt>CONDITION</dt>  <dd id="acc-condition">—</dd>
+                                <dt>THUMBNAIL</dt>  <dd id="acc-thumb">—</dd>
                             </dl>
                         </div>
 
@@ -214,13 +219,14 @@
                 <div class="entry-margin">
                     <span class="entry-no">05</span>
                     <span class="entry-label">Storage</span>
-                    <p class="entry-cap mono-text"><b>FIG. 5</b> Objects catalogued before this one. Starred objects are kept below.</p>
+                    <p class="entry-cap mono-text"><b>FIG. 5</b> Objects catalogued before this one. Hover one to see its source. Starred objects are kept below.</p>
                 </div>
                 <div class="entry-body">
                     <div class="section-header">
                         <h2>ARCHIVE</h2>
                     </div>
                     <div id="history-container" class="history-container"></div>
+                    <p id="thumb-note" class="thumb-note mono-text"></p>
 
                     <div class="section-header" style="margin-top: 2rem;">
                         <h2>FAVORITES</h2>
@@ -237,10 +243,40 @@
         </footer>
     </div>
     </div>
+    <!-- RGB channel split used by fx.js on screen-side objects -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+        <filter id="rgb-split" x="-5%" y="0" width="110%" height="100%" color-interpolation-filters="sRGB">
+            <feColorMatrix in="SourceGraphic" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="r"/>
+            <feOffset in="r" dx="-5" result="r2"/>
+            <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="g"/>
+            <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="b"/>
+            <feOffset in="b" dx="5" result="b2"/>
+            <feBlend in="r2" in2="g" mode="screen" result="rg"/>
+            <feBlend in="rg" in2="b2" mode="screen"/>
+        </filter>
+    </svg>
+
+    <!-- Floating previews (desktop only): source thumbnails over the archive, type specimens over the matrix -->
+    <div id="archive-preview" class="float-preview" aria-hidden="true">
+        <div class="fp-window"><div id="archive-track" class="fp-track"></div></div>
+        <div id="archive-caption" class="fp-caption mono-text"></div>
+    </div>
+    <div id="specimen-preview" class="float-preview float-specimen" aria-hidden="true">
+        <div id="specimen-sheet" class="fs-sheet">
+            <span class="fs-big">Aa</span>
+            <span class="fs-body">Colour set on colour, at reading size.</span>
+            <span class="fs-small">The quick brown fox jumps over the lazy dog — 0123456789</span>
+        </div>
+        <div id="specimen-caption" class="fp-caption mono-text"></div>
+    </div>
+
     <script src="ntc.js"></script>
     <script src="color.js"></script>
     <script src="main.js"></script>
     <script src="register.js"></script>
+    <script src="follow.js"></script>
+    <script src="fx.js"></script>
     <script src="edition.js"></script>
+    <script src="previews.js"></script>
 </body>
 </html>
