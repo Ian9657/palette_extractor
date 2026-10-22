@@ -7,134 +7,240 @@
     <link rel="icon" href="icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Space+Grotesk:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="register.css">
+    <link rel="stylesheet" href="edition.css">
+    <script>
+        // Set the edition before first paint: saved choice, else the system preference
+        (function () {
+            var saved = null;
+            try { saved = localStorage.getItem('edition'); } catch (e) {}
+            var night = saved ? saved === 'night' : matchMedia('(prefers-color-scheme: dark)').matches;
+            document.documentElement.dataset.theme = night ? 'night' : 'day';
+        })();
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="grid-layout">
-        <header class="header-section">
-            <div>
-                <h1 class="title">PALETTE<br>EXTRACTOR</h1>
-                <p class="subtitle">DRAG & DROP OR PASTE (⌘/CTRL+V) IMAGE TO INITIATE COLOR SEPARATION.</p>
+    <div class="object" id="object">
+    <div class="plates" aria-hidden="true">
+        <div class="plate"></div><div class="plate"></div><div class="plate"></div><div class="plate"></div><div class="plate"></div>
+    </div>
+    <div class="grid-layout sheet">
+        <!-- Press marks: registration targets at the corners, specimen strip in the right margin -->
+        <div class="press-marks" aria-hidden="true">
+            <span class="reg-mark tl"></span><span class="reg-mark tr"></span>
+            <span class="reg-mark bl"></span><span class="reg-mark br"></span>
+            <div id="specimen-strip" class="specimen-strip" hidden>
+                <div id="specimen-strip-chips" class="specimen-strip-chips"></div>
+                <span id="specimen-strip-label" class="specimen-strip-label mono-text"></span>
             </div>
-            <div class="settings-bar">
-                <label for="k-slider" class="mono-text">COLORS: <span id="k-value">5</span></label>
-                <input type="range" id="k-slider" min="3" max="8" value="5">
-                <button id="btn-reroll" class="btn-export" title="Re-run clustering with the next seed">↻ REROLL</button>
+        </div>
+
+        <!-- Masthead -->
+        <header class="masthead">
+            <div class="mast-line mono-text">
+                <span>VOL. 01 — <span id="edition-name">DAY EDITION</span></span>
+                <span>ISSUE <span id="reg-total">000</span></span>
+                <span class="mast-end">
+                    <span id="mast-date">—</span>
+                    <span class="edition-switch" role="group" aria-label="Edition">
+                        <button type="button" data-edition="day">DAY</button><button type="button" data-edition="night">NIGHT</button>
+                    </span>
+                </span>
             </div>
+            <div class="nameplate">
+                <h1 class="nameplate-title">PALETTE</h1>
+                <div class="nameplate-side">
+                    <span class="nameplate-sub">EXTRACTOR</span>
+                    <span class="nameplate-tag mono-text">A REGISTER OF COLOUR</span>
+                </div>
+            </div>
+            <div class="mast-rule"></div>
         </header>
 
-        <main class="main-section">
-            <div class="left-col">
-                <div id="drop-zone" class="drop-zone" role="button" tabindex="0" aria-label="Upload an image to extract palette" aria-description="Drag and drop an image here or press Enter to select a file">
-                    <div class="crop-mark top-left"></div>
-                    <div class="crop-mark top-right"></div>
-                    <div class="crop-mark bottom-left"></div>
-                    <div class="crop-mark bottom-right"></div>
-                    <div id="drop-content" class="drop-content">
-                        <div class="upload-graphic">
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        <main class="register">
+            <!-- 01 Intake: the deposited image and its record -->
+            <section class="entry entry-intake" id="entry-intake">
+                <div class="entry-margin">
+                    <span class="entry-no">01</span>
+                    <span class="entry-label">Intake</span>
+                    <p class="entry-cap mono-text"><b>FIG. 1</b> <span id="fig1-cap">The object, as received. Drop, paste or click to deposit an image.</span></p>
+                </div>
+                <div class="entry-body feature">
+                    <figure class="fig fig-source">
+                        <div id="drop-zone" class="drop-zone" role="button" tabindex="0" aria-label="Upload an image to extract palette" aria-description="Drag and drop an image here or press Enter to select a file">
+                            <div class="crop-mark top-left"></div>
+                            <div class="crop-mark top-right"></div>
+                            <div class="crop-mark bottom-left"></div>
+                            <div class="crop-mark bottom-right"></div>
+                            <div id="drop-content" class="drop-content">
+                                <div class="upload-graphic">
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                </div>
+                                <span class="drop-text">DEPOSIT OBJECT</span>
+                                <span class="drop-sub">DROP · PASTE · CLICK — JPG / PNG / WEBP</span>
+                            </div>
+                            <input type="file" id="file-input" accept="image/*" class="sr-only" tabindex="-1">
+                            <img id="fig-original" class="fig-original" alt="">
+                            <canvas id="preview-canvas"></canvas>
+                            <div id="fig-lens" class="fig-lens" aria-hidden="true">
+                                <span id="fig-lens-readout" class="fig-lens-readout"></span>
+                            </div>
+                            <div id="loading-overlay" class="loading-overlay" style="display: none;">
+                                <span class="loading-text">CATALOGUING...</span>
+                            </div>
                         </div>
-                        <span class="drop-text">UPLOAD SOURCE</span>
-                        <span class="drop-sub">JPG / PNG / WEBP</span>
-                    </div>
-                    <input type="file" id="file-input" accept="image/*" class="sr-only" tabindex="-1">
-                    <canvas id="preview-canvas"></canvas>
-                    <div id="loading-overlay" class="loading-overlay" style="display: none;">
-                        <span class="loading-text">PROCESSING...</span>
-                    </div>
-                </div>
-            </div>
+                    </figure>
+                    <div class="feature-text">
+                        <span class="kicker mono-text" id="feature-kicker">ACCESSION — AWAITING DEPOSIT</span>
+                        <div class="headline-rule" id="headline-rule"></div>
+                        <h2 class="headline" id="feature-headline">Nothing filed yet</h2>
+                        <p class="standfirst" id="feature-standfirst">Deposit an image. It will be catalogued, measured and filed in the pages that follow.</p>
 
-            <div class="right-col">
-                <div class="section-header">
-                    <h2>COLOR BAR</h2>
-                    <div class="export-actions">
-                        <button id="btn-star-current" class="btn-export">☆ STAR</button>
-                        <button id="btn-copy-link" class="btn-export" title="Copy a link that reopens this palette">LINK</button>
-                        <button id="btn-export-image" class="btn-export" style="background: var(--text-color); color: var(--bg-color);">SAVE IMG</button>
-                        <button id="btn-export-figma" class="btn-export">FIGMA</button>
-                        <button id="btn-export-tailwind" class="btn-export">TAILWIND</button>
-                        <button id="btn-export-css" class="btn-export">CSS</button>
-                    </div>
-                </div>
-                
-                <div id="palette-container" class="palette">
-                    <!-- Swatches dynamically inserted here -->
-                </div>
-                <div id="palette-notes" class="palette-notes mono-text" hidden></div>
-
-                <div class="section-header" style="margin-top: 2rem;">
-                    <h2>A11Y MATRIX</h2>
-                    <button id="btn-contrast-model" class="btn-export" title="Switch between WCAG 2.1 ratio and APCA lightness contrast">WCAG 2.1 ⇄</button>
-                </div>
-                <div id="a11y-matrix" class="a11y-matrix">
-                    <!-- Contrast matrix dynamically inserted here -->
-                </div>
-                <div id="cvd-panel" class="cvd-panel mono-text">
-                    <!-- Colour-vision deficiency simulation inserted here -->
-                </div>
-
-                <div class="section-header" style="margin-top: 2rem;">
-                    <h2>PRINT PROOF</h2>
-                    <button id="btn-invert" class="btn-export">◐ LIGHT</button>
-                </div>
-                <div class="ui-mockup" id="ui-mockup">
-                    <div id="proof-strip" class="proof-strip">
-                        <!-- Color strip populated by JS -->
-                    </div>
-                    <div class="mockup-header">
-                        <h3 class="mockup-title">INK COVERAGE</h3>
-                        <span id="mockup-badge" class="badge">0%</span>
-                    </div>
-                    <div class="proof-meta mono-text">
-                        <div class="proof-meta-row">
-                            <span class="proof-label">REV.</span>
-                            <span id="proof-rev" class="proof-value">001</span>
-                            <span class="proof-sep">·</span>
-                            <span id="proof-date" class="proof-value">2026-04-30</span>
-                            <span class="proof-sep">·</span>
-                            <span class="proof-value">sRGB → OKLab</span>
+                        <div class="accession-card spec mono-text">
+                            <div class="accession-head">
+                                <span>ACCESSION RECORD</span>
+                                <span id="acc-status" class="accession-status">AWAITING DEPOSIT</span>
+                            </div>
+                            <dl class="accession-fields">
+                                <dt>OBJ. NO.</dt>   <dd id="acc-no">—</dd>
+                                <dt>RECEIVED</dt>   <dd id="acc-date">—</dd>
+                                <dt>SOURCE</dt>     <dd id="acc-source">—</dd>
+                                <dt>DIMENSIONS</dt> <dd id="acc-dims">—</dd>
+                                <dt>MEDIUM</dt>     <dd id="acc-medium">—</dd>
+                                <dt>CONDITION</dt>  <dd id="acc-condition">—</dd>
+                            </dl>
                         </div>
-                        <div class="proof-meta-row">
-                            <span class="proof-label">K</span>
-                            <span id="proof-k" class="proof-value">5</span>
-                            <span class="proof-sep">·</span>
-                            <span class="proof-label">ITER</span>
-                            <span id="proof-iter" class="proof-value">15</span>
-                            <span class="proof-sep">·</span>
-                            <span class="proof-label">SEED</span>
-                            <span id="proof-seed" class="proof-value">—</span>
-                            <span class="proof-sep">·</span>
-                            <span class="proof-value">CHROMA WEIGHTED</span>
+
+                        <div class="settings-bar">
+                            <label for="k-slider" class="mono-text">COLORS: <span id="k-value">5</span></label>
+                            <input type="range" id="k-slider" min="3" max="8" value="5">
+                            <button id="btn-reroll" class="btn-export" title="Re-run clustering with the next seed">↻ REROLL</button>
                         </div>
                     </div>
-                    <div class="progress-track">
-                        <div id="mockup-progress" class="progress-fill"></div>
-                    </div>
-                    <div class="mockup-buttons">
-                        <button class="mockup-button">DEPLOY</button>
-                        <button class="mockup-button-secondary">SYS_CONFIG</button>
-                    </div>
                 </div>
+            </section>
 
-                <div class="section-header" style="margin-top: 2rem;">
-                    <h2>ARCHIVE</h2>
+            <section class="entry pending">
+                <div class="entry-margin">
+                    <span class="entry-no">02</span>
+                    <span class="entry-label">Specimen</span>
+                    <p class="entry-cap mono-text"><b>FIG. 2</b> The colours, in the order of their roles. Click a plate to copy it; ⇄ trades two roles.</p>
                 </div>
-                <div id="history-container" class="history-container">
-                    <!-- History blocks dynamically inserted here -->
+                <div class="entry-body">
+                    <div class="section-header">
+                        <h2>COLOR BAR</h2>
+                        <div class="export-actions">
+                            <button id="btn-star-current" class="btn-export">☆ STAR</button>
+                            <button id="btn-copy-link" class="btn-export" title="Copy a link that reopens this palette">LINK</button>
+                            <button id="btn-export-image" class="btn-export" style="background: var(--text-color); color: var(--bg-color);">SAVE IMG</button>
+                            <button id="btn-export-figma" class="btn-export">FIGMA</button>
+                            <button id="btn-export-tailwind" class="btn-export">TAILWIND</button>
+                            <button id="btn-export-css" class="btn-export">CSS</button>
+                        </div>
+                    </div>
+                    <div id="palette-container" class="palette"></div>
+                    <div id="palette-notes" class="palette-notes mono-text" hidden></div>
                 </div>
+            </section>
 
-                <div class="section-header" style="margin-top: 2rem;">
-                    <h2>FAVORITES</h2>
+            <section class="entry pending">
+                <div class="entry-margin">
+                    <span class="entry-no">03</span>
+                    <span class="entry-label">Relations</span>
+                    <p class="entry-cap mono-text"><b>FIG. 3</b> Every pair, measured against each other. Below, the same colours seen with three kinds of colour blindness.</p>
                 </div>
-                <div id="favorites-container" class="history-container favorites-wrap">
-                    <!-- Starred blocks dynamically inserted here -->
+                <div class="entry-body">
+                    <div class="section-header">
+                        <h2>A11Y MATRIX</h2>
+                        <button id="btn-contrast-model" class="btn-export" title="Switch between WCAG 2.1 ratio and APCA lightness contrast">WCAG 2.1 ⇄</button>
+                    </div>
+                    <div id="a11y-matrix" class="a11y-matrix"></div>
+                    <div id="cvd-panel" class="cvd-panel mono-text"></div>
                 </div>
-            </div>
+            </section>
+
+            <section class="entry pending">
+                <div class="entry-margin">
+                    <span class="entry-no">04</span>
+                    <span class="entry-label">Proof</span>
+                    <p class="entry-cap mono-text"><b>FIG. 4</b> A proof sheet, printed in the extracted inks.</p>
+                </div>
+                <div class="entry-body">
+                    <div class="section-header">
+                        <h2>PRINT PROOF</h2>
+                        <button id="btn-invert" class="btn-export">◐ LIGHT</button>
+                    </div>
+                    <div class="ui-mockup" id="ui-mockup">
+                        <div id="proof-strip" class="proof-strip"></div>
+                        <div class="mockup-header">
+                            <h3 class="mockup-title">INK COVERAGE</h3>
+                            <span id="mockup-badge" class="badge">0%</span>
+                        </div>
+                        <div class="proof-meta mono-text">
+                            <div class="proof-meta-row">
+                                <span class="proof-label">REV.</span>
+                                <span id="proof-rev" class="proof-value">001</span>
+                                <span class="proof-sep">·</span>
+                                <span id="proof-date" class="proof-value">—</span>
+                                <span class="proof-sep">·</span>
+                                <span class="proof-value">sRGB → OKLab</span>
+                            </div>
+                            <div class="proof-meta-row">
+                                <span class="proof-label">K</span>
+                                <span id="proof-k" class="proof-value">5</span>
+                                <span class="proof-sep">·</span>
+                                <span class="proof-label">ITER</span>
+                                <span id="proof-iter" class="proof-value">15</span>
+                                <span class="proof-sep">·</span>
+                                <span class="proof-label">SEED</span>
+                                <span id="proof-seed" class="proof-value">—</span>
+                                <span class="proof-sep">·</span>
+                                <span class="proof-value">CHROMA WEIGHTED</span>
+                            </div>
+                        </div>
+                        <div class="progress-track">
+                            <div id="mockup-progress" class="progress-fill"></div>
+                        </div>
+                        <div class="mockup-buttons">
+                            <span class="mockup-button">PROOF OK</span>
+                            <span class="mockup-button-secondary">FILED</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="entry pending">
+                <div class="entry-margin">
+                    <span class="entry-no">05</span>
+                    <span class="entry-label">Storage</span>
+                    <p class="entry-cap mono-text"><b>FIG. 5</b> Objects catalogued before this one. Starred objects are kept below.</p>
+                </div>
+                <div class="entry-body">
+                    <div class="section-header">
+                        <h2>ARCHIVE</h2>
+                    </div>
+                    <div id="history-container" class="history-container"></div>
+
+                    <div class="section-header" style="margin-top: 2rem;">
+                        <h2>FAVORITES</h2>
+                    </div>
+                    <div id="favorites-container" class="history-container favorites-wrap"></div>
+                </div>
+            </section>
         </main>
+
+        <footer class="colophon mono-text">
+            <span class="colophon-label">COLOPHON</span>
+            <span class="colophon-text">Set in Space Grotesk and IBM Plex Mono. Colours clustered in OKLab, named by Name that Color.</span>
+            <span class="colophon-site"><a href="classic.html">CLASSIC EDITION →</a></span>
+        </footer>
+    </div>
     </div>
     <script src="ntc.js"></script>
     <script src="color.js"></script>
     <script src="main.js"></script>
+    <script src="register.js"></script>
+    <script src="edition.js"></script>
 </body>
 </html>

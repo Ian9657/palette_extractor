@@ -1,0 +1,501 @@
+/* Zine edition as a magazine. Loaded after style.css + register.css.
+   Phase 1 system: one 12-column grid, one spacing scale, one type scale.
+   Every row (masthead line, entries, colophon) splits at the same line:
+   columns 1–3 are the margin, 4–12 the body. The panels inside each entry
+   keep their own styles. */
+
+:root {
+    /* Grid */
+    --cols: 12;
+    --gutter: 1.5rem;
+    --margin-span: 3;                 /* margin column = cols 1–3 */
+
+    /* Spacing scale (8px base) */
+    --s1: 0.5rem;
+    --s2: 1rem;
+    --s3: 1.5rem;
+    --s4: 2rem;
+    --s6: 3rem;
+    --s8: 4rem;
+
+    /* Type scale: display is the nameplate only */
+    --fs-display: clamp(4.5rem, 14vw, 11.5rem);
+    --fs-title: clamp(2.75rem, 5vw, 4rem);     /* opener headline, entry numerals */
+    --fs-heading: 2rem;                         /* panel h2 (style.css) */
+    --fs-body: 1.0625rem;                       /* standfirst, entry labels */
+    --fs-label: 0.75rem;                        /* mono labels, captions, specs (12px) */
+    --fs-micro: 0.625rem;                       /* colophon, lens readout (10px) */
+
+    /* Colour tokens (Phase 3). Everything below reads these; the editions
+       only swap values. --bg/--text/--border are style.css's own names. */
+    --desk: #ECE6DA;                       /* behind the sheet */
+    --hairline: rgba(26, 26, 26, 0.18);
+    --tint: rgba(0, 0, 0, 0.04);           /* faint fills: drop zone, hatching */
+    /* Three jobs, three colours (Night City Editorial):
+       signal = the system at work (numerals, off-register plate, marks, lens)
+       alert  = look here (yellow tags with ink text — never as text on paper)
+       danger = errors only */
+    --signal: #00788A;                     /* large marks; 4.6:1 on paper */
+    --signal-ink: #00707F;                 /* small type; 5.1:1 on paper */
+    --alert: #F0EF00;
+    --alert-ink: #191C23;                  /* text on alert, 13.8:1 */
+    --danger: #FF4655;
+    --grain-blend: multiply;
+    --grain-opacity: 0.10;
+    --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Night edition: the same sheet in Night City's blue-black; the signal lights up */
+:root[data-theme="night"] {
+    --bg-color: #111927;                   /* the sheet */
+    --text-color: #F5F0E8;
+    --border-color: #F5F0E8;
+    --desk: #080D18;                       /* the space around it */
+    --surface: #1A2333;
+    --hairline: rgba(245, 240, 232, 0.18);
+    --tint: rgba(245, 240, 232, 0.05);
+    --signal: #00E5FF;                     /* 11.5:1 on the sheet */
+    --signal-ink: #00E5FF;
+    --grain-blend: screen;
+    --grain-opacity: 0.05;
+    color-scheme: dark;
+}
+
+.object { --plate-depth: 14; --plate-reach: 24px; }
+
+body {
+    background-color: var(--desk);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Faint paper tooth; strong enough to feel, not to see */
+body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    pointer-events: none;
+    opacity: var(--grain-opacity);
+    mix-blend-mode: var(--grain-blend);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.sheet { gap: 0; }
+
+/* The one grid, shared by the masthead line, every entry and the colophon */
+.mast-line,
+.entry,
+.colophon {
+    display: grid;
+    grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+    column-gap: var(--gutter);
+}
+.mast-line > :first-child,
+.entry-margin,
+.colophon-label { grid-column: 1 / span var(--margin-span); }
+.mast-line > :nth-child(2),
+.entry-body,
+.colophon-text { grid-column: calc(var(--margin-span) + 1) / -1; }
+
+/* ---- Masthead ---- */
+.mast-line {
+    font-size: var(--fs-label);
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    padding-bottom: var(--s1);
+    border-bottom: 1px solid var(--border-color);
+}
+.mast-line > :nth-child(2) { grid-column: calc(var(--margin-span) + 1) / span 6; }
+.mast-line > :last-child { grid-column: span 3 / -1; justify-self: end; }
+
+.nameplate {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: var(--s3);
+    padding: var(--s3) 0 var(--s2);
+}
+.nameplate-title {
+    font-size: var(--fs-display);
+    line-height: 0.78;
+    letter-spacing: -0.065em;
+    margin-left: -0.04em;   /* optical: pull the P's stem onto the grid edge */
+    text-shadow: 0.035em 0.025em 0 var(--signal);
+}
+.nameplate-side {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--s1);
+    padding-bottom: var(--s1);
+    text-align: right;
+}
+.nameplate-sub {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: var(--fs-heading);
+    letter-spacing: -0.03em;
+    line-height: 1;
+}
+.nameplate-tag {
+    font-size: var(--fs-label);
+    font-weight: 600;
+    letter-spacing: 0.12em;
+}
+/* The page's only heavy rule */
+.mast-rule {
+    border-top: 6px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    height: 9px;
+}
+
+/* ---- Entries (01–05): numeral + label + caption in the margin, figure in the body ---- */
+.entry {
+    padding: var(--s6) 0;
+    border-bottom: 1px solid var(--border-color);
+}
+.entry-margin {
+    gap: var(--s1);
+    top: var(--s3);
+}
+.entry-no {
+    font-size: var(--fs-title);
+    line-height: 0.8;
+    letter-spacing: -0.06em;
+    color: var(--signal);
+}
+.entry-label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: var(--fs-body);
+    letter-spacing: 0;
+    border-top: none;
+    padding-top: 0;
+}
+.entry.pending .entry-label::after { content: none; }
+.entry-cap {
+    margin-top: var(--s1);
+    font-size: var(--fs-label);
+    line-height: 1.6;
+    opacity: 0.75;
+    max-width: 26ch;
+}
+.entry-cap b { color: var(--signal-ink); margin-right: var(--s1); }
+
+/* Before the first deposit the default palette is shown as-is, not greyed out */
+.entry.pending .entry-body {
+    opacity: 1;
+    filter: none;
+    pointer-events: auto;
+    user-select: auto;
+}
+.plate { transition: background-color 0.8s var(--ease-smooth); }
+
+/* ---- 01 Intake: a 9-column subgrid inside the body (figure 5, text 4) ---- */
+.feature {
+    display: grid;
+    grid-template-columns: repeat(9, minmax(0, 1fr));
+    column-gap: var(--gutter);
+    row-gap: var(--s4);
+    align-items: start;
+}
+.fig { margin: 0; grid-column: span 5; }
+.feature-text { grid-column: span 4; display: flex; flex-direction: column; }
+
+.kicker {
+    color: var(--signal-ink);
+    font-size: var(--fs-label);
+    font-weight: 600;
+    letter-spacing: 0.12em;
+}
+.headline-rule {
+    width: 72px;
+    height: 10px;
+    margin: var(--s3) 0 var(--s2);
+    background: var(--headline-colour, var(--text-color));
+    transition: background-color 0.8s var(--ease-smooth);
+}
+.headline {
+    font-size: var(--fs-title);
+    line-height: 0.9;
+    letter-spacing: -0.05em;
+    overflow-wrap: anywhere;
+}
+.standfirst {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 500;
+    font-size: var(--fs-body);
+    line-height: 1.45;
+    margin: var(--s3) 0;
+}
+
+/* Accession record set as a spec table: rules, no box */
+.spec.accession-card {
+    border: none;
+    box-shadow: none;
+    background: transparent;
+    border-top: 1px solid var(--border-color);
+    margin-bottom: var(--s3);
+    font-size: var(--fs-label);
+}
+.spec .accession-head {
+    background: none;
+    color: var(--text-color);
+    padding: var(--s1) 0;
+    font-size: var(--fs-label);
+    letter-spacing: 0.12em;
+    clip-path: none;
+}
+.spec .accession-status {
+    background: var(--alert);
+    color: var(--alert-ink);
+    padding: 0 0.4rem;
+}
+.spec .accession-status::before { content: none; }
+.spec .accession-fields dt,
+.spec .accession-fields dd {
+    padding: var(--s1) 0;
+    border-top: 1px solid var(--hairline);
+}
+.spec .accession-fields dt { padding-right: var(--s3); }
+
+.feature-text .settings-bar {
+    align-self: stretch;
+    justify-content: space-between;
+    border-width: 1px;
+    box-shadow: none;
+}
+.feature-text .settings-bar label,
+.feature-text .settings-bar button { white-space: nowrap; }
+.feature-text .settings-bar input[type="range"] { flex: 1; min-width: 0; }
+
+/* ---- Fig. 1: the original photo, with its extracted twin seen through a lens ---- */
+.feature { align-items: stretch; }
+.fig-source { display: flex; }
+.fig-source .drop-zone {
+    aspect-ratio: auto;
+    max-height: none;
+    min-height: 420px;
+    flex: 1;
+}
+.fig-original {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    z-index: 1;
+    opacity: 0;
+    transition: opacity 0.6s var(--ease-smooth);
+    pointer-events: none;
+}
+.drop-zone.has-image .fig-original { opacity: 1; }
+#preview-canvas { z-index: 2; mix-blend-mode: normal; }
+/* Once filed, the extracted version shows only inside the lens */
+.drop-zone.lensed #preview-canvas {
+    clip-path: inset(var(--lt) var(--lr) var(--lb) var(--ll));
+}
+.fig-lens {
+    position: absolute;
+    z-index: 3;
+    left: 0; top: 0;
+    width: var(--lw, 180px);
+    height: var(--lh, 120px);
+    transform: translate(var(--lx, -999px), var(--ly, -999px));
+    pointer-events: none;
+    display: none;
+    --c: var(--signal);
+    background:
+        linear-gradient(var(--c), var(--c)) left top / 16px 2px,
+        linear-gradient(var(--c), var(--c)) left top / 2px 16px,
+        linear-gradient(var(--c), var(--c)) right top / 16px 2px,
+        linear-gradient(var(--c), var(--c)) right top / 2px 16px,
+        linear-gradient(var(--c), var(--c)) left bottom / 16px 2px,
+        linear-gradient(var(--c), var(--c)) left bottom / 2px 16px,
+        linear-gradient(var(--c), var(--c)) right bottom / 16px 2px,
+        linear-gradient(var(--c), var(--c)) right bottom / 2px 16px;
+    background-repeat: no-repeat;
+}
+.drop-zone.lensed .fig-lens { display: block; }
+.fig-lens-readout {
+    position: absolute;
+    left: 0;
+    top: calc(100% + 4px);
+    white-space: nowrap;
+    background: var(--text-color);
+    color: var(--bg-color);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: var(--fs-micro);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    padding: 0.15rem 0.45rem;
+}
+.fig-lens.flip .fig-lens-readout { top: auto; bottom: calc(100% + 4px); }
+
+/* ---- Colophon ---- */
+.colophon {
+    padding-top: var(--s3);
+    font-size: var(--fs-micro);
+    letter-spacing: 0.06em;
+    opacity: 0.6;
+}
+.colophon-label { font-weight: 600; letter-spacing: 0.12em; }
+.colophon-text { grid-column: calc(var(--margin-span) + 1) / span 6; }
+.colophon-site { grid-column: span 3 / -1; justify-self: end; }
+
+/* ---- Press marks (Phase 2) ----
+   Registration targets sit a fixed distance inside each corner of the sheet;
+   the pink plate is printed a hair off register. Drawn with masks so both
+   layers take their colour from tokens. */
+.press-marks {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+}
+.reg-mark {
+    --size: 22px;
+    --inset: 14px;
+    position: absolute;
+    width: var(--size);
+    height: var(--size);
+}
+.reg-mark::before,
+.reg-mark::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    -webkit-mask: var(--reg-svg) center / contain no-repeat;
+    mask: var(--reg-svg) center / contain no-repeat;
+}
+.reg-mark::before { background: var(--signal); transform: translate(1.2px, 0.8px); }
+.reg-mark::after { background: var(--text-color); }
+.reg-mark.tl { top: var(--inset); left: var(--inset); }
+.reg-mark.tr { top: var(--inset); right: var(--inset); }
+.reg-mark.bl { bottom: var(--inset); left: var(--inset); }
+.reg-mark.br { bottom: var(--inset); right: var(--inset); }
+:root {
+    --reg-svg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1'%3E%3Ccircle cx='12' cy='12' r='5.5'/%3E%3Cpath d='M12 0v24M0 12h24'/%3E%3C/svg%3E");
+}
+
+/* Specimen strip: the current palette as a press control strip in the right margin.
+   Only real extracted data — hidden until an object is catalogued. */
+.specimen-strip {
+    position: absolute;
+    right: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--s1);
+}
+.specimen-strip[hidden] { display: none; }
+.specimen-strip-chips {
+    width: 12px;
+    height: 220px;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--text-color);
+}
+.specimen-strip-chips span {
+    flex: 1;
+    transition: background-color 0.8s var(--ease-smooth);
+}
+.specimen-strip-chips span + span { border-top: 1px solid var(--text-color); }
+.specimen-strip-label {
+    writing-mode: vertical-rl;
+    font-size: var(--fs-micro);
+    letter-spacing: 0.12em;
+    opacity: 0.7;
+}
+
+/* OKLCH line added under each swatch's name */
+.swatch-oklch {
+    font-size: clamp(0.45rem, 11cqw, 0.65rem);
+    letter-spacing: 0;
+    opacity: 0.9;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ---- Edition switch ---- */
+.mast-end { display: flex; align-items: baseline; gap: var(--s2); }
+.edition-switch { display: inline-flex; border: 1px solid var(--border-color); }
+.edition-switch button {
+    font: inherit;
+    letter-spacing: inherit;
+    color: var(--text-color);
+    background: transparent;
+    border: none;
+    padding: 0.1rem 0.5rem;
+    cursor: pointer;
+}
+.edition-switch button + button { border-left: 1px solid var(--border-color); }
+:root[data-theme="day"] .edition-switch [data-edition="day"],
+:root[data-theme="night"] .edition-switch [data-edition="night"] {
+    background: var(--alert);
+    color: var(--alert-ink);
+}
+
+/* Lines and fills other stylesheets hard-code for paper */
+.entry, .mast-line { border-color: var(--border-color); }
+.accession-fields dt, .accession-fields dd { border-top-color: var(--hairline); }
+.drop-zone { background: var(--tint); }
+:root[data-theme="night"] .drop-zone:hover,
+:root[data-theme="night"] .drop-zone.dragover { background: rgba(245, 240, 232, 0.08); }
+/* Matrix: AAA cells are "solid ink", so they invert with the edition;
+   multiply would sink the AA fills into dark paper */
+:root[data-theme="night"] .a11y-cell--aaa { background: var(--text-color); color: var(--bg-color); }
+:root[data-theme="night"] .a11y-cell--aa,
+:root[data-theme="night"] .a11y-cell--aa-large,
+:root[data-theme="night"] .swatch,
+:root[data-theme="night"] .history-color,
+:root[data-theme="night"] .proof-strip-color { mix-blend-mode: normal; }
+:root[data-theme="night"] .a11y-cell--self {
+    background: repeating-linear-gradient(45deg, transparent, transparent 3px, var(--tint) 3px, var(--tint) 6px);
+}
+:root[data-theme="night"] .a11y-legend-swatch[style*="#1a1a1a"] { background: var(--text-color) !important; }
+
+/* Edition change crossfades (View Transitions); colour data is untouched */
+::view-transition-old(root),
+::view-transition-new(root) { animation-duration: 0.45s; animation-timing-function: var(--ease-smooth); }
+
+/* ---- Narrower screens: same system, fewer columns ---- */
+@media (max-width: 1000px) {
+    .fig, .feature-text { grid-column: 1 / -1; }
+    .fig-source .drop-zone { height: auto; min-height: 0; aspect-ratio: 4 / 3; }
+}
+@media (max-width: 760px) {
+    .mast-line, .entry, .colophon { grid-template-columns: minmax(0, 1fr); }
+    .mast-line { grid-template-columns: minmax(0, 1fr) auto; }
+    .mast-line > *, .entry-margin, .entry-body, .colophon > * { grid-column: 1 / -1; }
+    .entry { row-gap: var(--s3); }
+    .entry-margin { position: static; }
+    .entry-cap { max-width: none; }
+    .mast-line > :nth-child(2), #mast-date { display: none; }
+    .mast-line > :first-child { grid-column: 1; }
+    .mast-line > :last-child { grid-column: 2; }
+    .colophon { row-gap: var(--s1); }
+    .colophon-site { justify-self: start; }
+}
+@media (max-width: 600px) {
+    :root { --gutter: 1rem; --s6: 2rem; }
+    .object { --plate-depth: 8; --plate-reach: 14px; }
+    .reg-mark { --size: 14px; --inset: 5px; }
+    .specimen-strip { display: none; }
+    .nameplate { flex-direction: column; align-items: flex-start; }
+    .nameplate-side { align-items: flex-start; text-align: left; }
+    .entry-margin { flex-direction: column; align-items: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}
+
+/* main.js colours the empty-list note with --secondary-color (#333 by default), unreadable on night paper */
+:root[data-theme="night"] .history-container .mono-text { color: var(--text-color) !important; }
+
+.colophon-site a { color: inherit; text-decoration: none; border-bottom: 1px solid currentColor; }
+.colophon-site a:hover { color: var(--signal-ink); }

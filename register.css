@@ -1,0 +1,172 @@
+/* Accession-register layout. Loaded after style.css; the panels inside each
+   entry keep their original styles. */
+
+/* ---- The register as a physical object ----
+   Flat print depth, not perspective: the page sits on a stack of colour
+   plates offset along --dx/--dy (steered by the cursor in register.js).
+   Hard edges and solid fills only. */
+.object {
+    --dx: 7px;
+    --dy: 7px;
+    position: relative;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 var(--plate-reach, 64px) var(--plate-reach, 64px) 0;
+}
+.object > .grid-layout {
+    position: relative;
+    z-index: 6;
+    max-width: none;
+    transform: none;
+    box-shadow: none;
+}
+.plates { position: absolute; inset: 0; }
+.plate {
+    position: absolute;
+    inset: 0;
+    border: 2px solid var(--border-color);
+    background: var(--plate);
+    transform: translate(calc(var(--dx) * var(--n)), calc(var(--dy) * var(--n)));
+    transition: background-color 0.5s ease;
+}
+.plate:nth-child(1) { --n: 1; z-index: 5; --plate: var(--plate-1, #EBE5DA); transition-delay: 0s; }
+.plate:nth-child(2) { --n: 2; z-index: 4; --plate: var(--plate-2, #E3DCCF); transition-delay: 0.12s; }
+.plate:nth-child(3) { --n: 3; z-index: 3; --plate: var(--plate-3, #DAD3C5); transition-delay: 0.24s; }
+.plate:nth-child(4) { --n: 4; z-index: 2; --plate: var(--plate-4, #D1C9BA); transition-delay: 0.36s; }
+.plate:nth-child(5) { --n: 5; z-index: 1; --plate: var(--plate-5, #C8C0B0); transition-delay: 0.48s; }
+
+.register-count {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+.register-total {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 3rem;
+    line-height: 1;
+    letter-spacing: -0.03em;
+}
+
+.register { display: grid; }
+
+/* One numbered entry per stage; the margin carries the number, like a ledger */
+.entry {
+    display: grid;
+    grid-template-columns: 120px minmax(0, 1fr);
+    gap: 2rem;
+    padding: 2.5rem 0;
+    border-bottom: 1px solid rgba(26, 26, 26, 0.25);
+}
+.entry:last-child { border-bottom: none; }
+
+.entry-margin {
+    position: sticky;
+    top: 2rem;
+    align-self: start;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+.entry-no {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 2.5rem;
+    line-height: 1;
+    letter-spacing: -0.04em;
+}
+.entry-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    padding-top: 0.4rem;
+    border-top: 2px solid var(--border-color);
+}
+
+.entry-body { transition: opacity 0.6s ease, filter 0.6s ease; }
+.entry.pending .entry-body {
+    opacity: 0.12;
+    filter: grayscale(1);
+    pointer-events: none;
+    user-select: none;
+}
+.entry.pending .entry-label::after {
+    content: ' · AWAITING OBJECT';
+    opacity: 0.5;
+}
+
+/* §01: image beside its record */
+.intake {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr);
+    gap: 2.5rem;
+    align-items: start;
+}
+.intake-side {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+.intake-side .settings-bar { align-self: flex-start; }
+
+.accession-card {
+    border: 2px solid var(--border-color);
+    box-shadow: 4px 4px 0 var(--border-color);
+    background: var(--bg-color);
+    font-size: 0.8rem;
+}
+.accession-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.6rem 1rem;
+    background: var(--text-color);
+    color: var(--bg-color);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+}
+.accession-status::before { content: '● '; color: var(--primary-color); }
+.accession-fields {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    margin: 0;
+}
+.accession-fields dt,
+.accession-fields dd {
+    margin: 0;
+    padding: 0.6rem 1rem;
+    border-top: 1px dashed rgba(26, 26, 26, 0.3);
+}
+.accession-fields dt:first-of-type,
+.accession-fields dd:first-of-type { border-top: none; }
+.accession-fields dt { opacity: 0.5; font-weight: 600; }
+.accession-fields dd {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.mockup-buttons span { display: inline-block; }
+
+@media (max-width: 900px) {
+    .intake { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 600px) {
+    .object { --dx: 3px; --dy: 4px; --plate-reach: 32px; }
+    .entry {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 1rem;
+        padding: 2rem 0;
+    }
+    .entry-margin {
+        position: static;
+        flex-direction: row;
+        align-items: baseline;
+        gap: 0.75rem;
+    }
+    .entry-no { font-size: 1.75rem; }
+    .entry-label { border-top: none; padding-top: 0; }
+    .register-count { align-items: flex-start; }
+}
