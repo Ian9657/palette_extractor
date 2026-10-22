@@ -275,3 +275,26 @@ exportMenu.querySelectorAll('.export-menu-list button').forEach(btn =>
     btn.addEventListener('click', () => setTimeout(() => { exportMenu.open = false; }, 900)));
 document.addEventListener('click', e => { if (!exportMenu.contains(e.target)) exportMenu.open = false; });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') exportMenu.open = false; });
+
+// ---- Address bar ----
+// main.js mirrors the palette into #p=… so a link can be shared, but that made
+// a reload reopen the last palette instead of a fresh page. Here the address
+// stays clean: an incoming #p= link is opened once, then cleared, and the
+// shareable link is built only when COPY LINK is pressed.
+function shareLink(p) {
+    const hexes = ROLE_KEYS[Object.keys(p.theme).length].map(k => p.theme[k].slice(1));
+    return `${location.origin}${location.pathname}#p=${hexes.join('-')}`;
+}
+const clearHash = () => { if (location.hash) window.history.replaceState(null, '', location.pathname + location.search); };
+updateHash = clearHash;
+clearHash();
+
+document.addEventListener('click', e => {
+    const btn = e.target.closest && e.target.closest('#btn-copy-link');
+    if (!btn) return;
+    e.stopPropagation();   // replaces main.js's copy of location.href
+    if (palette && !palette.isDefault) navigator.clipboard.writeText(shareLink(palette)).catch(() => {});
+    const label = btn.textContent;
+    btn.textContent = palette && !palette.isDefault ? 'COPIED' : 'NOTHING TO SHARE YET';
+    setTimeout(() => { btn.textContent = label; }, 1500);
+}, true);
