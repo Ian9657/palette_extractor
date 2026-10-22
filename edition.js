@@ -136,6 +136,8 @@ const reduceMotionMag = window.matchMedia('(prefers-reduced-motion: reduce)').ma
 let lensCX = 0.5, lensCY = 0.5;           // lens centre, as a fraction of the image
 let aimCX = 0.5, aimCY = 0.5;
 let lensPointerAt = -Infinity, lensRunning = false, lensReadAt = 0;
+const DECODE_GAP = 620;   // decode (220 ms) + at least 400 ms of legible reading
+let lastDecodeAt = -Infinity;
 
 // Where the contained image actually sits inside the drop zone
 function imageRect() {
@@ -202,16 +204,22 @@ function lensFrame(t) {
         const sy = Math.round(py * currentImgEl.naturalHeight / canvasEl.height);
         const reading = `${role} · ${hex} · X${String(sx).padStart(4, '0')} Y${String(sy).padStart(4, '0')}`;
         lensChipEl.style.background = hex;   // the true colour; the glass above shows its virtual negative
-        if (role !== lensReadoutEl.dataset.role) {        // new role under the lens: lock on, decode it in
-            lensReadoutEl.dataset.role = role;
+        // New role under the lens: lock on and decode it in — but at most once
+        // per DECODE_GAP, so a busy image can't keep the readout scrambled.
+        // Between decodes the readout is plain text, updated in place.
+        if (role !== lensReadoutEl.dataset.role && t - lastDecodeAt > DECODE_GAP) {
+            lastDecodeAt = t;
             FX.decode(lensReadoutEl, reading, 220);
             lensEl.classList.remove('lock');
             void lensEl.offsetWidth;
             lensEl.classList.add('lock');
-        } else if (reading !== lensReadoutEl.dataset.reading) {
+            lensReadoutEl.dataset.role = role;
+            lensReadoutEl.dataset.reading = reading;
+        } else if (reading !== lensReadoutEl.dataset.reading && t - lastDecodeAt > 240) {
             lensReadoutEl.textContent = reading;
+            lensReadoutEl.dataset.role = role;
+            lensReadoutEl.dataset.reading = reading;
         }
-        lensReadoutEl.dataset.reading = reading;
     }
     requestAnimationFrame(lensFrame);
 }
