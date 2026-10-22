@@ -19,19 +19,28 @@ const colourName = hex => ntc.name(hex)[1];
 function writeFeature(p, fromStorage) {
     const { theme } = p;
     const k = Object.keys(theme).length;
+    const edition = document.documentElement.dataset.theme || 'day';
     mag('feature-headline').textContent = colourName(theme.primary);
     mag('headline-rule').style.setProperty('--headline-colour', theme.primary);
-    mag('feature-kicker').textContent = `ACCESSION — ${mag('acc-no').textContent}`;
+    mag('feature-kicker').textContent = `${edition === 'night' ? 'CAPTURE' : 'ACCESSION'} — ${mag('acc-no').textContent}`;
 
     if (fromStorage || !currentImgEl) {
-        mag('feature-standfirst').textContent = `${k} colours, retrieved from storage. The source image was not kept.`;
+        mag('feature-standfirst').textContent = edition === 'night'
+            ? `${k} signals recovered from storage. The source image was not retained.`
+            : `${k} colours retrieved from storage. The source image was not retained.`;
         return;
     }
     const w = currentImgEl.naturalWidth, h = currentImgEl.naturalHeight;
-    let text = `${k} colours drawn from ${w} × ${h} pixels on ${dateLine(new Date())}.`;
-    if (p.coverage != null) text += ` ${p.coverage}% of the surface is not ${colourName(theme.bg)}.`;
+    let text = edition === 'night'
+        ? `${k} signals recovered from ${w} × ${h} pixels on ${dateLine(new Date())}.`
+        : `${k} colours drawn from ${w} × ${h} pixels on ${dateLine(new Date())}.`;
+    if (p.coverage != null) text += edition === 'night'
+        ? ` Coverage: ${p.coverage}%.`
+        : ` ${p.coverage}% of the surface is not ${colourName(theme.bg)}.`;
     mag('feature-standfirst').textContent = text;
-    mag('fig1-cap').textContent = `Source, ${w} × ${h} px. Inside the frame, the same image in its ${k} catalogued colours.`;
+    mag('fig1-cap').textContent = edition === 'night'
+        ? `Source lock, ${w} × ${h} px. The frame contains ${k} recovered signals.`
+        : `Source, ${w} × ${h} px. The frame contains ${k} catalogued colours.`;
 }
 
 // ---- Hooks (wrapping the register.js wrappers) ----
@@ -230,10 +239,51 @@ if (!palette.isDefault) { renderStrip(palette.theme); writeFeature(palette, true
 
 // ---- Editions (Phase 3) ----
 // The theme attribute is set before paint in <head>; this keeps the label and
-// switch in step and remembers an explicit choice. Only UI tokens change —
-// photos, swatches and every computed value stay exactly as extracted.
+// switch in step and remembers an explicit choice. The editions share the
+// same data, but each gives the page a different editorial brief.
+const editionCopy = {
+    day: {
+        name: 'DAY EDITION',
+        kicker: 'ACCESSION — AWAITING DEPOSIT',
+        labels: ['Intake', 'Specimen', 'Relations', 'Proof', 'Storage'],
+        caps: [
+            'The source image as received. Drop, paste or click to deposit it.',
+            'Colours listed by role. Click a plate to copy it; ⇄ trades two roles.',
+            'Every pair measured for contrast, with colour-vision checks below.',
+            'A proof sheet printed in the extracted inks.',
+            'Objects catalogued before this one. Hover to preview; star to keep.'
+        ],
+        titles: ['COLOR BAR', 'A11Y MATRIX', 'PRINT PROOF', 'ARCHIVE']
+    },
+    night: {
+        name: 'NIGHT EDITION',
+        kicker: 'CAPTURE — AWAITING SOURCE SIGNAL',
+        labels: ['Capture', 'Signal', 'Diagnostics', 'Output', 'Archive'],
+        caps: [
+            'Lock a source image. The signal is sampled, clustered and filed below.',
+            'Captured colours in role order. Click to copy; REROLL advances the seed.',
+            'Contrast, APCA and colour-vision collisions for the current signal.',
+            'Live output with the extraction parameters and current ready state.',
+            'Previous captures and stored signals. Hover to inspect the source.'
+        ],
+        titles: ['SIGNAL PLATES', 'DIAGNOSTICS', 'SIGNAL OUTPUT', 'SIGNAL ARCHIVE']
+    }
+};
+
+function applyEditionCopy(edition) {
+    const copy = editionCopy[edition] || editionCopy.day;
+    mag('edition-name').textContent = copy.name;
+    mag('feature-kicker').textContent = palette.isDefault
+        ? copy.kicker
+        : `${edition === 'night' ? 'CAPTURE' : 'ACCESSION'} — ${mag('acc-no').textContent}`;
+    copy.labels.forEach((label, i) => mag(`entry-label-${i + 1}`).textContent = label);
+    copy.caps.forEach((caption, i) => mag(`fig${i + 1}-cap`).textContent = caption);
+    copy.titles.forEach((title, i) => mag(`section-title-${i + 2}`).textContent = title);
+    if (!palette.isDefault) writeFeature(palette, !currentImgEl);
+}
+
 function showEdition() {
-    mag('edition-name').textContent = document.documentElement.dataset.theme === 'night' ? 'NIGHT EDITION' : 'DAY EDITION';
+    applyEditionCopy(document.documentElement.dataset.theme);
 }
 function setEdition(edition) {
     if (document.documentElement.dataset.theme === edition) return;
