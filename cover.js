@@ -201,15 +201,16 @@ document.addEventListener('click', e => {
     e.preventDefault();
     const label = btn.textContent;
     btn.textContent = 'PRINTING…';
-    renderCover().then(({ canvas, name }) => {
+    // A cover that can't be drawn or encoded says so on the button (edition.js)
+    renderCover().then(({ canvas, name }) => new Promise((resolve, reject) => {
         canvas.toBlob(blob => {
+            if (!blob) { reject(); return; }
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
             a.download = name;
             a.click();
             setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-            btn.textContent = 'SAVED';
-            setTimeout(() => { btn.textContent = label; }, 1600);
+            resolve();
         }, 'image/png');
-    }, () => { btn.textContent = label; });
+    })).then(() => flagButton(btn, 'SAVED', label), () => flagButton(btn, 'EXPORT FAILED', label));
 }, true);

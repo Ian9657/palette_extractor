@@ -63,7 +63,7 @@ Identity in one line: **a strictly typeset register, viewed through a night-city
 | `--hairline` | `rgba(245,240,232,.18)` | 1 px dividers | — |
 | `--signal` / `--signal-ink` | `#00E5FF` | **the system at work**: entry numerals, FIG. labels, off-register nameplate plate, registration marks, lens brackets, scan line | the only accent used for marks and small text |
 | `--alert` + `--alert-ink` | `#F0EF00` on `#191C23` | **look here**: small state tags (FILED, AWAITING DEPOSIT), the lens readout and crosshair | always a tag with ink text; never text colour; never a large area |
-| `--danger` | `#FF4655` | errors only | never decorative |
+| `--danger` | `#FF4655` | errors only: Fig. 1's caption when an image can't be deposited (IMAGE COULD NOT BE READ. / NOT AN IMAGE.), a button whose action failed (COPY FAILED, EXPORT FAILED) for 1.5 s | never decorative; never a browser dialog |
 
 - **Three accents, three jobs. Nothing else.** No pink/magenta, no second signal ("counter-signal"), no amber, no gradients as decoration.
 - Glow (`drop-shadow` of `--signal`) only on screen-side objects (§3.3), max 4–5 px, never on the sheet or its frame.

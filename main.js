@@ -23,6 +23,12 @@ let revCount = parseInt(localStorage.getItem('proofRevCount') || '0') || 0;
 // History, favourites and edits all pass this object around.
 let palette = null;
 
+// Hooks an edition may replace (edition.js does); these defaults are the
+// classic behaviour: a browser alert, and COPIED whether or not the copy took.
+// copyText returns a promise that settles once the clipboard has answered.
+let reportError = msg => alert(msg);
+let copyText = text => { navigator.clipboard.writeText(text).catch(() => {}); return Promise.resolve(); };
+
 const loadingOverlay = document.getElementById('loading-overlay');
 const btnExportTailwind = document.getElementById('btn-export-tailwind');
 const btnExportCss = document.getElementById('btn-export-css');
@@ -227,7 +233,7 @@ function processImage(file) {
         selectionRectDom = null;
         extractColorsVisualized(img);
     };
-    img.onerror = () => { isExtracting = false; alert('IMAGE LOAD FAILED'); };
+    img.onerror = () => { isExtracting = false; reportError('IMAGE LOAD FAILED'); };
     img.src = URL.createObjectURL(file);
 }
 
@@ -814,11 +820,12 @@ function renderSwatches() {
                 else swapRoles(swapFrom, key);
                 return;
             }
-            navigator.clipboard.writeText(color).catch(() => {});
             const hexEl = swatch.querySelector('.swatch-hex');
             const originalText = hexEl.innerText;
-            hexEl.innerText = `COPIED`;
-            setTimeout(() => { hexEl.innerText = originalText; }, 1000);
+            copyText(color).then(() => 'COPIED', () => 'COPY FAILED').then(label => {
+                hexEl.innerText = label;
+                setTimeout(() => { hexEl.innerText = originalText; }, 1000);
+            });
         });
         paletteContainer.appendChild(swatch);
     });

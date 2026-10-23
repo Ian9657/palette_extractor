@@ -1082,3 +1082,7 @@ h1, h2, h3, .title,
 .sample:hover, .sample:focus-visible { border-color: var(--signal); outline: none; }
 .sample.current { border-color: var(--text-color); box-shadow: inset 0 0 0 1px var(--text-color); }
 @media (max-width: 600px) { .samples { grid-template-columns: minmax(0, 1fr); gap: var(--s1); } }
+
+/* Errors (DESIGN.md §6.1: --danger, errors only): Fig. 1's caption, a button whose action failed */
+.fig-error { color: var(--danger); font-weight: 600; }
+.btn-export.failed { color: var(--danger); border-color: var(--danger); }

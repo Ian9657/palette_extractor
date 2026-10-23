@@ -34,6 +34,30 @@ function writeFeature(p, fromStorage) {
     mag('fig1-cap').textContent = `Source, ${w} × ${h} px. Inside the frame, the same image in its ${k} catalogued colours.`;
 }
 
+// ---- Errors and copies: said in place, never in a browser dialog ----
+// A copy reports what the clipboard actually did (main.js's default always says COPIED)
+copyText = text => Promise.resolve().then(() => navigator.clipboard.writeText(text));
+// A button says how its action went for a moment, in --danger if it failed
+function flagButton(btn, text, label) {
+    btn.textContent = text;
+    btn.classList.toggle('failed', / FAILED$/.test(text));
+    setTimeout(() => { btn.textContent = label; btn.classList.remove('failed'); }, 1500);
+}
+// An image that can't be deposited is reported in Fig. 1's caption; the next
+// deposit writes the caption afresh
+function figError(text) {
+    const cap = mag('fig1-cap');
+    const err = document.createElement('span');
+    err.className = 'fig-error';
+    err.textContent = text;
+    cap.replaceChildren(err, ' Drop, paste or click to deposit another image.');
+}
+reportError = () => figError('IMAGE COULD NOT BE READ.');
+dropZoneEl.addEventListener('drop', e => {
+    const file = e.dataTransfer.files[0];
+    if (file && !file.type.startsWith('image/')) figError('NOT AN IMAGE.');   // main.js ignores it silently
+});
+
 // ---- Hooks (wrapping the register.js wrappers) ----
 const prevProcessImage = processImage;
 processImage = function (file) {
@@ -293,8 +317,8 @@ document.addEventListener('click', e => {
     const btn = e.target.closest && e.target.closest('#btn-copy-link');
     if (!btn) return;
     e.stopPropagation();   // replaces main.js's copy of location.href
-    if (palette && !palette.isDefault) navigator.clipboard.writeText(shareLink(palette)).catch(() => {});
     const label = btn.textContent;
-    btn.textContent = palette && !palette.isDefault ? 'COPIED' : 'NOTHING TO SHARE YET';
-    setTimeout(() => { btn.textContent = label; }, 1500);
+    const done = text => { flagButton(btn, text, label); };
+    if (!palette || palette.isDefault) { done('NOTHING TO SHARE YET'); return; }
+    copyText(shareLink(palette)).then(() => done('COPIED'), () => done('COPY FAILED'));
 }, true);
