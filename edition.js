@@ -174,7 +174,7 @@ function lensFrame(t) {
         aimCX = 0.5 + 0.3 * Math.sin(s * 0.21);
         aimCY = 0.5 + 0.28 * Math.sin(s * 0.29 + 1.1);
     }
-    const ease = t - lensPointerAt > 2500 ? 0.03 : 1 / Follow.DELAY.mid;   // same feel as the floating previews
+    const ease = reduceMotionMag ? 1 : t - lensPointerAt > 2500 ? 0.03 : 1 / Follow.DELAY.mid;   // same feel as the floating previews; none with reduced motion
     lensCX += (aimCX - lensCX) * ease;
     lensCY += (aimCY - lensCY) * ease;
 

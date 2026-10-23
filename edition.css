@@ -749,6 +749,19 @@ body::after {
     filter: drop-shadow(0 0 4px var(--signal));
 }
 
+/* Reduced motion, the catch-all: every transition and keyframe animation
+   lands at once (one iteration, no delay), so nothing slides, fades, blinks
+   or wipes; the scripted effects stop themselves (fx.js, follow.js,
+   pagefx.js, proof.js, edition.js) */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        transition-duration: 0.01ms !important;
+        transition-delay: 0s !important;
+        animation-duration: 0.01ms !important;
+        animation-delay: 0s !important;
+        animation-iteration-count: 1 !important;
+    }
+}
 @media (prefers-reduced-motion: reduce) {
     .float-preview { transition: none; }
     .fig-lens.lock .lens-brackets { animation: none; }
