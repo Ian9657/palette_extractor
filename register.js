@@ -102,7 +102,7 @@ function renderPlates(theme) {
 // stack fans out slightly as it moves. Rates are spread by relative position
 // (front = FRONT_RATE, back = BACK_RATE), so 3 or 8 plates feel the same.
 const FRONT_RATE = 0.585, BACK_RATE = 0.39;
-const PULL = 2.25;   // was 1.5; owner asked for 1.5× the old pull
+const PULL = 1.95;   // was 1.5; owner chose 1.3× the old pull
 let aimX = 0, aimY = 0, tiltRaf = null;
 let plateTilt = [];   // per plate: [x, y]
 
