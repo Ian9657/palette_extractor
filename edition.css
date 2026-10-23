@@ -958,6 +958,8 @@ h1, h2, h3, .title, .mockup-title,
 .booting .masthead > *,
 .booting .register,
 .booting .colophon { visibility: hidden; }
+/* Until the plates go down there is no sheet either, only the desk and the marks */
+.booting:not(.boot-plates) .sheet { background: transparent; border-color: transparent; }
 .booting.boot-marks .reg-mark,
 .booting.boot-plates .plates,
 .booting.boot-name .nameplate,
