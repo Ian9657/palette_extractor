@@ -906,3 +906,43 @@ h1, h2, h3, .title, .mockup-title,
 .nameplate-title { letter-spacing: -0.045em; }
 .headline { letter-spacing: -0.02em; }
 .entry-no { letter-spacing: -0.03em; }
+
+/* ---- Page effects (pagefx.js): only on an event, never at rest ----
+   Title card: before an entry first scrolls in, its numeral and heading wait
+   unseen; then the heading is cut in on a yellow card — wipe, hold, wipe off,
+   in hard steps. */
+.fx-cards .entry:not(.carded) .entry-no,
+.fx-cards .entry:not(.carded) .entry-body > .section-header h2 { visibility: hidden; }
+.section-header h2.card {
+    position: relative;
+    isolation: isolate;
+    animation: card-text 340ms step-end 1;
+}
+.section-header h2.card::before {
+    content: '';
+    position: absolute;
+    inset: -2px -6px;
+    z-index: -1;
+    background: var(--alert);
+    clip-path: inset(0 0 0 100%);
+    animation: card-block 340ms step-end 1;
+}
+@keyframes card-text {
+    0%   { color: transparent; }
+    25%  { color: var(--alert-ink); }
+    92%  { color: var(--text-color); }
+}
+@keyframes card-block {
+    0%   { clip-path: inset(0 100% 0 0); }
+    8%   { clip-path: inset(0 66% 0 0); }
+    16%  { clip-path: inset(0 33% 0 0); }
+    25%  { clip-path: inset(0); }
+    67%  { clip-path: inset(0 0 0 33%); }
+    75%  { clip-path: inset(0 0 0 66%); }
+    83%  { clip-path: inset(0 0 0 100%); }
+}
+
+/* Sandevistan: the bar sits above its afterimages */
+.palette { position: relative; z-index: 1; }
+.echo { position: absolute; z-index: 0; pointer-events: none; }
+.echo[hidden] { display: none; }
