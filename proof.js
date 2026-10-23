@@ -64,6 +64,29 @@
 
     const MIN_CEL = Math.round(W * H * 0.0004);   // smallest patch kept as its own cel
     const SHADE = 0.07;                             // one hard shadow step, in OKLab lightness
+    const GF_EPS = 0.0025;                          // guided filter: lightness steps above ~0.05 are edges
+    const DOG_T = 0.012;                            // DoG depth that inks a line
+
+    // Guided filter (He, Sun & Tang 2010) with one guide for several
+    // channels, in place: O(n) with box means, edge-preserving, no halos
+    function guided(I, chans, r, eps) {
+        const n = W * H, mI = Float32Array.from(I), II = new Float32Array(n);
+        for (let p = 0; p < n; p++) II[p] = I[p] * I[p];
+        boxBlur(mI, W, H, r); boxBlur(II, W, H, r);
+        const guide = Float32Array.from(I);
+        for (const P of chans) {
+            const mP = Float32Array.from(P), IP = new Float32Array(n);
+            for (let p = 0; p < n; p++) IP[p] = guide[p] * P[p];
+            boxBlur(mP, W, H, r); boxBlur(IP, W, H, r);
+            const a = new Float32Array(n), b = new Float32Array(n);
+            for (let p = 0; p < n; p++) {
+                a[p] = (IP[p] - mI[p] * mP[p]) / (II[p] - mI[p] * mI[p] + eps);
+                b[p] = mP[p] - a[p] * mI[p];
+            }
+            boxBlur(a, W, H, r); boxBlur(b, W, H, r);
+            for (let p = 0; p < n; p++) P[p] = a[p] * guide[p] + b[p];
+        }
+    }
 
     // Framing: slide a 16:9 window over the photo to hold the most saliency,
     // so the shot is composed around its subject instead of cut from the middle
@@ -167,6 +190,7 @@
         c.width = W; c.height = H;
         const x = c.getContext('2d', { willReadFrequently: true });
         const crop = frameCut(img);
+        x.imageSmoothingQuality = 'high';   // a large photo shrinks without aliasing
         x.drawImage(img, crop.x, crop.y, crop.w, crop.h, 0, 0, W, H);
         const data = x.getImageData(0, 0, W, H).data;
         const n = W * H;
@@ -176,12 +200,15 @@
             const ok = rgbToOklab(data[p * 4], data[p * 4 + 1], data[p * 4 + 2]);
             L[p] = ok.L; A[p] = ok.a; B[p] = ok.b;
         }
-        // detail L for tone/lines; heavily smoothed copies decide the cels
+        // The cels are decided on an edge-preserving smooth (guided filter,
+        // He et al. 2010, guided by lightness): flat areas go flat, but a
+        // window frame or a sign's edge stays where it is instead of melting
         const Ls = Float32Array.from(L), As = Float32Array.from(A), Bs = Float32Array.from(B);
-        // two radius-1 passes at 960; the spread grows with S², so more passes when sharper
+        for (let k = 0; k < 2; k++) guided(Ls, [Ls, As, Bs], px(5), GF_EPS);
+        // detail L for tone and lines: two radius-1 passes at 960; the
+        // spread grows with S², so more passes when sharper
         const passes = Math.round(2 * S * S);
         for (const ch of [L, A, B]) for (let k = 0; k < passes; k++) boxBlur(ch, W, H, 1);
-        for (const ch of [Ls, As, Bs]) { boxBlur(ch, W, H, px(4)); boxBlur(ch, W, H, px(4)); }
 
         const keys = Object.keys(theme);
         const pal = keys.map(k => { const ok = rgbToOklab(...Object.values(hexToRgb(theme[k]))); return ok; });
@@ -206,16 +233,36 @@
         for (let p = 0; p < n; p++) shade[p] = pal[label[p]].L - Ls[p] > SHADE ? 1 : 0;
         mergeSmall(shade, 2, MIN_CEL);
 
-        // Edges: Sobel on lightness, for the detail lines inside cels
-        const edge = new Float32Array(n);
-        for (let y = 1; y < H - 1; y++) {
-            for (let xx = 1; xx < W - 1; xx++) {
-                const i = y * W + xx;
-                const gx = L[i - W + 1] + 2 * L[i + 1] + L[i + W + 1] - L[i - W - 1] - 2 * L[i - 1] - L[i + W - 1];
-                const gy = L[i + W - 1] + 2 * L[i + W] + L[i + W + 1] - L[i - W - 1] - 2 * L[i - W] - L[i - W + 1];
-                edge[i] = Math.sqrt(gx * gx + gy * gy) * S;   // per 960-frame pixel
+        // Light tone: where a pixel sits well above its cel — a dim poster,
+        // lit windows on a dark façade — it is printed as a halftone of the
+        // lighter ink it leans towards; `lift` is how far of the way there
+        const up = new Int8Array(n).fill(-1), lift = new Float32Array(n);
+        for (let p = 0; p < n; p++) {
+            const own = pal[label[p]];
+            if (Ls[p] - own.L < 0.03) continue;
+            const q = { L: Ls[p], a: As[p], b: Bs[p] };
+            let best = Infinity, bi = -1;
+            for (let j = 0; j < pal.length; j++) {
+                if (pal[j].L < own.L + 0.05) continue;
+                const d = labDist(q, pal[j]);
+                if (d < best) { best = d; bi = j; }
             }
+            if (bi < 0) continue;
+            up[p] = bi; lift[p] = (Ls[p] - own.L) / (pal[bi].L - own.L);
         }
+        // only whole lit areas take the tone: specks of glow are noise
+        const lit = new Uint8Array(n);
+        for (let p = 0; p < n; p++) lit[p] = up[p] >= 0 && lift[p] > 0.2 ? 1 : 0;
+        mergeSmall(lit, 2, MIN_CEL);
+        for (let p = 0; p < n; p++) if (!lit[p]) up[p] = -1;
+
+        // Detail lines: difference of Gaussians on lightness (the line half
+        // of XDoG, Winnemöller 2011) — negative on the dark side of an
+        // edge, so strokes come out whole and on one side, like inking
+        const g1 = Float32Array.from(L), g2 = Float32Array.from(L);
+        for (let k = 0; k < 3; k++) { boxBlur(g1, W, H, px(1)); boxBlur(g2, W, H, px(2)); }
+        const dog = new Float32Array(n);
+        for (let p = 0; p < n; p++) dog[p] = g1[p] - g2[p];
 
         // Salient shapes for the afterimages: top 5% of saliency, outside the darkest cel
         const sal = saliencyMap(data, W, H);
@@ -247,7 +294,7 @@
         const salient = new Uint8Array(n);
         for (let p = 0; p < n; p++) salient[p] = comp[p] >= 0 && keep.includes(comp[p]) ? 1 : 0;
 
-        const a = { label, below, shade, edge, salient, keys, pal, crop, srcW: img.naturalWidth, srcH: img.naturalHeight };
+        const a = { label, below, shade, up, lift, dog, salient, keys, pal, crop, srcW: img.naturalWidth, srcH: img.naturalHeight };
         cache = { img, key, a };
         return a;
     }
@@ -292,7 +339,7 @@
         const darker = j => byL[Math.max(0, byL.indexOf(j) - 1)];
         const vivid = a.keys.map((k, j) => j).filter(j => j !== darkest && j !== lightest)
             .sort((i, j) => toLch(ink[j]).C - toLch(ink[i]).C);
-        const { label, below, shade, edge, salient, pal } = a;
+        const { label, below, shade, up, lift, dog, salient, pal } = a;
         const n = W * H;
 
         // Which ink each pixel prints in, built up in the order the cel is
@@ -308,15 +355,27 @@
             for (let x = G / 2 + (Math.round(y / G - 0.5) % 2) * G / 2; x < W; x += G) {
                 const p = Math.floor(y) * W + Math.floor(x);
                 const t = (below[p] - 0.015) / (SHADE - 0.015);
-                if (t <= 0 || t >= 1 || shade[p] || label[p] === darkest) continue;
-                dot(out, x, y, (0.4 + t * 6 * 0.42) * S, darkest);
+                if (t > 0 && t < 1 && !shade[p] && label[p] !== darkest) {
+                    dot(out, x, y, (0.4 + t * 6 * 0.42) * S, darkest);
+                }
+            }
+        }
+
+        // Light tone: a finer halftone screen; the dot's share of its cell
+        // is the lift, capped so the cel underneath still reads as itself
+        const GL = 4 * S;
+        for (let y = GL / 2; y < H; y += GL) {
+            for (let x = GL / 2 + (Math.round(y / GL - 0.5) % 2) * GL / 2; x < W; x += GL) {
+                const p = Math.floor(y) * W + Math.floor(x);
+                if (up[p] < 0 || shade[p]) continue;
+                dot(out, x, y, GL * Math.sqrt(Math.min(0.5, lift[p]) / Math.PI), up[p]);
             }
         }
 
         // Line (K): every cel boundary, plus strong edges inside cels where
         // they form a stroke (≥ MIN_STROKE px); 2 px on silhouettes, where
         // the two cels are far apart in lightness
-        const T = 0.42, MIN_STROKE = 30 * S, LW = px(1);
+        const T = DOG_T, MIN_STROKE = 30 * S, LW = px(1);
         const line = new Uint8Array(n), detail = new Uint8Array(n);
         const pen = (x, y, w) => {   // a square nib of w px, down and right of (x, y)
             for (let j = 0; j < w && y + j < H; j++) for (let i = 0; i < w && x + i < W; i++) line[(y + j) * W + x + i] = 1;
@@ -326,7 +385,7 @@
                 const p = y * W + x;
                 const q = label[p] !== label[p + 1] ? p + 1 : label[p] !== label[p + W] ? p + W : -1;
                 if (q >= 0) pen(x, y, Math.abs(pal[label[p]].L - pal[label[q]].L) > 0.25 ? 2 * LW : LW);
-                else if (edge[p] > T) detail[p] = 1;
+                else if (dog[p] < -T) detail[p] = 1;
             }
         }
         keepStrokes(detail, MIN_STROKE);

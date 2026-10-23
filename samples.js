@@ -1,4 +1,5 @@
-// Sample objects under Fig. 1: six Unsplash photographs (via Lorem Picsum)
+// Sample objects under Fig. 1: six Unsplash photographs (via Lorem Picsum),
+// kept at 1920 × 1440 in samples/ so the proof has detail to draw from,
 // that can be deposited with one click, exactly as if dropped.
 (() => {
     const row = document.getElementById('samples');
