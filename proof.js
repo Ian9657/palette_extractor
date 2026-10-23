@@ -9,8 +9,10 @@
 //   K plate     ink lines on cel boundaries (heavier on silhouettes) and on
 //               strong edges inside cels that form a stroke
 //
-// Every pixel is on exactly one plate, so seated they are the cel and apart
-// each tag reads ROLE · HEX · coverage. Lightest plate at the bottom, K on top.
+// Every pixel is on exactly one plate, so seated they are the cel. Stacked
+// by area: the plate covering most at the bottom, the sparsest near the top,
+// K last — so looking down the stack every plate shows. Tags are short
+// (P1… K) so eight inks still read.
 //
 // The cel itself: the 16:9 cut follows the photo's saliency; patches under
 // MIN_CEL merge into the cel around them; one hard shadow step in the next
@@ -18,9 +20,17 @@
 // fringes on the brightest cel, tone glow around the most vivid one, and
 // afterimages trailing the main subject into the open side.
 //
+// Resolution follows the screen: the cut is drawn at the frame's device
+// pixels (960 to 1920 wide), and every size below is set at 960 and scaled
+// by S, so a cel looks the same at any resolution, only sharper.
+//
 // Static: nothing animates. Taking it apart (EJECT ⇄ INSTALL, or drag) moves in steps.
 (() => {
-    const W = 960, H = 540;
+    const stage0 = document.getElementById('proof-stage');
+    const W = Math.round(Math.min(1920, Math.max(960, stage0.clientWidth * (window.devicePixelRatio || 1))) / 16) * 16;
+    const H = W / 16 * 9;
+    const S = W / 960;
+    const px = v => Math.max(1, Math.round(v * S));
     const STEPS = 6;
     const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const $ = id => document.getElementById(id);
@@ -168,8 +178,10 @@
         }
         // detail L for tone/lines; heavily smoothed copies decide the cels
         const Ls = Float32Array.from(L), As = Float32Array.from(A), Bs = Float32Array.from(B);
-        for (const ch of [L, A, B]) { boxBlur(ch, W, H, 1); boxBlur(ch, W, H, 1); }
-        for (const ch of [Ls, As, Bs]) { boxBlur(ch, W, H, 4); boxBlur(ch, W, H, 4); }
+        // two radius-1 passes at 960; the spread grows with S², so more passes when sharper
+        const passes = Math.round(2 * S * S);
+        for (const ch of [L, A, B]) for (let k = 0; k < passes; k++) boxBlur(ch, W, H, 1);
+        for (const ch of [Ls, As, Bs]) { boxBlur(ch, W, H, px(4)); boxBlur(ch, W, H, px(4)); }
 
         const keys = Object.keys(theme);
         const pal = keys.map(k => { const ok = rgbToOklab(...Object.values(hexToRgb(theme[k]))); return ok; });
@@ -201,7 +213,7 @@
                 const i = y * W + xx;
                 const gx = L[i - W + 1] + 2 * L[i + 1] + L[i + W + 1] - L[i - W - 1] - 2 * L[i - 1] - L[i + W - 1];
                 const gy = L[i + W - 1] + 2 * L[i + W] + L[i + W + 1] - L[i - W - 1] - 2 * L[i - W] - L[i - W + 1];
-                edge[i] = Math.sqrt(gx * gx + gy * gy);
+                edge[i] = Math.sqrt(gx * gx + gy * gy) * S;   // per 960-frame pixel
             }
         }
 
@@ -213,7 +225,7 @@
         // close the scattered salient pixels into shapes, then keep the two biggest
         const blob = new Float32Array(n);
         for (let p = 0; p < n; p++) blob[p] = sal[p] >= cut && label[p] !== darkest ? 1 : 0;
-        boxBlur(blob, W, H, 6); boxBlur(blob, W, H, 6);
+        boxBlur(blob, W, H, px(6)); boxBlur(blob, W, H, px(6));
         const comp = new Int32Array(n).fill(-1), sizes = [];
         const stack = [];
         for (let p0 = 0; p0 < n; p0++) {
@@ -272,10 +284,9 @@
         setPlateCount(keys.length + 1);
         plates.forEach(P => P.ctx.clearRect(0, 0, W, H));
         stage.classList.toggle('empty', !img);
-        if (!img) { renderEmpty(keys); return; }
+        if (!img) { renderEmpty(); return; }
         const a = analyse(img, palette.theme);           // cels come from the extracted colours…
         const ink = a.keys.map(k => rgbOf(theme[k]));    // …printed in the shown theme (or its opposite)
-        const inkHex = a.keys.map(k => theme[k]);
         const byL = a.keys.map((k, j) => j).sort((i, j) => toLch(ink[i]).L - toLch(ink[j]).L);
         const darkest = byL[0], lightest = byL[byL.length - 1];
         const darker = j => byL[Math.max(0, byL.indexOf(j) - 1)];
@@ -292,33 +303,34 @@
         for (let p = 0; p < n; p++) if (shade[p] && label[p] !== darkest) out[p] = darker(label[p]);
 
         // Tone: dots where the pixel is a little below its cel but not yet in shadow
-        const G = 6;
+        const G = 6 * S;
         for (let y = G / 2; y < H; y += G) {
-            for (let x = G / 2 + ((y / G) % 2) * G / 2; x < W; x += G) {
-                const p = (y | 0) * W + (x | 0);
+            for (let x = G / 2 + (Math.round(y / G - 0.5) % 2) * G / 2; x < W; x += G) {
+                const p = Math.floor(y) * W + Math.floor(x);
                 const t = (below[p] - 0.015) / (SHADE - 0.015);
                 if (t <= 0 || t >= 1 || shade[p] || label[p] === darkest) continue;
-                dot(out, x, y, 0.4 + t * G * 0.42, darkest);
+                dot(out, x, y, (0.4 + t * 6 * 0.42) * S, darkest);
             }
         }
 
         // Line (K): every cel boundary, plus strong edges inside cels where
         // they form a stroke (≥ MIN_STROKE px); 2 px on silhouettes, where
         // the two cels are far apart in lightness
-        const T = 0.42, MIN_STROKE = 30;
+        const T = 0.42, MIN_STROKE = 30 * S, LW = px(1);
         const line = new Uint8Array(n), detail = new Uint8Array(n);
+        const pen = (x, y, w) => {   // a square nib of w px, down and right of (x, y)
+            for (let j = 0; j < w && y + j < H; j++) for (let i = 0; i < w && x + i < W; i++) line[(y + j) * W + x + i] = 1;
+        };
         for (let y = 1; y < H - 1; y++) {
             for (let x = 1; x < W - 1; x++) {
                 const p = y * W + x;
                 const q = label[p] !== label[p + 1] ? p + 1 : label[p] !== label[p + W] ? p + W : -1;
-                if (q >= 0) {
-                    line[p] = 1;
-                    if (Math.abs(pal[label[p]].L - pal[label[q]].L) > 0.25) { line[p + 1] = 1; line[p + W] = 1; }
-                } else if (edge[p] > T) detail[p] = 1;
+                if (q >= 0) pen(x, y, Math.abs(pal[label[p]].L - pal[label[q]].L) > 0.25 ? 2 * LW : LW);
+                else if (edge[p] > T) detail[p] = 1;
             }
         }
         keepStrokes(detail, MIN_STROKE);
-        for (let p = 0; p < n; p++) if (detail[p]) line[p] = 1;
+        for (let p = 0; p < n; p++) if (detail[p]) pen(p % W, Math.floor(p / W), LW);
 
         // Composite, printed over the line: echoes of the one main subject,
         // trailing towards the side of the frame with more room, far ones first
@@ -327,10 +339,10 @@
         let sx = 0, sCount = 0, minX = W, maxX = 0;
         for (let p = 0; p < n; p++) if (salient[p]) { const x = p % W; sx += x; sCount++; if (x < minX) minX = x; if (x > maxX) maxX = x; }
         const dir = sCount && sx / sCount > W / 2 ? 1 : -1;            // subject on the right → echoes trail left
-        const GAP = Math.max(14, Math.round((maxX - minX) * 0.12));
+        const GAP = Math.max(px(14), Math.round((maxX - minX) * 0.12));
         for (let k = ECHOES; k >= 1 && sCount; k--) {
             const j = echoInks[(k - 1) % echoInks.length];
-            const dx = k * GAP * dir, dy = -k * 2;
+            const dx = k * GAP * dir, dy = -k * px(2);
             for (let y = 0; y < H; y++) {
                 const sy = y - dy;
                 if (sy < 0 || sy >= H) continue;
@@ -344,13 +356,13 @@
         }
         // Chromatic fringe on the brightest cel's edges
         if (vivid.length) {
-            const left = vivid[0], right = vivid[1] ?? vivid[0];
+            const left = vivid[0], right = vivid[1] ?? vivid[0], F = px(3);
             for (let y = 0; y < H; y++) {
-                for (let x = 3; x < W - 3; x++) {
+                for (let x = F; x < W - F; x++) {
                     const p = y * W + x;
                     if (label[p] === lightest) continue;
-                    if (label[p + 3] === lightest) { out[p] = left; line[p] = 0; }
-                    else if (label[p - 3] === lightest) { out[p] = right; line[p] = 0; }
+                    if (label[p + F] === lightest) { out[p] = left; line[p] = 0; }
+                    else if (label[p - F] === lightest) { out[p] = right; line[p] = 0; }
                 }
             }
         }
@@ -358,33 +370,33 @@
         if (vivid.length) {
             const v = vivid[0], mask = new Float32Array(n);
             for (let p = 0; p < n; p++) mask[p] = label[p] === v ? 1 : 0;
-            boxBlur(mask, W, H, 10); boxBlur(mask, W, H, 10);
+            boxBlur(mask, W, H, px(10)); boxBlur(mask, W, H, px(10));
             const before = Uint8Array.from(out);
-            for (let y = 4; y < H; y += 8) {
-                for (let x = 4 + ((y / 8) % 2) * 4; x < W; x += 8) {
-                    const p = y * W + x;
+            const D = 8 * S;
+            for (let y = D / 2; y < H; y += D) {
+                for (let x = D / 2 + (Math.round(y / D - 0.5) % 2) * D / 2; x < W; x += D) {
+                    const p = Math.floor(y) * W + Math.floor(x);
                     if (label[p] === v) continue;
                     const m = mask[p];
                     if (m < 0.06 || m > 0.9) continue;
-                    dot(out, x, y, 0.6 + m * 2.6, v);
+                    dot(out, x, y, (0.6 + m * 2.6) * S, v);
                 }
             }
             for (let p = 0; p < n; p++) if (out[p] !== before[p]) line[p] = 0;
         }
 
-        // Separate: lightest ink at the bottom of the stack, K on top
-        const names = ROLE_NAMES[a.keys.length];
+        // Separate: the plate covering most at the bottom, K on top
         const count = new Int32Array(a.keys.length);
         let lineCount = 0;
         for (let p = 0; p < n; p++) line[p] ? lineCount++ : count[out[p]]++;
         const pct = c => `${(Math.round(c / n * 1000) / 10).toFixed(1)}%`;
-        byL.slice().reverse().forEach((j, i) => {
+        a.keys.map((k, j) => j).sort((i, j) => count[j] - count[i]).forEach((j, i) => {
             paintPixels(plates[i].ctx, p => (out[p] === j && !line[p] ? ink[j] : null));
-            plates[i].text = `${names[j]} · ${inkHex[j]} · ${pct(count[j])}`;
+            plates[i].text = `P${i + 1}`;
         });
         const K = plates[plates.length - 1];
         paintPixels(K.ctx, p => (line[p] ? ink[darkest] : null));
-        K.text = `K · LINE · ${inkHex[darkest]} · ${pct(lineCount)}`;
+        K.text = 'K';
         if (explode > 0) plates.forEach(P => { P.tag.textContent = P.text; });
 
         $('proof-source').textContent = `${a.srcW} × ${a.srcH}`;
@@ -395,42 +407,38 @@
     // field guide, the sheet a cut is drawn on — in interface ink, since
     // there is no data to print yet (DESIGN.md §6.1)
     const FIELDS = [12, 10, 8, 6, 4];   // field sizes, outermost = the full frame
-    function renderEmpty(keys) {
+    function renderEmpty() {
         const f = plates[0].ctx;
         const css = getComputedStyle(document.documentElement);
         const ink = css.getPropertyValue('--text-color').trim() || '#F5F0E8';
         const signal = css.getPropertyValue('--signal').trim() || '#00E5FF';
         f.save();
         f.strokeStyle = ink;
-        f.lineWidth = 1;
+        f.lineWidth = S;
         f.globalAlpha = 0.22;
         f.beginPath(); f.moveTo(0, 0); f.lineTo(W, H); f.moveTo(W, 0); f.lineTo(0, H); f.stroke();
-        f.font = '600 11px "IBM Plex Mono", monospace';
+        f.font = `600 ${11 * S}px "IBM Plex Mono", monospace`;
         f.fillStyle = ink;
         FIELDS.forEach((n, i) => {
             const k = n / FIELDS[0], w = W * k, h = H * k, x = (W - w) / 2, y = (H - h) / 2;
             f.globalAlpha = i === 0 ? 0 : (i === 1 ? 0.55 : 0.28);   // 12F is the frame itself
-            f.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+            f.strokeRect(x + S / 2, y + S / 2, w - S, h - S);
             f.globalAlpha = 0.55;
-            f.fillText(`${n}F`, x + 8, y + 18);
+            f.fillText(`${n}F`, x + 8 * S, y + 18 * S);
         });
         // Centre cross, in signal: the one mark a cut is registered on
         f.globalAlpha = 1;
         f.strokeStyle = signal;
-        f.lineWidth = 2;
-        f.beginPath(); f.moveTo(W / 2 - 18, H / 2); f.lineTo(W / 2 + 18, H / 2);
-        f.moveTo(W / 2, H / 2 - 18); f.lineTo(W / 2, H / 2 + 18); f.stroke();
-        f.beginPath(); f.arc(W / 2, H / 2, 8, 0, Math.PI * 2); f.stroke();
+        f.lineWidth = 2 * S;
+        f.beginPath(); f.moveTo(W / 2 - 18 * S, H / 2); f.lineTo(W / 2 + 18 * S, H / 2);
+        f.moveTo(W / 2, H / 2 - 18 * S); f.lineTo(W / 2, H / 2 + 18 * S); f.stroke();
+        f.beginPath(); f.arc(W / 2, H / 2, 8 * S, 0, Math.PI * 2); f.stroke();
         f.restore();
         $('proof-empty-tag').textContent = palette.isDefault ? 'NO CUT — AWAITING DEPOSIT' : 'NO CUT — SOURCE NOT KEPT';
         $('proof-source').textContent = '—';
         $('proof-line').textContent = '—';
-        // The plates are still named: the inks are known, only the cut is missing
-        const names = ROLE_NAMES[keys.length], hex = keys.map(k => palette.theme[k]);
-        const order = keys.map((k, j) => j).sort((i, j) => toLch(rgbOf(hex[j])).L - toLch(rgbOf(hex[i])).L);
-        const darkest = order[order.length - 1];
         plates.forEach((P, i) => {
-            P.text = i === plates.length - 1 ? `K · LINE · ${hex[darkest]} · —` : `${names[order[i]]} · ${hex[order[i]]} · —`;
+            P.text = i === plates.length - 1 ? 'K' : `P${i + 1}`;
             if (explode > 0) P.tag.textContent = P.text;
         });
     }
