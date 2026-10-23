@@ -122,6 +122,7 @@ Section names must be consistent: a label used in the margin is not repeated as 
 
 **Separation**
 - One plate per extracted ink (its cels and everything else printed in it) plus a K plate for the line work. Every pixel is on exactly one plate. Stacked by area, the plate covering most at the bottom, K on top. Tags are short (P1… K) so 3–8 inks all read.
+- `◐ INVERT PROOF ⇄ REVERT PROOF` (above the frame) shows the palette's derived opposite-lightness mode in the proof; it names its action, never a page theme (there is no day/night).
 - Static. One EJECT ⇄ INSTALL button (or drag) separates the plates in steps; the frame is also a keyboard slider (Enter/Space = EJECT ⇄ INSTALL, ←/→ one step, Home seated, End fully apart; `aria-valuenow` = step); the stack always stays inside the frame. Tags are OSD plates (Chakra Petch on `--alert-ink`, 1 px `--signal` border).
 
 **No cut yet: the test card** (owner's call, 2026-10-23)

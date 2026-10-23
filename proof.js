@@ -316,6 +316,13 @@
         prevApplyMockup();
         if (!palette) return;
         $('mockup-badge').textContent = palette.coverage == null ? '—' : `${palette.coverage}%`;
+        // main.js labels the button with the mode shown (◐ DARK / LIGHT), which
+        // reads like a page theme switch; here it names its action, like EJECT ⇄ INSTALL
+        const inv = $('btn-invert');
+        if (inv) {
+            inv.textContent = proofInverted ? '◐ REVERT PROOF' : '◐ INVERT PROOF';
+            inv.setAttribute('aria-pressed', proofInverted);
+        }
         render(proofInverted ? invertTheme(palette.theme) : palette.theme);
     };
 
