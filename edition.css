@@ -53,7 +53,7 @@
     color-scheme: dark;
 }
 
-.object { --plate-depth: 14; --plate-reach: 24px; }
+.object { --plate-depth: 14; --plate-reach: 32px; }   /* reach ≥ depth × PULL (register.js) */
 
 body {
     background-color: var(--desk);

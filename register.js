@@ -102,6 +102,7 @@ function renderPlates(theme) {
 // stack fans out slightly as it moves. Rates are spread by relative position
 // (front = FRONT_RATE, back = BACK_RATE), so 3 or 8 plates feel the same.
 const FRONT_RATE = 0.585, BACK_RATE = 0.39;
+const PULL = 2.25;   // was 1.5; owner asked for 1.5× the old pull
 let aimX = 0, aimY = 0, tiltRaf = null;
 let plateTilt = [];   // per plate: [x, y]
 
@@ -112,10 +113,13 @@ function applyTilt() {
     const plates = [...platesEl.children];
     const step = DEPTH / plates.length;
     while (plateTilt.length < plates.length) plateTilt.push([aimX, aimY]);
+    // At rest the stack is DEPTH deep; leaning away from the pointer it can
+    // open to PULL × DEPTH, and toward it close to half
+    const lean = v => step * (1 - v * (v < 0 ? PULL - 1 : 0.5));
     plates.forEach((plate, i) => {
         const [x, y] = plateTilt[i];
-        plate.style.setProperty('--dx', `${(step * (1 - x * 0.5)).toFixed(2)}px`);
-        plate.style.setProperty('--dy', `${(step * (1 - y * 0.5)).toFixed(2)}px`);
+        plate.style.setProperty('--dx', `${lean(x).toFixed(2)}px`);
+        plate.style.setProperty('--dy', `${lean(y).toFixed(2)}px`);
     });
 }
 function tiltLoop() {
