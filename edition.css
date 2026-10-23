@@ -526,7 +526,12 @@ body::after {
     .entry-margin { flex-direction: column; align-items: flex-start; }
     /* style.css puts the edit pen in the row's flow but leaves ⇄ absolute, so they overlap: seat ⇄ beside the pen */
     .swatch-swap { position: relative; top: 0; right: 0; flex-shrink: 0; width: 24px; height: 24px; margin-left: var(--s1); }
+    /* style.css gives the matrix a 360px floor, wider than a phone's column: let the fixed layout share the width instead */
+    .a11y-matrix table { min-width: 0; }
+    .a11y-matrix th, .a11y-matrix td { padding-left: 0; padding-right: 0; }
 }
+/* Below 360px the role names no longer fit at the 10px floor: keep the floor and scroll sideways */
+@media (max-width: 359px) { .a11y-matrix table { min-width: 340px; } }
 /* main.js colours the empty-list note with --secondary-color (#333 by default), unreadable on the dark sheet */
 .history-container .mono-text { color: var(--text-color) !important; }
 
