@@ -100,7 +100,7 @@ Adding a new effect requires: which screen-side object it belongs to, its durati
 2. **01 Intake** — Fig. 1 (4:3 drop zone; controls COLORS/REROLL directly under it) + opener: kicker, primary-colour rule, headline = primary colour's name, factual standfirst, accession record (folded until an object exists).
 3. **02 Specimen** — COLOR BAR; actions: STAR, SAVE IMG, EXPORT ▾ (link, CSS, Tailwind, Figma). OKLCH line under each swatch.
 4. **03 Relations** — contrast matrix (WCAG/APCA) with type-specimen hover; CVD strips in two columns.
-5. **04 Proof** — the deposited photo re-rendered as one anime cel in the palette's inks (`proof.js`), in five production layers (colour, shadow, tone, line, composite). Static; EJECT / INSTALL / drag separate the layers in steps. Archive and favourites follow, folded.
+5. **04 Proof** — the deposited photo re-rendered as one anime cel in the palette's inks (`proof.js`), in five production layers (colour, shadow, tone, line, composite). Static; one EJECT ⇄ INSTALL button (or drag) separates the layers in steps, and the separated stack always stays inside the frame. With no source image the frame is a blank field guide (12F–4F, centre cross) in interface ink with one state tag, never the palette as stripes (that is COLOR BAR's job). Archive and favourites follow, folded.
 6. **Colophon** — fonts, method, link to classic.
 
 Section names must be consistent: a label used in the margin is not repeated as the panel's h2.

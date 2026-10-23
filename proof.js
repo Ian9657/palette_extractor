@@ -10,7 +10,7 @@
 //                most vivid one, and Sandevistan afterimages trailing the
 //                most salient shapes — one palette colour per echo
 //
-// Static: nothing animates. Taking it apart (EJECT / INSTALL / drag) moves in steps.
+// Static: nothing animates. Taking it apart (EJECT ⇄ INSTALL, or drag) moves in steps.
 (() => {
     const W = 960, H = 540;
     const STEPS = 6;
@@ -160,7 +160,8 @@
     function render(theme) {
         const img = currentImgEl || keptThumb();
         LAYERS.forEach(Lr => Lr.ctx.clearRect(0, 0, W, H));
-        if (!img) { renderEmpty(theme); return; }
+        stage.classList.toggle('empty', !img);
+        if (!img) { renderEmpty(); return; }
         const a = analyse(img, palette.theme);           // cels come from the extracted colours…
         const ink = a.keys.map(k => rgbOf(theme[k]));    // …painted in the shown theme (or its opposite)
         const inkHex = a.keys.map(k => theme[k]);
@@ -268,10 +269,38 @@
         });
     }
 
-    // No image (default palette, or retrieved without a thumbnail): the palette as cels
-    function renderEmpty(theme) {
-        const f = ctxOf('fill'), hexes = Object.values(theme);
-        hexes.forEach((hex, i) => { f.fillStyle = hex; f.fillRect(Math.floor(i * W / hexes.length), 0, Math.ceil(W / hexes.length), H); });
+    // No image (default palette, or retrieved without a thumbnail): a blank
+    // field guide, the sheet a cut is drawn on — in interface ink, since
+    // there is no data to print yet (DESIGN.md §6.1)
+    const FIELDS = [12, 10, 8, 6, 4];   // field sizes, outermost = the full frame
+    function renderEmpty() {
+        const f = ctxOf('fill');
+        const css = getComputedStyle(document.documentElement);
+        const ink = css.getPropertyValue('--text-color').trim() || '#F5F0E8';
+        const signal = css.getPropertyValue('--signal').trim() || '#00E5FF';
+        f.save();
+        f.strokeStyle = ink;
+        f.lineWidth = 1;
+        f.globalAlpha = 0.22;
+        f.beginPath(); f.moveTo(0, 0); f.lineTo(W, H); f.moveTo(W, 0); f.lineTo(0, H); f.stroke();
+        f.font = '600 11px "IBM Plex Mono", monospace';
+        f.fillStyle = ink;
+        FIELDS.forEach((n, i) => {
+            const k = n / FIELDS[0], w = W * k, h = H * k, x = (W - w) / 2, y = (H - h) / 2;
+            f.globalAlpha = i === 0 ? 0 : (i === 1 ? 0.55 : 0.28);   // 12F is the frame itself
+            f.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+            f.globalAlpha = 0.55;
+            f.fillText(`${n}F`, x + 8, y + 18);
+        });
+        // Centre cross, in signal: the one mark a cut is registered on
+        f.globalAlpha = 1;
+        f.strokeStyle = signal;
+        f.lineWidth = 2;
+        f.beginPath(); f.moveTo(W / 2 - 18, H / 2); f.lineTo(W / 2 + 18, H / 2);
+        f.moveTo(W / 2, H / 2 - 18); f.lineTo(W / 2, H / 2 + 18); f.stroke();
+        f.beginPath(); f.arc(W / 2, H / 2, 8, 0, Math.PI * 2); f.stroke();
+        f.restore();
+        $('proof-empty-tag').textContent = palette.isDefault ? 'NO CUT — AWAITING DEPOSIT' : 'NO CUT — SOURCE NOT KEPT';
         $('proof-source').textContent = '—';
         $('proof-line').textContent = '—';
         LAYERS.forEach(Lr => { Lr.text = `${Lr.name} · NO SOURCE`; if (explode > 0) Lr.tag.textContent = Lr.text; });
@@ -306,6 +335,7 @@
         FX.split(rig, 120);
         if (opening) LAYERS.forEach((Lr, i) => setTimeout(() => FX.decode(Lr.tag, Lr.text, 260), i * 70));
         if (n === 0) { stage.classList.remove('locked'); void stage.offsetWidth; stage.classList.add('locked'); }
+        syncEject();
     }
     function runTo(target) {
         const dir = Math.sign(target - explode);
@@ -314,8 +344,22 @@
         const step = () => { setExplode(explode + dir); if (explode !== target) setTimeout(step, 90); };
         step();
     }
-    $('proof-eject').addEventListener('click', () => runTo(STEPS));
-    $('proof-install').addEventListener('click', () => runTo(0));
+    // Depth scales with the frame, so the stack stays inside it at any width
+    // (tuned at 819 px wide: 56 px between layers, 1800 px perspective)
+    new ResizeObserver(() => {
+        const w = stage.clientWidth;
+        stage.style.setProperty('--z-step', (w * 0.068).toFixed(1) + 'px');
+        stage.style.setProperty('--persp', (w * 2.2).toFixed(0) + 'px');
+    }).observe(stage);
+
+    // One control: EJECT takes it apart, the same button seats it again
+    const ejectBtn = $('proof-eject');
+    const syncEject = () => {
+        const apart = explode > 0;
+        ejectBtn.textContent = apart ? 'INSTALL' : 'EJECT LAYERS';
+        ejectBtn.setAttribute('aria-pressed', apart);
+    };
+    ejectBtn.addEventListener('click', () => runTo(explode > 0 ? 0 : STEPS));
 
     let drag = null;
     stage.addEventListener('pointerdown', e => {
