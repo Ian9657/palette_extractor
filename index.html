@@ -110,6 +110,18 @@
                             <input type="range" id="k-slider" min="3" max="8" value="5">
                             <button id="btn-reroll" class="btn-export" title="Re-run clustering with the next seed">↻ REROLL</button>
                         </div>
+                        <!-- Sample objects: Unsplash photographs (via Lorem Picsum, id in data-id). samples.js -->
+                        <div class="samples" id="samples">
+                            <span class="samples-label mono-text">SAMPLES</span>
+                            <div class="samples-row">
+                                <button type="button" class="sample" data-src="regression/neon-city.jpg" data-id="274" data-name="NEON CITY"></button>
+                                <button type="button" class="sample" data-src="regression/concert-dark-blue.jpg" data-id="452" data-name="CONCERT"></button>
+                                <button type="button" class="sample" data-src="regression/yellow-garage.jpg" data-id="133" data-name="GARAGE"></button>
+                                <button type="button" class="sample" data-src="regression/black-dog-wood.jpg" data-id="237" data-name="DOG"></button>
+                                <button type="button" class="sample" data-src="regression/pastel-blossom.jpg" data-id="82" data-name="BLOSSOM"></button>
+                                <button type="button" class="sample" data-src="regression/jellyfish-tiny-accent.jpg" data-id="1069" data-name="JELLYFISH"></button>
+                            </div>
+                        </div>
                     </figure>
                     <div class="feature-text">
                         <span class="kicker mono-text" id="feature-kicker">ACCESSION — AWAITING DEPOSIT</span>
@@ -236,7 +248,7 @@
 
         <footer class="colophon mono-text">
             <span class="colophon-label">COLOPHON</span>
-            <span class="colophon-text">Set in Chakra Petch, Space Grotesk and IBM Plex Mono. Colours clustered in OKLab, named by Name that Color.</span>
+            <span class="colophon-text">Set in Chakra Petch, Space Grotesk and IBM Plex Mono. Colours clustered in OKLab, named by Name that Color. Sample photographs from Unsplash.</span>
             <span class="colophon-site"><a href="classic.html">CLASSIC EDITION · BUILT APRIL 2026 →</a></span>
         </footer>
     </div>
@@ -279,5 +291,6 @@
     <script src="cover.js"></script>
     <script src="proof.js"></script>
     <script src="pagefx.js"></script>
+    <script src="samples.js"></script>
 </body>
 </html>

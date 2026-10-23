@@ -19,7 +19,7 @@ Identity in one line: **a strictly typeset register, viewed through a night-city
 | Edition | Files | Status |
 | --- | --- | --- |
 | **Classic** (built April 2026) | `classic.html`, `style.css`, `color-classic.js` | **Frozen.** Do not change its look or algorithm. Bug fixes in shared `main.js` are allowed only if they don't alter classic's appearance. |
-| **New** (homepage) | `index.html`, `edition.css/js`, `register.css/js`, `previews.js`, `cover.js`, `follow.js`, `fx.js`, `pagefx.js`, `color.js` | The one living design. |
+| **New** (homepage) | `index.html`, `edition.css/js`, `register.css/js`, `previews.js`, `cover.js`, `follow.js`, `fx.js`, `pagefx.js`, `samples.js`, `color.js` | The one living design. |
 
 - The new edition has **one appearance**: the dark night-city register below. **No day/night switch, no second theme.** Remove theme branches rather than leaving dead ones (`[data-theme="day"]` rules, `editionCopy.day`, `setEdition`, the pre-paint theme script).
 - `prototypes/` is history. Don't edit; don't link from the live page.
@@ -97,7 +97,7 @@ Adding a new effect requires: which screen-side object it belongs to, its durati
 ## 8. Page anatomy (new edition)
 
 1. **Masthead** — mono line (VOL. 01 — edition name · ISSUE nnn · date), nameplate PALETTE with one off-register `--signal` plate, EXTRACTOR + "A REGISTER OF COLOUR", the page's **only** heavy double rule. The edition name appears once.
-2. **01 Intake** — Fig. 1 (4:3 drop zone; controls COLORS/REROLL directly under it) + opener: kicker, primary-colour rule, headline = primary colour's name, factual standfirst, accession record (folded until an object exists).
+2. **01 Intake** — Fig. 1 (4:3 drop zone; controls COLORS/REROLL directly under it; then SAMPLES: six Unsplash photographs from `regression/`, one click deposits one, `samples.js`) + opener: kicker, primary-colour rule, headline = primary colour's name, factual standfirst, accession record (folded until an object exists).
 3. **02 Specimen** — COLOR BAR; actions: STAR, SAVE IMG, EXPORT ▾ (link, CSS, Tailwind, Figma). OKLCH line under each swatch.
 4. **03 Relations** — contrast matrix (WCAG/APCA) with type-specimen hover; CVD strips in two columns.
 5. **04 Proof** — the deposited photo re-rendered as one anime cel in the palette's inks (`proof.js`), in five production layers (colour, shadow, tone, line, composite). The 16:9 cut slides halfway from the centre toward the photo's saliency (no zoom); patches under 0.04 % of the frame merge into their cel; lines are cel boundaries plus edge strokes ≥ 30 px; Sandevistan echoes only the one main subject, toward the open side. Static; one EJECT ⇄ INSTALL button (or drag) separates the layers in steps, and the separated stack always stays inside the frame. With no source image the frame is a blank field guide (12F–4F, centre cross) in interface ink with one state tag, never the palette as stripes (that is COLOR BAR's job). Archive and favourites follow, folded.
