@@ -14,9 +14,12 @@ The Signal Edition is laid out like a magazine feature about the image you depos
 
 - **The lens.** In Fig. 1 the original photo is shown; a small frame drifts across it (or follows your mouse) and shows the same spot in its catalogued colours, with the role it belongs to.
 - **Press marks.** Registration marks at the corners, a specimen strip of the current palette in the margin, and the OKLCH value of every swatch.
+- **Print proof.** Fig. 4 redraws the photo as one anime cel in the palette's inks and separates it like a print job — one plate per ink plus a K plate for the lines. EJECT pulls the stack apart. With no photo yet it shows a test card: SMPTE colour bars in the palette's inks, NO SIGNAL DETECTED. The pixel work runs in a Web Worker, so the page never freezes.
 - **Cover export.** SAVE IMG prints the current object as a 4:5 magazine cover.
 - **Archive previews.** Hover an archived palette to see its source photo; hover a matrix cell for a type specimen of that pair. Thumbnails are kept only in your browser (localStorage `palette.thumbs`) and can be cleared from the page.
 - **Classic edition.** The original page, built in April 2026, is kept at [palette.etarc.net/classic](https://palette.etarc.net/classic). Both editions share the same archive and favourites.
+
+![Print proof, plates taken apart](screenshot-proof.jpg)
 
 ![Classic edition](screenshot-classic.png)
 
@@ -64,8 +67,10 @@ node --test test/color.test.js   # unit tests for the colour logic
 | `edition.css` / `edition.js` | Magazine layout, colour tokens, Fig. 1 lens, press marks |
 | `DESIGN.md` | Design rules: tokens, principles, rejected directions, working agreement |
 | `classic.html` / `color-classic.js` | The original page, with its original algorithm frozen |
+| `proof.js` / `proof-worker.js` | Fig. 4 print proof: framing, plates, test card (page); cel, tones, lines, separation (worker) |
 | `previews.js`, `cover.js` | Archive/matrix previews; magazine-cover export |
-| `follow.js`, `fx.js` | Cursor follow and screen-signal effects (no dependencies) |
+| `follow.js`, `fx.js`, `pagefx.js` | Cursor follow, screen-signal effects, page events (title cards, Sandevistan, press run) |
+| `samples.js`, `samples/` | Six sample photographs under Fig. 1 (1920 × 1440) |
 | `style.css` | Base styles and the panels, used by both editions |
 | `prototypes/` | Design steps between the two editions |
 | `gallery.html` / `gallery.js` | Regression gallery |

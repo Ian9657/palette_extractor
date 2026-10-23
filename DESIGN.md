@@ -90,6 +90,8 @@ All effects respect `prefers-reduced-motion: reduce` (off or instant) and are de
 | Title card | each entry, the first time it scrolls in | numeral decodes + `FX.split`; the panel h2 is cut in on an `--alert` card with `--alert-ink` text: wipe 3 steps, hold, wipe off 3 steps, 340 ms, once per page load |
 | Sandevistan | COLOR BAR, when a new palette lands (deposit, COLORS, reroll, archive, hand edit) | the bar steps in from the left 18 px per 40 ms frame, leaving one solid afterimage per frame in the palette's own colours (most vivid first, max 4); then they drop out farthest first. Data colours exact, no filter on the swatches |
 | Fringe | the control that was pressed (`.btn-export`, COLORS label) | `FX.split`, 200 ms. Never on data colours |
+| Tear | 04 Proof: the test card every 2–6 s while on screen; the plate stack once when taken apart and once when seated | 2–4 horizontal bands of every plate shift sideways together for three 70 ms frames, with `FX.split`; never per drag step |
+| Signal locked | 04 Proof, when the last plate seats | OSD plate SIGNAL LOCKED, flickers on, holds, gone in 0.6 s |
 | Plate stack | under the sheet | one plate per extracted colour, exposed right/bottom; each plate eases on its own, front 0.585 → back 0.39; always z-below the sheet; opens to 1.95 × depth leaning away from the pointer. On a new palette the plates re-ink front to back, one per 40 ms frame, in a hard cut, each kicking out 6 px for two frames (`pagefx.js`) |
 
 Adding a new effect requires: which screen-side object it belongs to, its duration, and what record it reveals. Effects without a record are cut.
@@ -97,13 +99,40 @@ Adding a new effect requires: which screen-side object it belongs to, its durati
 ## 8. Page anatomy (new edition)
 
 1. **Masthead** — mono line (VOL. 01 — edition name · ISSUE nnn · date), nameplate PALETTE with one off-register `--signal` plate, EXTRACTOR + "A REGISTER OF COLOUR", the page's **only** heavy double rule. The edition name appears once.
-2. **01 Intake** — Fig. 1 (4:3 drop zone; controls COLORS/REROLL directly under it; then SAMPLES: six Unsplash photographs from `regression/`, one click deposits one, `samples.js`) + opener: kicker, primary-colour rule, headline = primary colour's name, factual standfirst, accession record (folded until an object exists).
+2. **01 Intake** — Fig. 1 (4:3 drop zone; controls COLORS/REROLL directly under it; then SAMPLES: six Unsplash photographs, 1920 × 1440 in `samples/` with small thumbnails from `regression/`; one click deposits one, `samples.js`) + opener: kicker, primary-colour rule, headline = primary colour's name, factual standfirst, accession record (folded until an object exists).
 3. **02 Specimen** — COLOR BAR; actions: STAR, SAVE IMG, EXPORT ▾ (link, CSS, Tailwind, Figma). OKLCH line under each swatch.
 4. **03 Relations** — contrast matrix (WCAG/APCA) with type-specimen hover; CVD strips in two columns.
-5. **04 Proof** — the deposited photo re-rendered as one anime cel in the palette's inks (`proof.js`), separated like a print job: one plate per extracted ink (its cels, the shadows and tone it prints, any glow/echo/fringe in that ink) plus a K plate for the line work; every pixel is on exactly one plate, stacked by area (the plate covering most at the bottom, K on top) so each plate shows when apart; stack tags stay short (P1… K) so 3–8 inks all read. Cels are decided on a guided-filter smooth (edge-preserving, so straight edges stay straight); detail lines come from a difference of Gaussians on lightness (the line half of XDoG); mid-tones with no ink of their own (a dim poster on a dark façade) print as a halftone of the lighter ink they lean towards, dot area = how far of the way there, capped at half the cell. The analysis runs at the source's own detail (≥ 480 wide), never on a blown-up small image: soft-edge rings of in-between inks are cleared there by a mode filter (radius 1.5 source px), then each ink's coverage is enlarged smoothly and the strongest wins, so small images come out as clean curves. Outlines only between inks ≥ 0.08 apart in OKLab; no detail stroke beside an outline; no Sandevistan when the subject spans > 45 % of the frame. Samples are kept at 1920 × 1440 in `samples/`. All of the proof's pixel work runs in `proof-worker.js` (the page only frames the photo and lays the returned plates), so the page never freezes while a cut develops; the last cut stays up until the new one arrives. The cut is drawn near the frame's device pixels (960–1920 wide) with every size scaled from the 960 baseline, so it is sharp on retina screens. The 16:9 cut slides halfway from the centre toward the photo's saliency (no zoom); a small source (longest side < 480 px: an icon, a logo) is an object, not a scene — shown whole at 80 % of the frame, centred on its own ground (mean of its border), with no Sandevistan; a transparent ground stays cut out (nothing printed there, the sheet shows); patches under 0.04 % of the frame merge into their cel; lines are cel boundaries plus edge strokes ≥ 30 px; Sandevistan echoes only the one main subject, toward the open side. Static; one EJECT ⇄ INSTALL button (or drag) separates the plates in steps, and the separated stack always stays inside the frame. With no source image the frame is a test card (owner's call, 2026-10-23, replacing the blank field guide): SMPTE colour bars laid out in the palette's own inks, falling in lightness left to right as SMPTE bars do, each with its hex, plus the reverse castellations, bottom blocks and a PLUGE strip in SMPTE proportions; centred on it an OSD plate in Chakra Petch, NO SIGNAL DETECTED, with the state (AWAITING DEPOSIT / SOURCE NOT KEPT) as a small yellow tag under it. The card counts as a screen (§3.3): static scanlines over it, and every 2–6 s while it is on screen a tear (2–4 bands shifted sideways for three 70 ms frames, with an RGB split), off under reduced motion. EJECT is disabled and dragging does nothing until a cut exists (the card stays up, tagged DEVELOPING, until the worker's cut arrives). The same tear marks taking the stack apart and seating it (once each, never per step, all plates torn alike); plate tags are OSD plates (Chakra Petch on --alert-ink, 1 px --signal border, P1… K); seating flashes a SIGNAL LOCKED OSD plate for 0.6 s instead of the old corner flash. The worker reads at most 1024 px wide (cels are enlarged as shapes), since a worker may run on a slow core. Archive and favourites follow, folded.
+5. **04 Proof** — the photo re-rendered as one anime cel in the palette's inks, separated into plates (§8.1). Archive and favourites follow, folded.
 6. **Colophon** — fonts, method, link to classic.
 
 Section names must be consistent: a label used in the margin is not repeated as the panel's h2.
+
+### 8.1 04 Proof (`proof.js` on the page, `proof-worker.js` for the pixels)
+
+**Framing**
+- A photo: the 16:9 cut slides halfway from the centre toward its saliency; no zoom.
+- A small source (longest side < 480 px: an icon, a logo) is an object, not a scene: shown whole at 80 % of the frame, centred on its own ground (the mean of its border). A transparent ground stays cut out — nothing is printed there and the sheet shows.
+
+**The cel**
+- Cels are decided on a guided-filter smooth (edge-preserving: straight edges stay straight). Patches under 0.04 % of the frame merge into their cel.
+- The analysis runs at the source's own detail (480–1024 px wide), never on a blown-up small image. Soft-edge rings of in-between inks are cleared there by a mode filter (radius 1.5 source px); then each ink's coverage is enlarged smoothly and the strongest wins, so edges come out as clean curves.
+- One hard shadow step in the next darker ink; screen tone where a gradient would have been; mid-tones with no ink of their own (a dim poster on a dark façade) print as a halftone of the lighter ink they lean towards, dot area = how far of the way there, capped at half the cell.
+- Lines: outlines on cel boundaries only between inks ≥ 0.08 apart in OKLab (2 px on silhouettes); detail strokes ≥ 30 px from a difference of Gaussians on lightness (the line half of XDoG), never right beside an outline.
+- Composite: chromatic fringe on the brightest cel, tone glow around the most vivid one, Sandevistan echoes of the one main subject toward the open side — not when the subject spans > 45 % of the frame, never on an object.
+- Drawn near the frame's device pixels (960–1920 wide), every size scaled from the 960 baseline.
+
+**Separation**
+- One plate per extracted ink (its cels and everything else printed in it) plus a K plate for the line work. Every pixel is on exactly one plate. Stacked by area, the plate covering most at the bottom, K on top. Tags are short (P1… K) so 3–8 inks all read.
+- Static. One EJECT ⇄ INSTALL button (or drag) separates the plates in steps; the stack always stays inside the frame. Tags are OSD plates (Chakra Petch on `--alert-ink`, 1 px `--signal` border).
+
+**No cut yet: the test card** (owner's call, 2026-10-23)
+- SMPTE colour bars laid out in the palette's own inks, falling in lightness left to right as SMPTE bars do, each with its hex; reverse castellations, bottom blocks and a PLUGE strip in SMPTE proportions.
+- An OSD plate NO SIGNAL DETECTED (Chakra Petch) with the state as a small yellow tag: AWAITING DEPOSIT / SOURCE NOT KEPT / DEVELOPING (the card stays up until the worker's cut arrives).
+- It counts as a screen (§3.3): static scanlines. EJECT is disabled and dragging does nothing.
+
+**Performance**
+- All pixel work runs in `proof-worker.js`, so the page never freezes; the page only frames the photo, sends it once, and lays the plates that come back.
+- A worker may run on a slow core (≈ 5× slower on Apple Silicon): keep the working size ≤ 1024 wide, saliency at quarter size, and fast paths where neighbours agree. A new cut takes ~2–3 s there.
 
 ## 9. Rejected — do not reintroduce
 
@@ -120,7 +149,7 @@ Section names must be consistent: a label used in the margin is not repeated as 
 ## 10. Working agreement (for every agent)
 
 1. **Read this file first.** Quote the section you rely on when you make a judgement call.
-2. **Work on a branch**, commit in small steps, **never push**. The owner pushes after review.
+2. Small changes may go straight to `main`. Bigger ones (algorithms, refactors) go on a branch; tell the owner the branch name and push only after the owner says so ("推"). Push several commits **one at a time**, waiting for each Pages deploy to finish (`git push origin <sha>:main`, `gh run watch`).
 3. Commit messages: imperative subject ≤ 60 chars, a short body on *why*. **No `Co-Authored-By` or other attribution trailers** — the owner is the sole contributor.
 4. One agent edits at a time. Don't touch files outside the task.
 5. Before handing back: `node --test test/color.test.js` passes; the page loads with no console errors at 1400 px and 390 px; no horizontal scroll at 390 px; real pointer clicks hit their targets (check `elementFromPoint`, not just DOM state).
