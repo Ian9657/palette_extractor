@@ -159,9 +159,27 @@ function analyse(src, theme) {
     const key = src ? src.imgId + '|' + Object.values(theme).join('') : null;
     if (!src) return cache.a;
     if (cache.key === key) return cache.a;
-    const { data, w, h, soft, crop, srcW, srcH } = src;
+    const { data, w, h, soft, crop, object, srcW, srcH } = src;
     const s = w / 960, pa = v => Math.max(1, Math.round(v * s));
     const n = w * h, MIN_CEL = Math.round(n * MIN_CEL_SHARE);
+
+    // A cut-out: where it is transparent nothing is printed. For reading the
+    // colours, see-through pixels take the object's mean colour, so its
+    // edge is not read against black
+    const hole = new Float32Array(n);
+    let holes = 0;
+    for (let p = 0; p < n; p++) if (data[p * 4 + 3] < 128) { hole[p] = 1; holes++; }
+    if (holes) {
+        let r = 0, g = 0, b = 0, m = 0;
+        for (let p = 0; p < n; p++) if (!hole[p]) { r += data[p * 4]; g += data[p * 4 + 1]; b += data[p * 4 + 2]; m++; }
+        if (m) { r /= m; g /= m; b /= m; }
+        for (let p = 0; p < n; p++) {
+            const t = data[p * 4 + 3] / 255;
+            data[p * 4] = data[p * 4] * t + r * (1 - t);
+            data[p * 4 + 1] = data[p * 4 + 1] * t + g * (1 - t);
+            data[p * 4 + 2] = data[p * 4 + 2] * t + b * (1 - t);
+        }
+    }
 
     const L = new Float32Array(n), A = new Float32Array(n), B = new Float32Array(n);
     for (let p = 0; p < n; p++) {
@@ -286,9 +304,9 @@ function analyse(src, theme) {
     const a = {
         label: same ? label : E.label(maps.map(m => { const f = Float32Array.from(m); boxBlur(f, w, h, 1); return f; })),
         below: E.value(below), shade: E.mask(smooth(shade)), tone: E.mask(smooth(tone)),
-        up: E.nearest(up, Int8Array), lift: E.value(lift), lit: E.mask(litF),
+        up: E.nearest(up, Int8Array), lift: E.value(lift), lit: E.mask(litF), hole: holes ? E.mask(hole) : null,
         dog: E.value(dog), salient: E.mask(salient),
-        keys, pal, crop, srcW, srcH
+        keys, pal, crop, object, srcW, srcH
     };
     // the frame's own cels decide the tone values again, now at full size
     for (let p = 0; p < W * H; p++) if (!a.lit[p]) a.up[p] = -1;
@@ -386,6 +404,7 @@ function compose(a, theme) {
     for (let p = 0; p < n; p++) if (salient[p]) { const x = p % W; sx += x; sCount++; if (x < minX) minX = x; if (x > maxX) maxX = x; }
     const dir = sCount && sx / sCount > W / 2 ? 1 : -1;            // subject on the right → echoes trail left
     if (maxX - minX > W * 0.45) sCount = 0;                         // a subject this wide has no room to run
+    if (a.object) sCount = 0;                                       // an icon on its plinth does not run
     const GAP = Math.max(px(14), Math.round((maxX - minX) * 0.12));
     for (let k = ECHOES; k >= 1 && sCount; k--) {
         const j = echoInks[(k - 1) % echoInks.length];
@@ -436,9 +455,11 @@ function compose(a, theme) {
     const count = new Int32Array(a.keys.length);
     let lineCount = 0;
     for (let p = 0; p < n; p++) line[p] ? lineCount++ : count[out[p]]++;
+    const hole = a.hole;
     const plate = colourAt => {
         const buf = new Uint8ClampedArray(n * 4);
         for (let p = 0; p < n; p++) {
+            if (hole && hole[p]) continue;          // a cut-out prints nothing here
             const c = colourAt(p);
             if (!c) continue;
             buf[p * 4] = c.r; buf[p * 4 + 1] = c.g; buf[p * 4 + 2] = c.b; buf[p * 4 + 3] = 255;

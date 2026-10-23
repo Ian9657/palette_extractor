@@ -95,6 +95,31 @@
         return cut;
     }
 
+    // Small sources (icons, logos) are objects, not scenes: shown whole
+    const OBJECT_MAX = 480;    // longest side below this, in source pixels
+    const OBJECT_FILL = 0.8;   // share of the frame's height (or width) it takes
+
+    // The ground an object stands on: the mean of its opaque border pixels,
+    // or none where the border is mostly transparent
+    function groundOf(img) {
+        const sw = img.naturalWidth, sh = img.naturalHeight;
+        const c = document.createElement('canvas');
+        c.width = sw; c.height = sh;
+        const x = c.getContext('2d', { willReadFrequently: true });
+        x.drawImage(img, 0, 0);
+        const d = x.getImageData(0, 0, sw, sh).data;
+        let r = 0, g = 0, b = 0, n = 0;
+        const take = (px, py) => {
+            const i = (py * sw + px) * 4;
+            if (d[i + 3] < 128) return;
+            r += d[i]; g += d[i + 1]; b += d[i + 2]; n++;
+        };
+        for (let px = 0; px < sw; px++) { take(px, 0); take(px, sh - 1); }
+        for (let py = 1; py < sh - 1; py++) { take(0, py); take(sw - 1, py); }
+        if (n < (sw + sh)) return null;          // mostly transparent: a cut-out
+        return `rgb(${Math.round(r / n)}, ${Math.round(g / n)}, ${Math.round(b / n)})`;
+    }
+
     // The worker develops the cut; the page only reads the photo and lays
     // the plates it returns. While a cut develops the last one stays up.
     const worker = new Worker('proof-worker.js');
@@ -114,15 +139,30 @@
         if (sent.img !== img || sent.key !== key) {
             // Working size: the source's own detail, 480 wide at least, the frame at most
             if (!imgIds.has(img)) imgIds.set(img, ++nextImg);
-            const crop = frameCut(img);
-            const w = Math.round(Math.min(W, Math.max(480, crop.w)) / 16) * 16, h = w / 16 * 9;
+            const sw = img.naturalWidth, sh = img.naturalHeight;
+            const object = Math.max(sw, sh) < OBJECT_MAX;
+            const crop = object ? { x: 0, y: 0, w: sw, h: sh } : frameCut(img);
+            const w = object ? 480 : Math.round(Math.min(W, Math.max(480, crop.w)) / 16) * 16, h = w / 16 * 9;
             const c = document.createElement('canvas');
             c.width = w; c.height = h;
             const x = c.getContext('2d', { willReadFrequently: true });
             x.imageSmoothingQuality = 'high';   // a large photo shrinks without aliasing
-            x.drawImage(img, crop.x, crop.y, crop.w, crop.h, 0, 0, w, h);
+            let soft = w / crop.w;
+            if (object) {
+                // An icon or logo is shown whole, centred on its own ground,
+                // like an object on a plinth: never cropped to fill the frame.
+                // A cut-out (transparent ground) stays cut out: the worker
+                // prints nothing where it is transparent
+                const k = Math.min(w * OBJECT_FILL / sw, h * OBJECT_FILL / sh);
+                const ground = groundOf(img);
+                if (ground) { x.fillStyle = ground; x.fillRect(0, 0, w, h); }
+                x.drawImage(img, (w - sw * k) / 2, (h - sh * k) / 2, sw * k, sh * k);
+                soft = k;
+            } else {
+                x.drawImage(img, crop.x, crop.y, crop.w, crop.h, 0, 0, w, h);
+            }
             const data = x.getImageData(0, 0, w, h).data;
-            msg.src = { imgId: imgIds.get(img), data, w, h, soft: w / crop.w, crop, srcW: img.naturalWidth, srcH: img.naturalHeight };
+            msg.src = { imgId: imgIds.get(img), data, w, h, soft, crop, object, srcW: sw, srcH: sh };
             move.push(data.buffer);
             sent = { img, key };
         }
