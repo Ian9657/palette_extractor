@@ -994,8 +994,8 @@ h1, h2, h3, .title, .mockup-title,
 .proof-empty-tag {
     position: absolute;
     left: 50%;
-    top: calc(50% + 2rem);
-    translate: -50% 0;
+    top: 50%;
+    translate: -50% -50%;
     background: var(--alert);
     color: var(--alert-ink);
     font-size: var(--fs-micro);
@@ -1006,6 +1006,10 @@ h1, h2, h3, .title, .mockup-title,
     display: none;
 }
 .proof-stage.empty:not(.apart) .proof-empty-tag { display: block; }
+/* Nothing to take apart before a cut exists */
+.proof-controls .btn-export:disabled { opacity: 0.35; cursor: not-allowed; }
+.proof-screen:has(.proof-stage.empty) .proof-hint { visibility: hidden; }
+.proof-stage.empty { cursor: default; }
 
 /* ---- Samples under Fig. 1: six objects ready to deposit (samples.js) ---- */
 .samples {

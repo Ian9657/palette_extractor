@@ -131,9 +131,12 @@
             job++;                                    // a cut still developing is dropped
             setPlateCount(Object.keys(palette.theme).length + 1);
             plates.forEach(P => P.ctx.clearRect(0, 0, W, H));
-            renderEmpty();
+            if (explode > 0) setExplode(0);
+            ejectBtn.disabled = true;
+            renderEmpty(theme);
             return;
         }
+        ejectBtn.disabled = false;
         const key = Object.values(palette.theme).join('');
         const msg = { id: ++job, W, H, theme: palette.theme, shown: theme }, move = [];
         if (sent.img !== img || sent.key !== key) {
@@ -181,44 +184,45 @@
         $('proof-line').textContent = `${(Math.round(r.lineShare * 1000) / 10).toFixed(1)}%`;
     };
 
-    // No image (default palette, or retrieved without a thumbnail): a blank
-    // field guide, the sheet a cut is drawn on — in interface ink, since
-    // there is no data to print yet (DESIGN.md §6.1)
-    const FIELDS = [12, 10, 8, 6, 4];   // field sizes, outermost = the full frame
-    function renderEmpty() {
+    // No image (default palette, or retrieved without a thumbnail): a test
+    // card, like a set with no signal — SMPTE colour bars laid out in the
+    // palette's own inks. As in SMPTE, the bars fall in lightness left to
+    // right; each carries its hex. Nothing to take apart until a cut exists.
+    function renderEmpty(theme) {
         const f = plates[0].ctx;
-        const css = getComputedStyle(document.documentElement);
-        const ink = css.getPropertyValue('--text-color').trim() || '#F5F0E8';
-        const signal = css.getPropertyValue('--signal').trim() || '#00E5FF';
-        f.save();
-        f.strokeStyle = ink;
-        f.lineWidth = S;
-        f.globalAlpha = 0.22;
-        f.beginPath(); f.moveTo(0, 0); f.lineTo(W, H); f.moveTo(W, 0); f.lineTo(0, H); f.stroke();
-        f.font = `600 ${11 * S}px "IBM Plex Mono", monospace`;
-        f.fillStyle = ink;
-        FIELDS.forEach((n, i) => {
-            const k = n / FIELDS[0], w = W * k, h = H * k, x = (W - w) / 2, y = (H - h) / 2;
-            f.globalAlpha = i === 0 ? 0 : (i === 1 ? 0.55 : 0.28);   // 12F is the frame itself
-            f.strokeRect(x + S / 2, y + S / 2, w - S, h - S);
-            f.globalAlpha = 0.55;
-            f.fillText(`${n}F`, x + 8 * S, y + 18 * S);
+        const hex = Object.values(theme).slice()
+            .sort((a, b) => toLch(hexToRgb(b)).L - toLch(hexToRgb(a)).L);
+        const k = hex.length, bw = W / k;
+        const darkest = hex[k - 1], lightest = hex[0];
+        const byC = hex.slice().sort((a, b) => toLch(hexToRgb(b)).C - toLch(hexToRgb(a)).C);
+        const H1 = Math.round(H * 0.67), H2 = Math.round(H * 0.075);
+        const bar = (c, x, y, w, h) => { f.fillStyle = c; f.fillRect(Math.round(x), y, Math.ceil(w), h); };
+        // top: the bars; middle: the reverse castellations, every other one dark
+        hex.forEach((c, i) => {
+            bar(c, i * bw, 0, bw, H1);
+            const mirror = k - 1 - i === i ? (i + 1) % k : k - 1 - i;   // never the bar above
+            bar(i % 2 ? darkest : hex[mirror], i * bw, H1, bw, H2);
         });
-        // Centre cross, in signal: the one mark a cut is registered on
-        f.globalAlpha = 1;
-        f.strokeStyle = signal;
-        f.lineWidth = 2 * S;
-        f.beginPath(); f.moveTo(W / 2 - 18 * S, H / 2); f.lineTo(W / 2 + 18 * S, H / 2);
-        f.moveTo(W / 2, H / 2 - 18 * S); f.lineTo(W / 2, H / 2 + 18 * S); f.stroke();
-        f.beginPath(); f.arc(W / 2, H / 2, 8 * S, 0, Math.PI * 2); f.stroke();
-        f.restore();
+        // bottom, in SMPTE's proportions of the frame: the most vivid, the
+        // lightest, the next vivid, dark ground, and a three-strip PLUGE
+        // (dark, the next ink up, dark) where black level is checked
+        const B = H1 + H2, q = W * 5 / 28, p = W / 21;
+        bar(darkest, 0, B, W, H - B);
+        bar(byC[0], 0, B, q, H - B);
+        bar(lightest, q, B, q, H - B);
+        bar(byC[1] || byC[0], 2 * q, B, q, H - B);
+        bar(hex[k - 2], W * 5 / 7 + p, B, p, H - B);
+        // each bar's hex, at its foot, in the ink that reads on it
+        f.font = `600 ${10 * S}px "IBM Plex Mono", monospace`;
+        f.textBaseline = 'bottom';
+        hex.forEach((c, i) => {
+            f.fillStyle = inkOn(c);
+            f.fillText(c.toUpperCase(), i * bw + 8 * S, H1 - 8 * S);
+        });
         $('proof-empty-tag').textContent = palette.isDefault ? 'NO CUT — AWAITING DEPOSIT' : 'NO CUT — SOURCE NOT KEPT';
         $('proof-source').textContent = '—';
         $('proof-line').textContent = '—';
-        plates.forEach((P, i) => {
-            P.text = i === plates.length - 1 ? 'K' : `P${i + 1}`;
-            if (explode > 0) P.tag.textContent = P.text;
-        });
+        plates.forEach((P, i) => { P.text = i === plates.length - 1 ? 'K' : `P${i + 1}`; });
     }
 
     function keptThumb() {
@@ -280,7 +284,7 @@
 
     let drag = null;
     stage.addEventListener('pointerdown', e => {
-        if (e.button !== 0) return;
+        if (e.button !== 0 || stage.classList.contains('empty')) return;
         drag = { x: e.clientX, start: explode };
         stage.setPointerCapture(e.pointerId);
     });
