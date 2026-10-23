@@ -6,7 +6,7 @@
 //                 afterimage per colour, which then drop out one by one
 //   Fringe      — a hard RGB split on the control that was pressed
 //   Press run   — on load: marks, plates, nameplate, mast line, body, in
-//                 that order, each cut in hard (~0.8 s in all)
+//                 that order, the sheet surfacing, the rest cut in hard (~0.9 s in all)
 (() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const root = document.documentElement;
@@ -41,17 +41,17 @@
                 at(i * STEP + 2 * STEP, () => p.classList.remove('kick'));
             });
         });
-        at(320, () => {
+        at(420, () => {
             stage('boot-name');
             FX.split(document.querySelector('.nameplate-title'), 300);
             document.querySelectorAll('.nameplate-side > *').forEach(decodeIn);
         });
-        at(520, () => {
+        at(620, () => {
             stage('boot-mast');
             ['.mast-line > :first-child', '#reg-total', '#mast-date']
                 .forEach(sel => decodeIn(document.querySelector(sel)));
         });
-        at(780, () => {
+        at(880, () => {
             root.classList.remove('booting', 'boot-marks', 'boot-plates', 'boot-name', 'boot-mast');
             entries.forEach(e => cards.observe(e));
         });
