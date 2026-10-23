@@ -11,8 +11,8 @@
         prevProcess(file);
     };
     row.querySelectorAll('.sample').forEach(btn => {
-        const { src, id, name } = btn.dataset;
-        btn.style.backgroundImage = `url("${src}")`;
+        const { src, thumb, id, name } = btn.dataset;
+        btn.style.backgroundImage = `url("${thumb || src}")`;   // small copy; the full size loads on deposit
         btn.title = `${name} — Unsplash, Picsum ${id}`;
         btn.setAttribute('aria-label', `Deposit sample: ${name}`);
         btn.addEventListener('click', async () => {
