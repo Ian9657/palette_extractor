@@ -818,6 +818,7 @@ body::after {
     overflow: visible;
 }
 .proof-stage:active { cursor: grabbing; }
+.proof-stage:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
 .proof-rig {
     position: absolute;
     inset: 0;

@@ -122,12 +122,12 @@ Section names must be consistent: a label used in the margin is not repeated as 
 
 **Separation**
 - One plate per extracted ink (its cels and everything else printed in it) plus a K plate for the line work. Every pixel is on exactly one plate. Stacked by area, the plate covering most at the bottom, K on top. Tags are short (P1… K) so 3–8 inks all read.
-- Static. One EJECT ⇄ INSTALL button (or drag) separates the plates in steps; the stack always stays inside the frame. Tags are OSD plates (Chakra Petch on `--alert-ink`, 1 px `--signal` border).
+- Static. One EJECT ⇄ INSTALL button (or drag) separates the plates in steps; the frame is also a keyboard slider (Enter/Space = EJECT ⇄ INSTALL, ←/→ one step, Home seated, End fully apart; `aria-valuenow` = step); the stack always stays inside the frame. Tags are OSD plates (Chakra Petch on `--alert-ink`, 1 px `--signal` border).
 
 **No cut yet: the test card** (owner's call, 2026-10-23)
 - SMPTE colour bars laid out in the palette's own inks, falling in lightness left to right as SMPTE bars do, each with its hex; reverse castellations, bottom blocks and a PLUGE strip in SMPTE proportions.
 - An OSD plate NO SIGNAL DETECTED (Chakra Petch) with the state as a small yellow tag: AWAITING DEPOSIT / SOURCE NOT KEPT / DEVELOPING (the card stays up until the worker's cut arrives).
-- It counts as a screen (§3.3): static scanlines. EJECT is disabled and dragging does nothing.
+- It counts as a screen (§3.3): static scanlines. EJECT is disabled; dragging and keys do nothing.
 
 **Performance**
 - All pixel work runs in `proof-worker.js`, so the page never freezes; the page only frames the photo, sends it once, and lays the plates that come back.

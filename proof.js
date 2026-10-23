@@ -31,7 +31,8 @@
 // The pixel work runs in proof-worker.js, so the page never freezes while a
 // cut develops; this file frames the photo, lays the plates and runs the stack.
 //
-// Static: nothing animates. Taking it apart (EJECT ⇄ INSTALL, or drag) moves in steps.
+// Static: nothing animates. Taking it apart (EJECT ⇄ INSTALL, drag, or the
+// keys on the focused frame) moves in steps.
 (() => {
     const stage0 = document.getElementById('proof-stage');
     const W = Math.round(Math.min(1920, Math.max(960, stage0.clientWidth * (window.devicePixelRatio || 1))) / 16) * 16;
@@ -134,6 +135,7 @@
             plates.forEach(P => P.ctx.clearRect(0, 0, W, H));
             if (explode > 0) setExplode(0);
             ejectBtn.disabled = true;
+            stage.setAttribute('aria-disabled', 'true');
             renderEmpty(theme);
             return;
         }
@@ -183,6 +185,7 @@
         if (r.id !== job) return;                     // a newer cut is on its way
         stage.classList.remove('empty');
         ejectBtn.disabled = false;
+        stage.removeAttribute('aria-disabled');
         setPlateCount(r.plates.length);
         r.plates.forEach((buf, i) => {
             plates[i].ctx.putImageData(new ImageData(new Uint8ClampedArray(buf), W, H), 0, 0);
@@ -357,6 +360,8 @@
         const apart = explode > 0;
         ejectBtn.textContent = apart ? 'INSTALL' : 'EJECT PLATES';
         ejectBtn.setAttribute('aria-pressed', apart);
+        stage.setAttribute('aria-valuenow', explode);
+        stage.setAttribute('aria-valuetext', apart ? `Apart, step ${explode} of ${STEPS}` : 'Seated');
     };
     ejectBtn.addEventListener('click', () => runTo(explode > 0 ? 0 : STEPS));
 
@@ -369,6 +374,22 @@
     stage.addEventListener('pointermove', e => { if (drag) setExplode(drag.start + Math.round((e.clientX - drag.x) / 50)); });
     stage.addEventListener('pointerup', () => { drag = null; });
     stage.addEventListener('pointercancel', () => { drag = null; });
+
+    // The frame is a slider for keys: Enter/Space as EJECT ⇄ INSTALL,
+    // arrows one step, Home seated, End fully apart
+    stage.addEventListener('keydown', e => {
+        if (stage.classList.contains('empty')) return;
+        const to = {
+            Enter: explode > 0 ? 0 : STEPS, ' ': explode > 0 ? 0 : STEPS,
+            ArrowRight: explode + 1, ArrowUp: explode + 1,
+            ArrowLeft: explode - 1, ArrowDown: explode - 1,
+            Home: 0, End: STEPS
+        }[e.key];
+        if (to === undefined) return;
+        e.preventDefault();
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'Home' || e.key === 'End') runTo(to);
+        else setExplode(to);
+    });
 
     applyMockupTheme();
 })();

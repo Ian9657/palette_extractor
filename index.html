@@ -207,13 +207,13 @@
                     <!-- Proof: the photo re-rendered as one anime cel in the palette's inks,
                          separated into one plate per ink plus K. Drag or EJECT to take it apart; press again to seat it. proof.js. -->
                     <div class="proof-screen" id="proof-screen">
-                        <div class="proof-stage" id="proof-stage" aria-label="Proof frame. Drag to separate its plates.">
+                        <div class="proof-stage" id="proof-stage" role="slider" tabindex="0" aria-label="Proof plates" aria-description="Drag, or use the arrow keys, to separate the plates. Enter seats or ejects them all." aria-valuemin="0" aria-valuemax="6" aria-valuenow="0" aria-valuetext="Seated">
                             <div class="proof-rig" id="proof-rig"></div>
                             <span class="proof-empty-tag mono-text" id="proof-empty-tag"></span>
                         </div>
                         <div class="proof-controls mono-text">
                             <button type="button" class="btn-export" id="proof-eject" aria-pressed="false">EJECT PLATES</button>
-                            <span class="proof-hint">DRAG THE FRAME TO SEPARATE IT</span>
+                            <span class="proof-hint">DRAG THE FRAME, OR ← →, TO SEPARATE IT</span>
                         </div>
                         <div class="proof-meta mono-text">
                             <span class="proof-label">REV.</span> <span id="proof-rev" class="proof-value">001</span>
