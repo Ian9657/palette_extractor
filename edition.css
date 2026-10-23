@@ -996,16 +996,45 @@ h1, h2, h3, .title, .mockup-title,
     left: 50%;
     top: 50%;
     translate: -50% -50%;
+    z-index: 2;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--s1);
+    pointer-events: none;
+}
+/* the set's own on-screen message: an OSD plate in display type */
+.proof-nosignal {
+    background: var(--alert-ink);
+    color: var(--text-color);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(1rem, 2.6vw, 2rem);
+    letter-spacing: 0.14em;
+    line-height: 1;
+    padding: 0.55em 0.9em 0.5em;
+    white-space: nowrap;
+}
+.proof-why {
     background: var(--alert);
     color: var(--alert-ink);
+    font-family: 'IBM Plex Mono', monospace;
     font-size: var(--fs-micro);
     font-weight: 600;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.12em;
     padding: 0.15rem 0.5rem;
     white-space: nowrap;
-    display: none;
 }
-.proof-stage.empty:not(.apart) .proof-empty-tag { display: block; }
+/* the card is a screen: static scanlines over it (DESIGN.md §3.3) */
+.proof-stage.empty:not(.apart)::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: repeating-linear-gradient(to bottom, rgba(8, 13, 24, 0.28) 0 1px, transparent 1px 3px);
+}
+.proof-stage.empty:not(.apart) .proof-empty-tag { display: flex; }
 /* Nothing to take apart before a cut exists */
 .proof-controls .btn-export:disabled { opacity: 0.35; cursor: not-allowed; }
 .proof-screen:has(.proof-stage.empty) .proof-hint { visibility: hidden; }

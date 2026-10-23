@@ -219,11 +219,48 @@
             f.fillStyle = inkOn(c);
             f.fillText(c.toUpperCase(), i * bw + 8 * S, H1 - 8 * S);
         });
-        $('proof-empty-tag').textContent = palette.isDefault ? 'NO CUT — AWAITING DEPOSIT' : 'NO CUT — SOURCE NOT KEPT';
+        const big = document.createElement('span'), why = document.createElement('span');
+        big.className = 'proof-nosignal'; big.textContent = 'NO SIGNAL DETECTED';
+        why.className = 'proof-why'; why.textContent = palette.isDefault ? 'AWAITING DEPOSIT' : 'SOURCE NOT KEPT';
+        $('proof-empty-tag').replaceChildren(big, why);
+        card = document.createElement('canvas');           // the clean card, to tear and restore
+        card.width = W; card.height = H;
+        card.getContext('2d').drawImage(f.canvas, 0, 0);
         $('proof-source').textContent = '—';
         $('proof-line').textContent = '—';
         plates.forEach((P, i) => { P.text = i === plates.length - 1 ? 'K' : `P${i + 1}`; });
     }
+
+    // No signal, now and then: a few horizontal bands tear sideways for
+    // three stepped frames with a channel split, then the card is whole
+    // again. Only while the card is on screen; never with reduced motion.
+    let card = null, glitchTimer = 0, onScreen = false;
+    function tear() {
+        if (!card || !stage.classList.contains('empty') || explode > 0) return;
+        const f = plates[0].ctx;
+        FX.split(stage, 220);
+        let frame = 0;
+        const step = () => {
+            f.drawImage(card, 0, 0);
+            if (frame < 3) {
+                for (let b = 0; b < 2 + (Math.random() * 3 | 0); b++) {
+                    const y = Math.random() * H | 0, h = (6 + Math.random() * 40) * S | 0;
+                    const dx = ((Math.random() < 0.5 ? -1 : 1) * (12 + Math.random() * 70) * S) | 0;
+                    f.drawImage(card, 0, y, W, h, dx, y, W, h);
+                    f.drawImage(card, 0, y, W, h, dx - Math.sign(dx) * W, y, W, h);   // wraps round
+                }
+                frame++;
+                setTimeout(step, 70);
+            }
+        };
+        step();
+    }
+    function scheduleTear() {
+        clearTimeout(glitchTimer);
+        if (still || !onScreen) return;
+        glitchTimer = setTimeout(() => { tear(); scheduleTear(); }, 2200 + Math.random() * 3800);
+    }
+    new IntersectionObserver(([e]) => { onScreen = e.isIntersecting; scheduleTear(); }).observe(stage);
 
     function keptThumb() {
         if (typeof thumbs !== 'object' || !palette) return null;
