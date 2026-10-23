@@ -81,11 +81,35 @@
         echoTimer = setInterval(frame, STEP);
     }
 
+    // ---- Plates: re-inked one at a time, front to back ----
+    // Each plate keeps its old ink until its turn, then takes the new one in a
+    // hard cut and kicks out for two frames, like a press laying down a plate.
+    const platesEl = document.querySelector('.plates');
+    let inkTimers = [];
+
+    function inkPlates(oldInks) {
+        inkTimers.forEach(clearTimeout);
+        const plates = [...platesEl.children];
+        plates.forEach((p, i) => {
+            p.classList.remove('kick');
+            if (oldInks[i]) p.style.background = oldInks[i];
+            inkTimers.push(setTimeout(() => {
+                p.style.background = '';
+                p.classList.add('kick');
+            }, i * STEP));
+            inkTimers.push(setTimeout(() => p.classList.remove('kick'), i * STEP + 2 * STEP));
+        });
+    }
+
     const prevSetPaletteFx = setPalette;
     setPalette = function (next, saveToHistory = false) {
+        const oldInks = [...platesEl.children].map(p => p.style.getPropertyValue('--plate'));
         prevSetPaletteFx(next, saveToHistory);
         const key = Object.values(next.theme).join();
-        if (!next.isDefault && key !== lastTheme) sandevistan(next.theme);
+        if (!next.isDefault && key !== lastTheme) {
+            sandevistan(next.theme);
+            inkPlates(oldInks);
+        }
         lastTheme = key;
     };
     lastTheme = Object.values(palette.theme).join();

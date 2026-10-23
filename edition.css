@@ -946,3 +946,7 @@ h1, h2, h3, .title, .mockup-title,
 .palette { position: relative; z-index: 1; }
 .echo { position: absolute; z-index: 0; pointer-events: none; }
 .echo[hidden] { display: none; }
+
+/* Plates take a new ink in a hard cut (pagefx.js) and kick out for two frames */
+.fx-cards .plate { transition: none; }
+.plate.kick { translate: 6px 6px; }

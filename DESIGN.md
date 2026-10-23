@@ -89,7 +89,7 @@ All effects respect `prefers-reduced-motion: reduce` (off or instant) and are de
 | Title card | each entry, the first time it scrolls in | numeral decodes + `FX.split`; the panel h2 is cut in on an `--alert` card with `--alert-ink` text: wipe 3 steps, hold, wipe off 3 steps, 340 ms, once per page load |
 | Sandevistan | COLOR BAR, when a new palette lands (deposit, COLORS, reroll, archive, hand edit) | the bar steps in from the left 18 px per 40 ms frame, leaving one solid afterimage per frame in the palette's own colours (most vivid first, max 4); then they drop out farthest first. Data colours exact, no filter on the swatches |
 | Fringe | the control that was pressed (`.btn-export`, COLORS label) | `FX.split`, 200 ms. Never on data colours |
-| Plate stack | under the sheet | one plate per extracted colour, exposed right/bottom; each plate eases on its own, front 0.585 → back 0.39; always z-below the sheet |
+| Plate stack | under the sheet | one plate per extracted colour, exposed right/bottom; each plate eases on its own, front 0.585 → back 0.39; always z-below the sheet; opens to 1.95 × depth leaning away from the pointer. On a new palette the plates re-ink front to back, one per 40 ms frame, in a hard cut, each kicking out 6 px for two frames (`pagefx.js`) |
 
 Adding a new effect requires: which screen-side object it belongs to, its duration, and what record it reveals. Effects without a record are cut.
 
