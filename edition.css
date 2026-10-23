@@ -831,7 +831,7 @@ body::after {
 }
 .proof-layer canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
 .proof-stage.apart .proof-layer { outline: 1px solid var(--signal); outline-offset: -1px; }
-.proof-stage.apart .proof-layer:nth-child(n+2) canvas { filter: drop-shadow(0 0 4px var(--signal)); }
+/* no glow on the plates: they are sparse, a glow would ring every speck */
 
 /* Layer tags appear only while the frame is apart */
 .proof-tag {

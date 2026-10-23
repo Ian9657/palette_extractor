@@ -1,18 +1,22 @@
 // Proof: the deposited photo re-rendered as one cel of anime, using only the
-// palette (DESIGN.md §6.2). The five layers are the stages a cel goes through,
-// so EJECT shows how the frame is built:
+// palette (DESIGN.md §6.2), then pulled apart as colour separations — one
+// plate per extracted ink, plus a K plate for the line work, the way the
+// cel would go to press. EJECT shows the plates:
 //
-//   L1 COLOUR    flat fills — every area takes its nearest palette colour;
-//                patches under MIN_CEL merge into the cel around them
-//   L2 SHADOW    one hard shadow step, in the next darker palette colour
-//   L3 TONE      screen-tone dots where a gradient would have been
-//   L4 LINE      ink lines on cel boundaries (heavier on silhouettes) and
-//                on strong edges inside cels that form a stroke
-//   L5 COMPOSITE chromatic fringes on the brightest cel, tone glow around the
-//                most vivid one, and Sandevistan afterimages trailing the
-//                main subject into the open side — one palette colour per echo
+//   ink plates  everything printed in that ink: its flat cels, the shadows
+//               it gives the next lighter cel, the screen tone, the glow and
+//               the Sandevistan echoes or fringes that use it
+//   K plate     ink lines on cel boundaries (heavier on silhouettes) and on
+//               strong edges inside cels that form a stroke
 //
-// The shot is framed first: the 16:9 cut follows the photo's saliency.
+// Every pixel is on exactly one plate, so seated they are the cel and apart
+// each tag reads ROLE · HEX · coverage. Lightest plate at the bottom, K on top.
+//
+// The cel itself: the 16:9 cut follows the photo's saliency; patches under
+// MIN_CEL merge into the cel around them; one hard shadow step in the next
+// darker ink; screen-tone dots where a gradient would have been; chromatic
+// fringes on the brightest cel, tone glow around the most vivid one, and
+// afterimages trailing the main subject into the open side.
 //
 // Static: nothing animates. Taking it apart (EJECT ⇄ INSTALL, or drag) moves in steps.
 (() => {
@@ -22,26 +26,24 @@
     const $ = id => document.getElementById(id);
     const stage = $('proof-stage'), rig = $('proof-rig');
 
-    const LAYERS = [
-        { key: 'fill', name: 'L1 COLOUR' },
-        { key: 'shadow', name: 'L2 SHADOW' },
-        { key: 'tone', name: 'L3 TONE' },
-        { key: 'line', name: 'L4 LINE' },
-        { key: 'fx', name: 'L5 COMPOSITE' }
-    ];
-    LAYERS.forEach((L, i) => {
-        const wrap = document.createElement('div');
-        wrap.className = 'proof-layer';
-        wrap.style.setProperty('--i', i);
-        const c = document.createElement('canvas');
-        c.width = W; c.height = H;
-        const tag = document.createElement('span');
-        tag.className = 'proof-tag';
-        wrap.append(c, tag);
-        rig.appendChild(wrap);
-        L.ctx = c.getContext('2d'); L.tag = tag;
-    });
-    const ctxOf = key => LAYERS.find(L => L.key === key).ctx;
+    // One layer per plate; the count follows the palette (K inks + the K plate)
+    const plates = [];
+    function setPlateCount(n) {
+        while (plates.length < n) {
+            const wrap = document.createElement('div');
+            wrap.className = 'proof-layer';
+            const c = document.createElement('canvas');
+            c.width = W; c.height = H;
+            const tag = document.createElement('span');
+            tag.className = 'proof-tag';
+            wrap.append(c, tag);
+            rig.appendChild(wrap);
+            plates.push({ ctx: c.getContext('2d'), tag, text: '' });
+        }
+        while (plates.length > n) rig.lastChild.remove(), plates.pop();
+        plates.forEach((P, i) => P.tag.parentNode.style.setProperty('--i', i));
+        sizeDepth();
+    }
 
     // ---- Analysis: depends on the image and the extracted palette only ----
     let cache = { img: null, key: '', a: null };
@@ -250,13 +252,29 @@
         ctx.putImageData(out, 0, 0);
     }
 
+    // A screen-tone or glow dot, as hard pixels on one plate
+    function dot(out, cx, cy, r, j) {
+        const R = Math.ceil(r);
+        for (let y = Math.floor(cy) - R; y <= Math.floor(cy) + R; y++) {
+            if (y < 0 || y >= H) continue;
+            for (let x = Math.floor(cx) - R; x <= Math.floor(cx) + R; x++) {
+                if (x < 0 || x >= W) continue;
+                const dx = x + 0.5 - cx, dy = y + 0.5 - cy;
+                if (dx * dx + dy * dy <= r * r) out[y * W + x] = j;
+            }
+        }
+        out[Math.floor(cy) * W + Math.floor(cx)] = j;   // the smallest dot still prints
+    }
+
     function render(theme) {
         const img = currentImgEl || keptThumb();
-        LAYERS.forEach(Lr => Lr.ctx.clearRect(0, 0, W, H));
+        const keys = Object.keys(palette.theme);
+        setPlateCount(keys.length + 1);
+        plates.forEach(P => P.ctx.clearRect(0, 0, W, H));
         stage.classList.toggle('empty', !img);
-        if (!img) { renderEmpty(); return; }
+        if (!img) { renderEmpty(keys); return; }
         const a = analyse(img, palette.theme);           // cels come from the extracted colours…
-        const ink = a.keys.map(k => rgbOf(theme[k]));    // …painted in the shown theme (or its opposite)
+        const ink = a.keys.map(k => rgbOf(theme[k]));    // …printed in the shown theme (or its opposite)
         const inkHex = a.keys.map(k => theme[k]);
         const byL = a.keys.map((k, j) => j).sort((i, j) => toLch(ink[i]).L - toLch(ink[j]).L);
         const darkest = byL[0], lightest = byL[byL.length - 1];
@@ -264,31 +282,31 @@
         const vivid = a.keys.map((k, j) => j).filter(j => j !== darkest && j !== lightest)
             .sort((i, j) => toLch(ink[j]).C - toLch(ink[i]).C);
         const { label, below, shade, edge, salient, pal } = a;
+        const n = W * H;
 
-        // L1 colour
-        paintPixels(ctxOf('fill'), p => ink[label[p]]);
+        // Which ink each pixel prints in, built up in the order the cel is
+        // made: colour, shadow, tone, line, composite
+        const out = Uint8Array.from(label);
 
-        // L2 shadow: one hard step, as whole shapes
-        paintPixels(ctxOf('shadow'), p => (shade[p] && label[p] !== darkest ? ink[darker(label[p])] : null));
+        // Shadow: one hard step, as whole shapes
+        for (let p = 0; p < n; p++) if (shade[p] && label[p] !== darkest) out[p] = darker(label[p]);
 
-        // L3 tone: dots where the pixel is a little below its cel but not yet in shadow
-        const tctx = ctxOf('tone');
-        tctx.fillStyle = inkHex[darkest];
+        // Tone: dots where the pixel is a little below its cel but not yet in shadow
         const G = 6;
         for (let y = G / 2; y < H; y += G) {
             for (let x = G / 2 + ((y / G) % 2) * G / 2; x < W; x += G) {
                 const p = (y | 0) * W + (x | 0);
                 const t = (below[p] - 0.015) / (SHADE - 0.015);
                 if (t <= 0 || t >= 1 || shade[p] || label[p] === darkest) continue;
-                tctx.beginPath(); tctx.arc(x, y, 0.4 + t * G * 0.42, 0, Math.PI * 2); tctx.fill();
+                dot(out, x, y, 0.4 + t * G * 0.42, darkest);
             }
         }
 
-        // L4 line: every cel boundary, plus strong edges inside cels where
+        // Line (K): every cel boundary, plus strong edges inside cels where
         // they form a stroke (≥ MIN_STROKE px); 2 px on silhouettes, where
         // the two cels are far apart in lightness
         const T = 0.42, MIN_STROKE = 30;
-        const line = new Uint8Array(W * H), detail = new Uint8Array(W * H);
+        const line = new Uint8Array(n), detail = new Uint8Array(n);
         for (let y = 1; y < H - 1; y++) {
             for (let x = 1; x < W - 1; x++) {
                 const p = y * W + x;
@@ -300,22 +318,18 @@
             }
         }
         keepStrokes(detail, MIN_STROKE);
-        for (let p = 0; p < W * H; p++) if (detail[p]) line[p] = 1;
-        let lineCount = 0;
-        paintPixels(ctxOf('line'), p => (line[p] ? (lineCount++, ink[darkest]) : null));
+        for (let p = 0; p < n; p++) if (detail[p]) line[p] = 1;
 
-        // L5 composite
-        const fx = new Array(W * H).fill(null);
-        // Sandevistan: echoes of the one main subject, trailing towards the
-        // side of the frame with more room, far ones first
+        // Composite, printed over the line: echoes of the one main subject,
+        // trailing towards the side of the frame with more room, far ones first
         const echoInks = vivid.length ? vivid.concat(lightest) : [lightest];
         const ECHOES = 3;
         let sx = 0, sCount = 0, minX = W, maxX = 0;
-        for (let p = 0; p < W * H; p++) if (salient[p]) { const x = p % W; sx += x; sCount++; if (x < minX) minX = x; if (x > maxX) maxX = x; }
+        for (let p = 0; p < n; p++) if (salient[p]) { const x = p % W; sx += x; sCount++; if (x < minX) minX = x; if (x > maxX) maxX = x; }
         const dir = sCount && sx / sCount > W / 2 ? 1 : -1;            // subject on the right → echoes trail left
         const GAP = Math.max(14, Math.round((maxX - minX) * 0.12));
         for (let k = ECHOES; k >= 1 && sCount; k--) {
-            const c = ink[echoInks[(k - 1) % echoInks.length]];
+            const j = echoInks[(k - 1) % echoInks.length];
             const dx = k * GAP * dir, dy = -k * 2;
             for (let y = 0; y < H; y++) {
                 const sy = y - dy;
@@ -323,60 +337,66 @@
                 for (let x = 0; x < W; x++) {
                     const ox = x + dx;
                     if (ox < 0 || ox >= W) continue;
-                    if (salient[sy * W + ox] && !salient[y * W + x]) fx[y * W + x] = c;
+                    const p = y * W + x;
+                    if (salient[sy * W + ox] && !salient[p]) { out[p] = j; line[p] = 0; }
                 }
             }
         }
         // Chromatic fringe on the brightest cel's edges
         if (vivid.length) {
-            const left = ink[vivid[0]], right = ink[vivid[1] ?? vivid[0]];
+            const left = vivid[0], right = vivid[1] ?? vivid[0];
             for (let y = 0; y < H; y++) {
                 for (let x = 3; x < W - 3; x++) {
                     const p = y * W + x;
                     if (label[p] === lightest) continue;
-                    if (label[p + 3] === lightest) fx[p] = left;
-                    else if (label[p - 3] === lightest) fx[p] = right;
+                    if (label[p + 3] === lightest) { out[p] = left; line[p] = 0; }
+                    else if (label[p - 3] === lightest) { out[p] = right; line[p] = 0; }
                 }
             }
         }
-        paintPixels(ctxOf('fx'), p => fx[p]);
         // Tone glow around the most vivid cel, in its own ink
         if (vivid.length) {
-            const v = vivid[0], mask = new Float32Array(W * H);
-            for (let p = 0; p < W * H; p++) mask[p] = label[p] === v ? 1 : 0;
+            const v = vivid[0], mask = new Float32Array(n);
+            for (let p = 0; p < n; p++) mask[p] = label[p] === v ? 1 : 0;
             boxBlur(mask, W, H, 10); boxBlur(mask, W, H, 10);
-            const g = ctxOf('fx');
-            g.fillStyle = inkHex[v];
+            const before = Uint8Array.from(out);
             for (let y = 4; y < H; y += 8) {
                 for (let x = 4 + ((y / 8) % 2) * 4; x < W; x += 8) {
                     const p = y * W + x;
                     if (label[p] === v) continue;
                     const m = mask[p];
                     if (m < 0.06 || m > 0.9) continue;
-                    g.beginPath(); g.arc(x, y, 0.6 + m * 2.6, 0, Math.PI * 2); g.fill();
+                    dot(out, x, y, 0.6 + m * 2.6, v);
                 }
             }
+            for (let p = 0; p < n; p++) if (out[p] !== before[p]) line[p] = 0;
         }
 
-        $('proof-source').textContent = `${a.srcW} × ${a.srcH}`;
-        $('proof-line').textContent = `${Math.round(lineCount / (W * H) * 1000) / 10}%`;
-        const used = {
-            fill: a.keys.map(k => k.toUpperCase() === 'BG' ? 'BASE' : k.toUpperCase()).length + ' INKS',
-            shadow: 'ONE STEP DARKER', tone: inkHex[darkest], line: inkHex[darkest],
-            fx: `${ECHOES} ECHOES · FRINGE · GLOW`
-        };
-        LAYERS.forEach(Lr => {
-            Lr.text = `${Lr.name} · ${used[Lr.key]}`;
-            if (explode > 0) Lr.tag.textContent = Lr.text;
+        // Separate: lightest ink at the bottom of the stack, K on top
+        const names = ROLE_NAMES[a.keys.length];
+        const count = new Int32Array(a.keys.length);
+        let lineCount = 0;
+        for (let p = 0; p < n; p++) line[p] ? lineCount++ : count[out[p]]++;
+        const pct = c => `${(Math.round(c / n * 1000) / 10).toFixed(1)}%`;
+        byL.slice().reverse().forEach((j, i) => {
+            paintPixels(plates[i].ctx, p => (out[p] === j && !line[p] ? ink[j] : null));
+            plates[i].text = `${names[j]} · ${inkHex[j]} · ${pct(count[j])}`;
         });
+        const K = plates[plates.length - 1];
+        paintPixels(K.ctx, p => (line[p] ? ink[darkest] : null));
+        K.text = `K · LINE · ${inkHex[darkest]} · ${pct(lineCount)}`;
+        if (explode > 0) plates.forEach(P => { P.tag.textContent = P.text; });
+
+        $('proof-source').textContent = `${a.srcW} × ${a.srcH}`;
+        $('proof-line').textContent = pct(lineCount);
     }
 
     // No image (default palette, or retrieved without a thumbnail): a blank
     // field guide, the sheet a cut is drawn on — in interface ink, since
     // there is no data to print yet (DESIGN.md §6.1)
     const FIELDS = [12, 10, 8, 6, 4];   // field sizes, outermost = the full frame
-    function renderEmpty() {
-        const f = ctxOf('fill');
+    function renderEmpty(keys) {
+        const f = plates[0].ctx;
         const css = getComputedStyle(document.documentElement);
         const ink = css.getPropertyValue('--text-color').trim() || '#F5F0E8';
         const signal = css.getPropertyValue('--signal').trim() || '#00E5FF';
@@ -405,7 +425,14 @@
         $('proof-empty-tag').textContent = palette.isDefault ? 'NO CUT — AWAITING DEPOSIT' : 'NO CUT — SOURCE NOT KEPT';
         $('proof-source').textContent = '—';
         $('proof-line').textContent = '—';
-        LAYERS.forEach(Lr => { Lr.text = `${Lr.name} · NO SOURCE`; if (explode > 0) Lr.tag.textContent = Lr.text; });
+        // The plates are still named: the inks are known, only the cut is missing
+        const names = ROLE_NAMES[keys.length], hex = keys.map(k => palette.theme[k]);
+        const order = keys.map((k, j) => j).sort((i, j) => toLch(rgbOf(hex[j])).L - toLch(rgbOf(hex[i])).L);
+        const darkest = order[order.length - 1];
+        plates.forEach((P, i) => {
+            P.text = i === plates.length - 1 ? `K · LINE · ${hex[darkest]} · —` : `${names[order[i]]} · ${hex[order[i]]} · —`;
+            if (explode > 0) P.tag.textContent = P.text;
+        });
     }
 
     function keptThumb() {
@@ -435,7 +462,7 @@
         stage.style.setProperty('--e', (n / STEPS).toFixed(3));
         stage.classList.toggle('apart', n > 0);
         FX.split(rig, 120);
-        if (opening) LAYERS.forEach((Lr, i) => setTimeout(() => FX.decode(Lr.tag, Lr.text, 260), i * 70));
+        if (opening) plates.forEach((P, i) => setTimeout(() => FX.decode(P.tag, P.text, 260), i * 70));
         if (n === 0) { stage.classList.remove('locked'); void stage.offsetWidth; stage.classList.add('locked'); }
         syncEject();
     }
@@ -446,19 +473,21 @@
         const step = () => { setExplode(explode + dir); if (explode !== target) setTimeout(step, 90); };
         step();
     }
-    // Depth scales with the frame, so the stack stays inside it at any width
-    // (tuned at 819 px wide: 56 px between layers, 1800 px perspective)
-    new ResizeObserver(() => {
+    // Depth scales with the frame and the plate count, so the stack stays
+    // inside it at any width (tuned at 819 px wide: 224 px from bottom to
+    // top plate, 1800 px perspective)
+    function sizeDepth() {
         const w = stage.clientWidth;
-        stage.style.setProperty('--z-step', (w * 0.068).toFixed(1) + 'px');
+        stage.style.setProperty('--z-step', (w * 0.272 / Math.max(1, plates.length - 1)).toFixed(1) + 'px');
         stage.style.setProperty('--persp', (w * 2.2).toFixed(0) + 'px');
-    }).observe(stage);
+    }
+    new ResizeObserver(sizeDepth).observe(stage);
 
     // One control: EJECT takes it apart, the same button seats it again
     const ejectBtn = $('proof-eject');
     const syncEject = () => {
         const apart = explode > 0;
-        ejectBtn.textContent = apart ? 'INSTALL' : 'EJECT LAYERS';
+        ejectBtn.textContent = apart ? 'INSTALL' : 'EJECT PLATES';
         ejectBtn.setAttribute('aria-pressed', apart);
     };
     ejectBtn.addEventListener('click', () => runTo(explode > 0 ? 0 : STEPS));
