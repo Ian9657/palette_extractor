@@ -1083,6 +1083,10 @@ h1, h2, h3, .title,
 .sample.current { border-color: var(--text-color); box-shadow: inset 0 0 0 1px var(--text-color); }
 @media (max-width: 600px) { .samples { grid-template-columns: minmax(0, 1fr); gap: var(--s1); } }
 
+/* The one filled button in COLOR BAR's actions: SAVE IMG; STAR and the EXPORT menu stay outlined */
+.btn-primary { background: var(--text-color); color: var(--bg-color); }
+.favorites-block > .section-header { margin-top: var(--s4); }
+
 /* Errors (DESIGN.md §6.1: --danger, errors only): Fig. 1's caption, a button whose action failed */
 .fig-error { color: var(--danger); font-weight: 600; }
-.btn-export.failed { color: var(--danger); border-color: var(--danger); }
+.btn-export.failed { background: transparent; color: var(--danger); border-color: var(--danger); }
