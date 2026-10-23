@@ -22,7 +22,6 @@ Identity in one line: **a strictly typeset register, viewed through a night-city
 | **New** (homepage) | `index.html`, `edition.css/js`, `register.css/js`, `previews.js`, `cover.js`, `follow.js`, `fx.js`, `pagefx.js`, `samples.js`, `color.js` | The one living design. |
 
 - The new edition has **one appearance**: the dark night-city register below. **No day/night switch, no second theme.** Remove theme branches rather than leaving dead ones (`[data-theme="day"]` rules, `editionCopy.day`, `setEdition`, the pre-paint theme script).
-- `prototypes/` is history. Don't edit; don't link from the live page.
 
 ## 3. Principles (in priority order)
 
@@ -139,7 +138,7 @@ Section names must be consistent: a label used in the margin is not repeated as 
 - Day/night switch and any second theme for the new edition.
 - Pink/magenta (any role), acid green, amber accents, "counter-signal".
 - Whole-sheet grid pattern, whole-sheet glow, soft halos on the frame.
-- Outer-frame experiments: chamfered corners with bezels, trim marks, slug rails, holographic parallax layers, depth rails, extruded/faceted slabs (kept in `git stash`, all rejected).
+- Outer-frame experiments: chamfered corners with bezels, trim marks, slug rails, holographic parallax layers, depth rails, extruded/faceted slabs (all rejected; the experiments were deleted).
 - Decorative text outside the content: vertical rails, mood phrases, fake HUD chatter, Japanese decorative type.
 - Serif or italic type ("花体"); a fourth typeface.
 - Hand-made collage props: tape, staples, rubber stamps, scissor cuts, tilted cards.

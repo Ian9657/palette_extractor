@@ -900,9 +900,9 @@ body::after {
 
 /* ---- Display face: Chakra Petch for everything that is a heading or a mark;
    body copy stays Space Grotesk, data stays IBM Plex Mono (DESIGN.md §5) ---- */
-h1, h2, h3, .title, .mockup-title,
+h1, h2, h3, .title,
 .nameplate-title, .nameplate-sub, .headline,
-.entry-no, .entry-label, .register-total,
+.entry-no, .entry-label,
 .drop-text, .loading-text, .swatch-header,
 .a11y-matrix th, .fs-big {
     font-family: var(--font-display);

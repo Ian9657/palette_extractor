@@ -72,6 +72,5 @@ node --test test/color.test.js   # unit tests for the colour logic
 | `follow.js`, `fx.js`, `pagefx.js` | Cursor follow, screen-signal effects, page events (title cards, Sandevistan, press run) |
 | `samples.js`, `samples/` | Six sample photographs under Fig. 1 (1920 × 1440) |
 | `style.css` | Base styles and the panels, used by both editions |
-| `prototypes/` | Design steps between the two editions |
 | `gallery.html` / `gallery.js` | Regression gallery |
 | `ntc.js` | Colour naming ("Name that Color") |

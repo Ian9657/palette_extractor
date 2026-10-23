@@ -35,20 +35,6 @@
 .plate:nth-child(4) { --n: 4; z-index: 2; --plate: var(--plate-4, #D1C9BA); transition-delay: 0.36s; }
 .plate:nth-child(5) { --n: 5; z-index: 1; --plate: var(--plate-5, #C8C0B0); transition-delay: 0.48s; }
 
-.register-count {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.25rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-}
-.register-total {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 3rem;
-    line-height: 1;
-    letter-spacing: -0.03em;
-}
 
 .register { display: grid; }
 
@@ -104,12 +90,6 @@
     gap: 2.5rem;
     align-items: start;
 }
-.intake-side {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-}
-.intake-side .settings-bar { align-self: flex-start; }
 
 .accession-card {
     border: 2px solid var(--border-color);
@@ -147,7 +127,6 @@
     overflow-wrap: anywhere;
 }
 
-.mockup-buttons span { display: inline-block; }
 
 @media (max-width: 900px) {
     .intake { grid-template-columns: minmax(0, 1fr); }
@@ -168,5 +147,4 @@
     }
     .entry-no { font-size: 1.75rem; }
     .entry-label { border-top: none; padding-top: 0; }
-    .register-count { align-items: flex-start; }
 }
