@@ -2,13 +2,17 @@
 // palette (DESIGN.md §6.2). The five layers are the stages a cel goes through,
 // so EJECT shows how the frame is built:
 //
-//   L1 COLOUR    flat fills — every area takes its nearest palette colour
+//   L1 COLOUR    flat fills — every area takes its nearest palette colour;
+//                patches under MIN_CEL merge into the cel around them
 //   L2 SHADOW    one hard shadow step, in the next darker palette colour
 //   L3 TONE      screen-tone dots where a gradient would have been
-//   L4 LINE      ink lines from cel boundaries and strong edges
+//   L4 LINE      ink lines on cel boundaries (heavier on silhouettes) and
+//                on strong edges inside cels that form a stroke
 //   L5 COMPOSITE chromatic fringes on the brightest cel, tone glow around the
 //                most vivid one, and Sandevistan afterimages trailing the
-//                most salient shapes — one palette colour per echo
+//                main subject into the open side — one palette colour per echo
+//
+// The shot is framed first: the 16:9 cut follows the photo's saliency.
 //
 // Static: nothing animates. Taking it apart (EJECT ⇄ INSTALL, or drag) moves in steps.
 (() => {
@@ -46,6 +50,103 @@
         return dL * dL + da * da + db * db;
     };
 
+    const MIN_CEL = Math.round(W * H * 0.0004);   // smallest patch kept as its own cel
+    const SHADE = 0.07;                             // one hard shadow step, in OKLab lightness
+
+    // Framing: slide a 16:9 window over the photo to hold the most saliency,
+    // so the shot is composed around its subject instead of cut from the middle
+    function frameCut(img) {
+        const sw = img.naturalWidth, sh = img.naturalHeight;
+        const g = 96 / Math.max(sw, sh);                 // small working copy
+        const gw = Math.max(16, Math.round(sw * g)), gh = Math.max(16, Math.round(sh * g));
+        const c = document.createElement('canvas');
+        c.width = gw; c.height = gh;
+        const x = c.getContext('2d', { willReadFrequently: true });
+        x.drawImage(img, 0, 0, gw, gh);
+        const sal = saliencyMap(x.getImageData(0, 0, gw, gh).data, gw, gh);
+        const I = new Float64Array((gw + 1) * (gh + 1));   // integral image
+        for (let y = 0; y < gh; y++) for (let xx = 0; xx < gw; xx++) {
+            I[(y + 1) * (gw + 1) + xx + 1] = sal[y * gw + xx] + I[y * (gw + 1) + xx + 1] + I[(y + 1) * (gw + 1) + xx] - I[y * (gw + 1) + xx];
+        }
+        const sum = (x0, y0, w, h) => I[(y0 + h) * (gw + 1) + x0 + w] - I[y0 * (gw + 1) + x0 + w] - I[(y0 + h) * (gw + 1) + x0] + I[y0 * (gw + 1) + x0];
+        const best = () => {
+            const s = Math.max(W / sw, H / sh);   // cover the 16:9 frame
+            const w = Math.min(gw, Math.round(W / s * g)), h = Math.min(gh, Math.round(H / s * g));
+            let top = { v: -1, x: 0, y: 0 };
+            for (let y0 = 0; y0 + h <= gh; y0++) for (let x0 = 0; x0 + w <= gw; x0++) {
+                const v = sum(x0, y0, w, h);
+                if (v > top.v) top = { v, x: x0, y: y0 };
+            }
+            return { v: top.v, x: top.x / g, y: top.y / g, w: W / s, h: H / s };
+        };
+        // Slide only (no zoom: a tighter cut lost the crowd around a stage),
+        // and only halfway from the centre: the subject leads, the scene stays
+        const cut = best();
+        cut.x = (cut.x + (sw - cut.w) / 2) / 2;
+        cut.y = (cut.y + (sh - cut.h) / 2) / 2;
+        return cut;
+    }
+
+    // Merge every 4-connected patch smaller than min into the label that
+    // borders it most; two passes catch patches that only become small
+    // neighbours after the first
+    function mergeSmall(label, nLabels, min) {
+        const n = W * H, comp = new Int32Array(n), stack = [], members = [];
+        const votes = new Int32Array(nLabels);
+        for (let pass = 0; pass < 2; pass++) {
+            comp.fill(-1);
+            let id = 0;
+            for (let p0 = 0; p0 < n; p0++) {
+                if (comp[p0] >= 0) continue;
+                const l = label[p0];
+                members.length = 0;
+                comp[p0] = id; stack.push(p0);
+                while (stack.length) {
+                    const p = stack.pop(); members.push(p);
+                    const xx = p % W;
+                    if (xx > 0 && comp[p - 1] < 0 && label[p - 1] === l) { comp[p - 1] = id; stack.push(p - 1); }
+                    if (xx < W - 1 && comp[p + 1] < 0 && label[p + 1] === l) { comp[p + 1] = id; stack.push(p + 1); }
+                    if (p >= W && comp[p - W] < 0 && label[p - W] === l) { comp[p - W] = id; stack.push(p - W); }
+                    if (p < n - W && comp[p + W] < 0 && label[p + W] === l) { comp[p + W] = id; stack.push(p + W); }
+                }
+                if (members.length < min) {
+                    votes.fill(0);
+                    for (const p of members) {
+                        const xx = p % W;
+                        if (xx > 0 && label[p - 1] !== l) votes[label[p - 1]]++;
+                        if (xx < W - 1 && label[p + 1] !== l) votes[label[p + 1]]++;
+                        if (p >= W && label[p - W] !== l) votes[label[p - W]]++;
+                        if (p < n - W && label[p + W] !== l) votes[label[p + W]]++;
+                    }
+                    let m = 0, mi = l;
+                    for (let j = 0; j < nLabels; j++) if (votes[j] > m) { m = votes[j]; mi = j; }
+                    for (const p of members) label[p] = mi;
+                }
+                id++;
+            }
+        }
+    }
+
+    // Clear 8-connected runs of a mask shorter than min pixels: stray specks
+    // of edge are noise, a stroke is a line
+    function keepStrokes(mask, min) {
+        const n = W * H, seen = new Uint8Array(n), stack = [], members = [];
+        for (let p0 = 0; p0 < n; p0++) {
+            if (!mask[p0] || seen[p0]) continue;
+            members.length = 0; seen[p0] = 1; stack.push(p0);
+            while (stack.length) {
+                const p = stack.pop(); members.push(p);
+                const x = p % W;
+                for (let dy = -W; dy <= W; dy += W) for (let dx = -1; dx <= 1; dx++) {
+                    const q = p + dy + dx;
+                    if (q < 0 || q >= n || (dx === -1 && x === 0) || (dx === 1 && x === W - 1)) continue;
+                    if (mask[q] && !seen[q]) { seen[q] = 1; stack.push(q); }
+                }
+            }
+            if (members.length < min) for (const p of members) mask[p] = 0;
+        }
+    }
+
     function analyse(img, theme) {
         const key = Object.values(theme).join('');
         if (cache.img === img && cache.key === key) return cache.a;
@@ -53,9 +154,8 @@
         const c = document.createElement('canvas');
         c.width = W; c.height = H;
         const x = c.getContext('2d', { willReadFrequently: true });
-        const s = Math.max(W / img.naturalWidth, H / img.naturalHeight);   // cover the 16:9 frame
-        const w = img.naturalWidth * s, h = img.naturalHeight * s;
-        x.drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
+        const crop = frameCut(img);
+        x.drawImage(img, crop.x, crop.y, crop.w, crop.h, 0, 0, W, H);
         const data = x.getImageData(0, 0, W, H).data;
         const n = W * H;
 
@@ -72,7 +172,8 @@
         const keys = Object.keys(theme);
         const pal = keys.map(k => { const ok = rgbToOklab(...Object.values(hexToRgb(theme[k]))); return ok; });
 
-        // Nearest palette colour per pixel, then three 5×5 majority passes to flatten speckle into cels
+        // Nearest palette colour per pixel, then every patch smaller than
+        // MIN_CEL is merged into the cel around it: cels are big flat areas
         let label = new Uint8Array(n);
         for (let p = 0; p < n; p++) {
             const q = { L: Ls[p], a: As[p], b: Bs[p] };
@@ -80,26 +181,18 @@
             for (let j = 0; j < pal.length; j++) { const d = labDist(q, pal[j]); if (d < best) { best = d; bi = j; } }
             label[p] = bi;
         }
-        const votes = new Uint8Array(pal.length);
-        for (let pass = 0; pass < 3; pass++) {
-            const next = new Uint8Array(label);
-            for (let y = 2; y < H - 2; y++) {
-                for (let xx = 2; xx < W - 2; xx++) {
-                    votes.fill(0);
-                    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) votes[label[(y + dy) * W + xx + dx]]++;
-                    let m = 0, mi = label[y * W + xx];
-                    for (let j = 0; j < votes.length; j++) if (votes[j] > m) { m = votes[j]; mi = j; }
-                    next[y * W + xx] = mi;
-                }
-            }
-            label = next;
-        }
+        mergeSmall(label, pal.length, MIN_CEL);
 
         // Shadow and tone: how far each pixel sits below its cel's own lightness
         const below = new Float32Array(n);
         for (let p = 0; p < n; p++) below[p] = pal[label[p]].L - L[p];
+        // The shadow shape itself comes from the smoothed lightness and is
+        // cleaned like the cels, so it reads as one hard-edged shape
+        const shade = new Uint8Array(n);
+        for (let p = 0; p < n; p++) shade[p] = pal[label[p]].L - Ls[p] > SHADE ? 1 : 0;
+        mergeSmall(shade, 2, MIN_CEL);
 
-        // Edges: Sobel on lightness
+        // Edges: Sobel on lightness, for the detail lines inside cels
         const edge = new Float32Array(n);
         for (let y = 1; y < H - 1; y++) {
             for (let xx = 1; xx < W - 1; xx++) {
@@ -135,12 +228,12 @@
             }
             sizes.push(size);
         }
-        const keep = sizes.map((sz, id) => [sz, id]).sort((u, v) => v[0] - u[0]).slice(0, 2)
+        const keep = sizes.map((sz, id) => [sz, id]).sort((u, v) => v[0] - u[0]).slice(0, 1)
             .filter(([sz]) => sz > n * 0.004).map(([, id]) => id);
         const salient = new Uint8Array(n);
         for (let p = 0; p < n; p++) salient[p] = comp[p] >= 0 && keep.includes(comp[p]) ? 1 : 0;
 
-        const a = { label, below, edge, salient, keys, pal, srcW: img.naturalWidth, srcH: img.naturalHeight };
+        const a = { label, below, shade, edge, salient, keys, pal, crop, srcW: img.naturalWidth, srcH: img.naturalHeight };
         cache = { img, key, a };
         return a;
     }
@@ -170,14 +263,13 @@
         const darker = j => byL[Math.max(0, byL.indexOf(j) - 1)];
         const vivid = a.keys.map((k, j) => j).filter(j => j !== darkest && j !== lightest)
             .sort((i, j) => toLch(ink[j]).C - toLch(ink[i]).C);
-        const { label, below, edge, salient } = a;
+        const { label, below, shade, edge, salient, pal } = a;
 
         // L1 colour
         paintPixels(ctxOf('fill'), p => ink[label[p]]);
 
-        // L2 shadow: one hard step
-        const SHADE = 0.07;
-        paintPixels(ctxOf('shadow'), p => (below[p] > SHADE && label[p] !== darkest ? ink[darker(label[p])] : null));
+        // L2 shadow: one hard step, as whole shapes
+        paintPixels(ctxOf('shadow'), p => (shade[p] && label[p] !== darkest ? ink[darker(label[p])] : null));
 
         // L3 tone: dots where the pixel is a little below its cel but not yet in shadow
         const tctx = ctxOf('tone');
@@ -187,41 +279,51 @@
             for (let x = G / 2 + ((y / G) % 2) * G / 2; x < W; x += G) {
                 const p = (y | 0) * W + (x | 0);
                 const t = (below[p] - 0.015) / (SHADE - 0.015);
-                if (t <= 0 || t >= 1 || label[p] === darkest) continue;
+                if (t <= 0 || t >= 1 || shade[p] || label[p] === darkest) continue;
                 tctx.beginPath(); tctx.arc(x, y, 0.4 + t * G * 0.42, 0, Math.PI * 2); tctx.fill();
             }
         }
 
-        // L4 line: cel boundaries plus strong edges, heavier where the edge is strong
-        const T = 0.42;
-        const line = new Uint8Array(W * H);
+        // L4 line: every cel boundary, plus strong edges inside cels where
+        // they form a stroke (≥ MIN_STROKE px); 2 px on silhouettes, where
+        // the two cels are far apart in lightness
+        const T = 0.42, MIN_STROKE = 30;
+        const line = new Uint8Array(W * H), detail = new Uint8Array(W * H);
         for (let y = 1; y < H - 1; y++) {
             for (let x = 1; x < W - 1; x++) {
                 const p = y * W + x;
-                const boundary = label[p] !== label[p + 1] || label[p] !== label[p + W];
-                if (boundary || edge[p] > T) {
+                const q = label[p] !== label[p + 1] ? p + 1 : label[p] !== label[p + W] ? p + W : -1;
+                if (q >= 0) {
                     line[p] = 1;
-                    // heavier ink where a cel boundary meets a strong edge: weighted line, like a pen
-                    if (boundary && edge[p] > T * 0.6) { line[p + 1] = 1; line[p + W] = 1; }
-                }
+                    if (Math.abs(pal[label[p]].L - pal[label[q]].L) > 0.25) { line[p + 1] = 1; line[p + W] = 1; }
+                } else if (edge[p] > T) detail[p] = 1;
             }
         }
+        keepStrokes(detail, MIN_STROKE);
+        for (let p = 0; p < W * H; p++) if (detail[p]) line[p] = 1;
         let lineCount = 0;
         paintPixels(ctxOf('line'), p => (line[p] ? (lineCount++, ink[darkest]) : null));
 
         // L5 composite
         const fx = new Array(W * H).fill(null);
-        // Sandevistan: echoes trail left of the salient shapes, far ones first
+        // Sandevistan: echoes of the one main subject, trailing towards the
+        // side of the frame with more room, far ones first
         const echoInks = vivid.length ? vivid.concat(lightest) : [lightest];
-        const ECHOES = 4, GAP = 18;
-        for (let k = ECHOES; k >= 1; k--) {
+        const ECHOES = 3;
+        let sx = 0, sCount = 0, minX = W, maxX = 0;
+        for (let p = 0; p < W * H; p++) if (salient[p]) { const x = p % W; sx += x; sCount++; if (x < minX) minX = x; if (x > maxX) maxX = x; }
+        const dir = sCount && sx / sCount > W / 2 ? 1 : -1;            // subject on the right → echoes trail left
+        const GAP = Math.max(14, Math.round((maxX - minX) * 0.12));
+        for (let k = ECHOES; k >= 1 && sCount; k--) {
             const c = ink[echoInks[(k - 1) % echoInks.length]];
-            const dx = k * GAP, dy = -k * 2;
+            const dx = k * GAP * dir, dy = -k * 2;
             for (let y = 0; y < H; y++) {
                 const sy = y - dy;
                 if (sy < 0 || sy >= H) continue;
-                for (let x = 0; x < W - dx; x++) {
-                    if (salient[sy * W + x + dx] && !salient[y * W + x]) fx[y * W + x] = c;
+                for (let x = 0; x < W; x++) {
+                    const ox = x + dx;
+                    if (ox < 0 || ox >= W) continue;
+                    if (salient[sy * W + ox] && !salient[y * W + x]) fx[y * W + x] = c;
                 }
             }
         }
