@@ -90,6 +90,7 @@ All effects respect `prefers-reduced-motion: reduce` (off or instant) and are de
 | Sandevistan | COLOR BAR, when a new palette lands (deposit, COLORS, reroll, archive, hand edit) | the bar steps in from the left 18 px per 40 ms frame, leaving one solid afterimage per frame in the palette's own colours (most vivid first, max 4); then they drop out farthest first. Data colours exact, no filter on the swatches |
 | Fringe | the control that was pressed (`.btn-export`, COLORS label) | `FX.split`, 200 ms. Never on data colours |
 | Tear | 04 Proof: the test card every 2–6 s while on screen; the plate stack once when taken apart and once when seated | 2–4 horizontal bands of every plate shift sideways together for three 70 ms frames, with `FX.split`; never per drag step |
+| Error | Fig. 1's caption when an image can't be deposited; a button whose action failed (COPY FAILED, EXPORT FAILED) | the `--danger` words decode in (260–300 ms) under one `FX.split` — a lost signal; never on a data colour (a swatch's COPY FAILED stays plain) |
 | Signal locked | 04 Proof, when the last plate seats | OSD plate SIGNAL LOCKED, flickers on, holds, gone in 0.6 s |
 | Plate stack | under the sheet | one plate per extracted colour, exposed right/bottom; each plate eases on its own, front 0.585 → back 0.39; always z-below the sheet; opens to 1.95 × depth leaning away from the pointer. On a new palette the plates re-ink front to back, one per 40 ms frame, in a hard cut, each kicking out 6 px for two frames (`pagefx.js`) |
 

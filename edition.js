@@ -37,10 +37,13 @@ function writeFeature(p, fromStorage) {
 // ---- Errors and copies: said in place, never in a browser dialog ----
 // A copy reports what the clipboard actually did (main.js's default always says COPIED)
 copyText = text => Promise.resolve().then(() => navigator.clipboard.writeText(text));
-// A button says how its action went for a moment, in --danger if it failed
+// A button says how its action went for a moment, in --danger if it failed;
+// a failure comes in as a lost signal: the words decode in under a channel split
 function flagButton(btn, text, label) {
-    btn.textContent = text;
-    btn.classList.toggle('failed', / FAILED$/.test(text));
+    const failed = / FAILED$/.test(text);
+    btn.classList.toggle('failed', failed);
+    if (failed) { FX.decode(btn, text, 260); FX.split(btn, 300); }
+    else btn.textContent = text;
     setTimeout(() => { btn.textContent = label; btn.classList.remove('failed'); }, 1500);
 }
 // An image that can't be deposited is reported in Fig. 1's caption; the next
@@ -49,8 +52,9 @@ function figError(text) {
     const cap = mag('fig1-cap');
     const err = document.createElement('span');
     err.className = 'fig-error';
-    err.textContent = text;
     cap.replaceChildren(err, ' Drop, paste or click to deposit another image.');
+    FX.decode(err, text, 300);   // the same lost signal as a failed button
+    FX.split(cap, 300);
 }
 reportError = () => figError('IMAGE COULD NOT BE READ.');
 dropZoneEl.addEventListener('drop', e => {
