@@ -136,10 +136,23 @@ function enlarge(w, h) {
     };
     return {
         value(f) { const o = new Float32Array(n); each((p, X, Y0, fy) => { o[p] = at(f, X, Y0, fy); }); return o; },
-        mask(f) { const o = new Uint8Array(n); each((p, X, Y0, fy) => { o[p] = at(f, X, Y0, fy) > 0.5 ? 1 : 0; }); return o; },
-        label(maps) {
+        mask(f) {
             const o = new Uint8Array(n);
             each((p, X, Y0, fy) => {
+                const i = Y0 * w + x0[X], v = f[i];
+                // all four neighbours on one side: no need to interpolate
+                if (v < 1e-3 && f[i + 1] < 1e-3 && f[i + w] < 1e-3 && f[i + w + 1] < 1e-3) return;
+                if (v > 0.999 && f[i + 1] > 0.999 && f[i + w] > 0.999 && f[i + w + 1] > 0.999) { o[p] = 1; return; }
+                o[p] = at(f, X, Y0, fy) > 0.5 ? 1 : 0;
+            });
+            return o;
+        },
+        label(maps, low) {
+            const o = new Uint8Array(n);
+            each((p, X, Y0, fy) => {
+                // inside a cel all four neighbours agree: no need to weigh coverage
+                const i = Y0 * w + x0[X], l = low[i];
+                if (low[i + 1] === l && low[i + w] === l && low[i + w + 1] === l) { o[p] = l; return; }
                 let best = -1, bi = 0;
                 for (let j = 0; j < maps.length; j++) { const v = at(maps[j], X, Y0, fy); if (v > best) { best = v; bi = j; } }
                 o[p] = bi;
@@ -194,7 +207,7 @@ function analyse(src, theme) {
     // detail L for tone and lines: two radius-1 passes at 960; the
     // spread grows with s², so more passes when sharper
     const passes = Math.max(1, Math.round(2 * s * s));
-    for (const ch of [L, A, B]) for (let k = 0; k < passes; k++) boxBlur(ch, w, h, 1);
+    for (let k = 0; k < passes; k++) boxBlur(L, w, h, 1);   // only lightness is read in detail
 
     const keys = Object.keys(theme);
     const pal = keys.map(k => { const ok = rgbToOklab(...Object.values(hexToRgb(theme[k]))); return ok; });
@@ -263,7 +276,14 @@ function analyse(src, theme) {
     for (let p = 0; p < n; p++) dog[p] = g1[p] - g2[p];
 
     // Salient shapes for the afterimages: top 5% of saliency, outside the darkest cel
-    const sal = saliencyMap(data, w, h);
+    // saliency only picks the subject, so a quarter-size reading is enough
+    const sw = Math.max(16, w >> 2), sh = Math.max(9, h >> 2), small = new Uint8ClampedArray(sw * sh * 4);
+    for (let y = 0; y < sh; y++) for (let x = 0; x < sw; x++) {
+        const q = ((y * h / sh | 0) * w + (x * w / sw | 0)) * 4, o = (y * sw + x) * 4;
+        small[o] = data[q]; small[o + 1] = data[q + 1]; small[o + 2] = data[q + 2]; small[o + 3] = 255;
+    }
+    const salSmall = saliencyMap(small, sw, sh), sal = new Float32Array(n);
+    for (let p = 0; p < n; p++) sal[p] = salSmall[Math.min(sh - 1, (p / w | 0) * sh / h | 0) * sw + Math.min(sw - 1, (p % w) * sw / w | 0)];
     const sorted = Float32Array.from(sal).sort();
     const cut = sorted[Math.floor(n * 0.95)];
     const darkest = pal.reduce((m, q, j) => (q.L < pal[m].L ? j : m), 0);
@@ -296,13 +316,14 @@ function analyse(src, theme) {
     // a source with the frame's detail is already there
     const same = w === W;
     const E = same ? {
-        value: f => f, mask: f => Uint8Array.from(f, v => (v > 0.5 ? 1 : 0)),
+        value: f => f,
+        mask: f => { const o = new Uint8Array(f.length); for (let p = 0; p < f.length; p++) o[p] = f[p] > 0.5 ? 1 : 0; return o; },
         label: () => label, nearest: f => f
     } : enlarge(w, h);
     const smooth = m => { const f = Float32Array.from(m); if (!same) boxBlur(f, w, h, R); return f; };
     const litF = smooth(lit);
     const a = {
-        label: same ? label : E.label(maps.map(m => { const f = Float32Array.from(m); boxBlur(f, w, h, 1); return f; })),
+        label: same ? label : E.label(maps.map(m => { const f = Float32Array.from(m); boxBlur(f, w, h, 1); return f; }), label),
         below: E.value(below), shade: E.mask(smooth(shade)), tone: E.mask(smooth(tone)),
         up: E.nearest(up, Int8Array), lift: E.value(lift), lit: E.mask(litF), hole: holes ? E.mask(hole) : null,
         dog: E.value(dog), salient: E.mask(salient),

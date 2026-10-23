@@ -98,6 +98,7 @@
     // Small sources (icons, logos) are objects, not scenes: shown whole
     const OBJECT_MAX = 480;    // longest side below this, in source pixels
     const OBJECT_FILL = 0.8;   // share of the frame's height (or width) it takes
+    const ANALYSE_MAX = 1024;  // widest working size, whatever the frame
 
     // The ground an object stands on: the mean of its opaque border pixels,
     // or none where the border is mostly transparent
@@ -126,8 +127,8 @@
     let job = 0, sent = { img: null, key: '' }, imgIds = new WeakMap(), nextImg = 0;
     function render(theme) {
         const img = currentImgEl || keptThumb();
-        stage.classList.toggle('empty', !img);
         if (!img) {
+            stage.classList.add('empty');
             job++;                                    // a cut still developing is dropped
             setPlateCount(Object.keys(palette.theme).length + 1);
             plates.forEach(P => P.ctx.clearRect(0, 0, W, H));
@@ -136,7 +137,11 @@
             renderEmpty(theme);
             return;
         }
-        ejectBtn.disabled = false;
+        // the card stays up, and nothing can be taken apart, until the cut arrives
+        if (stage.classList.contains('empty')) {
+            const why = stage.querySelector('.proof-why');
+            if (why) why.textContent = 'DEVELOPING';
+        }
         const key = Object.values(palette.theme).join('');
         const msg = { id: ++job, W, H, theme: palette.theme, shown: theme }, move = [];
         if (sent.img !== img || sent.key !== key) {
@@ -145,7 +150,9 @@
             const sw = img.naturalWidth, sh = img.naturalHeight;
             const object = Math.max(sw, sh) < OBJECT_MAX;
             const crop = object ? { x: 0, y: 0, w: sw, h: sh } : frameCut(img);
-            const w = object ? 480 : Math.round(Math.min(W, Math.max(480, crop.w)) / 16) * 16, h = w / 16 * 9;
+            // (capped at ANALYSE_MAX: the cels are enlarged as shapes, so a finer
+            // reading only costs time — a worker may run on a slow core)
+            const w = object ? 480 : Math.round(Math.min(W, ANALYSE_MAX, Math.max(480, crop.w)) / 16) * 16, h = w / 16 * 9;
             const c = document.createElement('canvas');
             c.width = w; c.height = h;
             const x = c.getContext('2d', { willReadFrequently: true });
@@ -174,11 +181,14 @@
     worker.onmessage = e => {
         const r = e.data;
         if (r.id !== job) return;                     // a newer cut is on its way
+        stage.classList.remove('empty');
+        ejectBtn.disabled = false;
         setPlateCount(r.plates.length);
         r.plates.forEach((buf, i) => {
             plates[i].ctx.putImageData(new ImageData(new Uint8ClampedArray(buf), W, H), 0, 0);
             plates[i].text = i === r.plates.length - 1 ? 'K' : `P${i + 1}`;
         });
+        clean = plates.map(P => copyOf(P.ctx.canvas));
         if (explode > 0) plates.forEach(P => { P.tag.textContent = P.text; });
         $('proof-source').textContent = `${r.srcW} × ${r.srcH}`;
         $('proof-line').textContent = `${(Math.round(r.lineShare * 1000) / 10).toFixed(1)}%`;
@@ -223,44 +233,69 @@
         big.className = 'proof-nosignal'; big.textContent = 'NO SIGNAL DETECTED';
         why.className = 'proof-why'; why.textContent = palette.isDefault ? 'AWAITING DEPOSIT' : 'SOURCE NOT KEPT';
         $('proof-empty-tag').replaceChildren(big, why);
-        card = document.createElement('canvas');           // the clean card, to tear and restore
-        card.width = W; card.height = H;
-        card.getContext('2d').drawImage(f.canvas, 0, 0);
+        clean = [copyOf(f.canvas)];
         $('proof-source').textContent = '—';
         $('proof-line').textContent = '—';
         plates.forEach((P, i) => { P.text = i === plates.length - 1 ? 'K' : `P${i + 1}`; });
     }
 
-    // No signal, now and then: a few horizontal bands tear sideways for
-    // three stepped frames with a channel split, then the card is whole
-    // again. Only while the card is on screen; never with reduced motion.
-    let card = null, glitchTimer = 0, onScreen = false;
+    // The tear, the one glitch this frame has: a few horizontal bands of
+    // every plate shift sideways together for three stepped frames, with a
+    // channel split, then the frame is whole again. It marks the frame's
+    // events (taking it apart, seating it) and, on the test card alone,
+    // comes now and then like a dead channel. Never with reduced motion.
+    let clean = [], tearing = false, glitchTimer = 0, onScreen = false;
+    function copyOf(canvas) {
+        const c = document.createElement('canvas');
+        c.width = W; c.height = H;
+        c.getContext('2d').drawImage(canvas, 0, 0);
+        return c;
+    }
     function tear() {
-        if (!card || !stage.classList.contains('empty') || explode > 0) return;
-        const f = plates[0].ctx;
+        if (still || tearing || !clean.length) return;
+        tearing = true;
         FX.split(stage, 220);
         let frame = 0;
         const step = () => {
-            f.drawImage(card, 0, 0);
+            const bands = [];
             if (frame < 3) {
                 for (let b = 0; b < 2 + (Math.random() * 3 | 0); b++) {
-                    const y = Math.random() * H | 0, h = (6 + Math.random() * 40) * S | 0;
-                    const dx = ((Math.random() < 0.5 ? -1 : 1) * (12 + Math.random() * 70) * S) | 0;
-                    f.drawImage(card, 0, y, W, h, dx, y, W, h);
-                    f.drawImage(card, 0, y, W, h, dx - Math.sign(dx) * W, y, W, h);   // wraps round
+                    bands.push({
+                        y: Math.random() * H | 0, h: (6 + Math.random() * 40) * S | 0,
+                        dx: ((Math.random() < 0.5 ? -1 : 1) * (12 + Math.random() * 70) * S) | 0
+                    });
                 }
-                frame++;
-                setTimeout(step, 70);
             }
+            clean.forEach((c, i) => {
+                if (!c || !plates[i]) return;
+                const f = plates[i].ctx;
+                f.clearRect(0, 0, W, H);
+                f.drawImage(c, 0, 0);
+                for (const { y, h, dx } of bands) {
+                    f.clearRect(0, y, W, h);
+                    f.drawImage(c, 0, y, W, h, dx, y, W, h);
+                    f.drawImage(c, 0, y, W, h, dx - Math.sign(dx) * W, y, W, h);   // wraps round
+                }
+            });
+            if (frame++ < 3) setTimeout(step, 70); else tearing = false;
         };
         step();
     }
     function scheduleTear() {
         clearTimeout(glitchTimer);
         if (still || !onScreen) return;
-        glitchTimer = setTimeout(() => { tear(); scheduleTear(); }, 2200 + Math.random() * 3800);
+        glitchTimer = setTimeout(() => {
+            if (stage.classList.contains('empty') && explode === 0) tear();
+            scheduleTear();
+        }, 2200 + Math.random() * 3800);
     }
     new IntersectionObserver(([e]) => { onScreen = e.isIntersecting; scheduleTear(); }).observe(stage);
+
+    // Seated again: the set reports it, an OSD plate for half a second
+    const lock = document.createElement('span');
+    lock.className = 'proof-lock';
+    lock.textContent = 'SIGNAL LOCKED';
+    stage.appendChild(lock);
 
     function keptThumb() {
         if (typeof thumbs !== 'object' || !palette) return null;
@@ -289,8 +324,14 @@
         stage.style.setProperty('--e', (n / STEPS).toFixed(3));
         stage.classList.toggle('apart', n > 0);
         FX.split(rig, 120);
-        if (opening) plates.forEach((P, i) => setTimeout(() => FX.decode(P.tag, P.text, 260), i * 70));
-        if (n === 0) { stage.classList.remove('locked'); void stage.offsetWidth; stage.classList.add('locked'); }
+        if (opening) {
+            tear();
+            plates.forEach((P, i) => setTimeout(() => FX.decode(P.tag, P.text, 260), i * 70));
+        }
+        if (n === 0) {
+            tear();
+            lock.classList.remove('show'); void lock.offsetWidth; lock.classList.add('show');
+        }
         syncEject();
     }
     function runTo(target) {
