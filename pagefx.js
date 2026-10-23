@@ -33,7 +33,7 @@
 
     // ---- Sandevistan: COLOR BAR ----
     const bar = document.getElementById('palette-container');
-    const STEP = 40, GAP = 12, MAX_ECHOES = 4;
+    const STEP = 40, GAP = 18, MAX_ECHOES = 4;
     let echoTimer = null, lastTheme = '';
 
     // The most vivid colours make the clearest afterimages

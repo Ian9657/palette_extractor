@@ -87,7 +87,7 @@ All effects respect `prefers-reduced-motion: reduce` (off or instant) and are de
 | Decoded text | lens readout, preview captions | `FX.decode`, 220–320 ms, only when the value changes meaningfully |
 | Floating previews | archive (source thumbnail), matrix (type specimen) | `follow.js` delays `slow 12 / mid 7`; stepped opening `steps(6)`; scanlines inside |
 | Title card | each entry, the first time it scrolls in | numeral decodes + `FX.split`; the panel h2 is cut in on an `--alert` card with `--alert-ink` text: wipe 3 steps, hold, wipe off 3 steps, 340 ms, once per page load |
-| Sandevistan | COLOR BAR, when a new palette lands (deposit, COLORS, reroll, archive, hand edit) | the bar steps in from the left 12 px per 40 ms frame, leaving one solid afterimage per frame in the palette's own colours (most vivid first, max 4); then they drop out farthest first. Data colours exact, no filter on the swatches |
+| Sandevistan | COLOR BAR, when a new palette lands (deposit, COLORS, reroll, archive, hand edit) | the bar steps in from the left 18 px per 40 ms frame, leaving one solid afterimage per frame in the palette's own colours (most vivid first, max 4); then they drop out farthest first. Data colours exact, no filter on the swatches |
 | Fringe | the control that was pressed (`.btn-export`, COLORS label) | `FX.split`, 200 ms. Never on data colours |
 | Plate stack | under the sheet | one plate per extracted colour, exposed right/bottom; each plate eases on its own, front 0.585 → back 0.39; always z-below the sheet |
 
