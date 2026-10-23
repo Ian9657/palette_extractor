@@ -950,3 +950,34 @@ h1, h2, h3, .title, .mockup-title,
 /* Plates take a new ink in a hard cut (pagefx.js) and kick out for two frames */
 .fx-cards .plate { transition: none; }
 .plate.kick { translate: 6px 6px; }
+
+/* ---- Press run on load (pagefx.js) ----
+   Marks, plates, nameplate, mast line, body: each held back until its stage. */
+.booting .reg-mark,
+.booting .plates,
+.booting .masthead > *,
+.booting .register,
+.booting .colophon { visibility: hidden; }
+.booting.boot-marks .reg-mark,
+.booting.boot-plates .plates,
+.booting.boot-name .nameplate,
+.booting.boot-mast .mast-line,
+.booting.boot-mast .mast-rule { visibility: visible; }
+.booting.boot-marks .reg-mark::before { animation: reg-snap 240ms step-end 1; }
+@keyframes reg-snap {
+    0%  { transform: translate(9px, 6px); }
+    33% { transform: translate(5px, 3.5px); }
+    66% { transform: translate(2.5px, 1.8px); }
+}
+.booting.boot-name .nameplate-title { animation: name-press 300ms step-end 1; }
+@keyframes name-press {
+    0%  { color: transparent; text-shadow: 0.22em 0.15em 0 var(--signal); }
+    25% { color: var(--text-color); text-shadow: 0.22em 0.15em 0 var(--signal); }
+    50% { text-shadow: 0.14em 0.1em 0 var(--signal); }
+    75% { text-shadow: 0.07em 0.05em 0 var(--signal); }
+}
+.booting.boot-mast .mast-rule { animation: rule-wipe 240ms steps(6, end) 1 both; }
+@keyframes rule-wipe {
+    from { clip-path: inset(0 100% 0 0); }
+    to   { clip-path: inset(0); }
+}

@@ -22,6 +22,13 @@
     <meta name="twitter:title" content="Palette Extractor — Signal Edition">
     <meta name="twitter:description" content="Photo in, a register of colour out.">
     <meta name="twitter:image" content="https://palette.etarc.net/og-image.png">
+    <!-- Press run on load (pagefx.js): hide the sheet's contents before first paint; failsafe reveal -->
+    <script>
+        if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            document.documentElement.classList.add('booting');
+            setTimeout(() => document.documentElement.classList.remove('booting'), 2500);
+        }
+    </script>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="register.css">
     <link rel="stylesheet" href="edition.css">
