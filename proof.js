@@ -136,6 +136,7 @@
             if (explode > 0) setExplode(0);
             ejectBtn.disabled = true;
             stage.setAttribute('aria-disabled', 'true');
+            stage.setAttribute('aria-label', 'Proof: no image yet');
             renderEmpty(theme);
             return;
         }
@@ -186,6 +187,7 @@
         stage.classList.remove('empty');
         ejectBtn.disabled = false;
         stage.removeAttribute('aria-disabled');
+        stage.setAttribute('aria-label', `Proof: the photo redrawn in the ${Object.keys(palette.theme).length} extracted inks`);
         setPlateCount(r.plates.length);
         r.plates.forEach((buf, i) => {
             plates[i].ctx.putImageData(new ImageData(new Uint8ClampedArray(buf), W, H), 0, 0);
