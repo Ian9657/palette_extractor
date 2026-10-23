@@ -524,6 +524,8 @@ body::after {
     .nameplate { flex-direction: column; align-items: flex-start; }
     .nameplate-side { align-items: flex-start; text-align: left; }
     .entry-margin { flex-direction: column; align-items: flex-start; }
+    /* style.css puts the edit pen in the row's flow but leaves ⇄ absolute, so they overlap: seat ⇄ beside the pen */
+    .swatch-swap { position: relative; top: 0; right: 0; flex-shrink: 0; width: 24px; height: 24px; margin-left: var(--s1); }
 }
 /* main.js colours the empty-list note with --secondary-color (#333 by default), unreadable on the dark sheet */
 .history-container .mono-text { color: var(--text-color) !important; }
