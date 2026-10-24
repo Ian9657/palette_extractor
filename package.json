@@ -1,0 +1,13 @@
+{
+  "name": "palette-extractor",
+  "private": true,
+  "description": "Dev tooling only: the site itself is static files with no build step.",
+  "scripts": {
+    "test": "node --test",
+    "edge": "node tools/edge.js",
+    "shots": "node tools/shots.js"
+  },
+  "devDependencies": {
+    "playwright": "1.48.2"
+  }
+}

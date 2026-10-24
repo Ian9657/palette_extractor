@@ -51,9 +51,15 @@ python3 -m http.server
 ## Tests
 
 ```sh
-node --test                       # everything (~30 s)
-node --test test/color.test.js   # the colour logic
+npm test                          # everything (~30 s); same as node --test
+node --test test/color.test.js   # the colour logic, including extreme images
 node --test test/proof.test.js   # the proof worker: plates, inks, stacking, cut-outs, edge cases
+```
+
+Browser checks need Playwright once: `npm install` (the browsers: `npx playwright install chromium webkit`).
+
+```sh
+npm run edge    # ten extreme images (white, black, 1 px, cut-out, fully transparent, 8000 px…) through the real page in Chromium and WebKit
 ```
 
 `gallery.html` runs the extractor over 15 hard real-world images (`regression/`) plus synthetic cases. Save a baseline, change the algorithm, refresh — every role whose colour moved is outlined.

@@ -217,3 +217,51 @@ test('extraction still recovers known solid colours exactly', () => {
         assert.ok(centroids.some(c => c.r === r && c.g === g && c.b === b), `missing ${r},${g},${b}`);
     }
 });
+
+// ---- Extreme images: every one must still give k distinct, valid colours ----
+const solid = (rgb, width, height, alpha = 255) => {
+    const data = new Uint8ClampedArray(width * height * 4);
+    for (let i = 0; i < data.length; i += 4) { data[i] = rgb[0]; data[i + 1] = rgb[1]; data[i + 2] = rgb[2]; data[i + 3] = alpha; }
+    return { data, width, height };
+};
+const HEX = /^#[0-9A-F]{6}$/;
+function assertValidPalette(p, k, label) {
+    const hexes = Object.values(p.theme);
+    assert.equal(hexes.length, k, `${label}: ${hexes.length} colours for k = ${k}`);
+    for (const h of hexes) assert.match(h, HEX, `${label}: bad colour ${h}`);
+    assert.equal(new Set(hexes).size, k, `${label}: duplicates in ${hexes}`);
+    const ratio = C.contrastRatio(C.hexToRgb(p.theme.text), C.hexToRgb(p.theme.bg));
+    assert.ok(ratio >= 4.5, `${label}: TEXT on BASE is ${ratio.toFixed(2)}`);
+}
+
+for (const [label, img] of [
+    ['pure white', solid([255, 255, 255], 60, 40)],
+    ['pure black', solid([0, 0, 0], 60, 40)],
+    ['one mid grey', solid([128, 128, 128], 60, 40)],
+    ['a single pixel', solid([200, 30, 90], 1, 1)],
+    ['a one-pixel-high strip', blocks([{ rgb: [20, 20, 20], w: 50 }, { rgb: [240, 200, 40], w: 50 }], 1)],
+    ['two colours', blocks([{ rgb: [239, 68, 68], w: 50 }, { rgb: [59, 130, 246], w: 50 }])],
+]) {
+    for (const k of [3, 5, 8]) {
+        test(`extreme image, ${label}, k = ${k}: k distinct colours, readable TEXT`, () => {
+            assertValidPalette(C.extractPalette(img.data, img.width, img.height, k), k, label);
+        });
+    }
+}
+
+test('fully transparent image: no pixels to read, but no crash and no NaN', () => {
+    const img = solid([255, 0, 0], 20, 20, 0);
+    assert.equal(C.buildHistogram(img.data, img.width, img.height).bins.length, 0);
+    let p;
+    assert.doesNotThrow(() => { p = C.extractPalette(img.data, img.width, img.height, 5); });
+    for (const h of Object.values(p.theme)) assert.match(h, HEX);
+});
+
+test('a large image (2000 × 1500 noise) is read in reasonable time', () => {
+    const w = 2000, h = 1500, data = new Uint8ClampedArray(w * h * 4);
+    let s = 7;
+    for (let i = 0; i < data.length; i++) { s = (s * 1103515245 + 12345) & 0x7fffffff; data[i] = i % 4 === 3 ? 255 : s >> 23; }
+    const t = Date.now();
+    assertValidPalette(C.extractPalette(data, w, h, 5), 5, 'noise');
+    assert.ok(Date.now() - t < 20000, `took ${Date.now() - t} ms`);
+});
