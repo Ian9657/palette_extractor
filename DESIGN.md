@@ -18,8 +18,8 @@ Identity in one line: **a strictly typeset register, viewed through a night-city
 
 | Edition | Files | Status |
 | --- | --- | --- |
-| **Classic** (built April 2026) | `classic.html`, `style.css`, `color-classic.js` | **Frozen.** Do not change its look or algorithm. Bug fixes in shared `main.js` are allowed only if they don't alter classic's appearance. |
-| **New** (homepage) | `index.html`, `edition.css/js`, `register.css/js`, `previews.js`, `cover.js`, `follow.js`, `fx.js`, `pagefx.js`, `samples.js`, `color.js` | The one living design. |
+| **Classic** (built April 2026) | `classic.html`, `style-classic.css`, `color-classic.js`, `main-classic.js` (plus the shared `ntc.js` name list) | **Frozen.** Do not change any of its files. Since 2026-10-24 it shares no code with the new edition, so nothing done to the new edition can touch it. |
+| **New** (homepage) | `index.html`, `main.js`, `style.css`, `edition.css/js`, `proof.js`, `proof-worker.js`, `register.css/js`, `previews.js`, `cover.js`, `follow.js`, `fx.js`, `pagefx.js`, `samples.js`, `color.js` | The one living design. |
 
 - The new edition has **one appearance**: the dark night-city register below. **No day/night switch, no second theme.** Remove theme branches rather than leaving dead ones (`[data-theme="day"]` rules, `editionCopy.day`, `setEdition`, the pre-paint theme script).
 
@@ -77,7 +77,7 @@ Identity in one line: **a strictly typeset register, viewed through a night-city
 
 ## 7. Motion and effects catalogue
 
-All effects respect `prefers-reduced-motion: reduce` (off or instant) and are desktop-pointer only where they follow the cursor. Scripted effects check it themselves; a catch-all in `edition.css` makes every CSS transition and animation land at once, so a new effect is covered by default. Known exception: the k-means playback in Fig. 1 (`main.js`, shared with classic) still plays its ~1 s of iterations.
+All effects respect `prefers-reduced-motion: reduce` (off or instant) and are desktop-pointer only where they follow the cursor. Scripted effects check it themselves; a catch-all in `edition.css` makes every CSS transition and animation land at once, so a new effect is covered by default. Known exception: the k-means playback in Fig. 1 (`main.js`) still plays its ~1 s of iterations; main.js no longer serves classic, so this can now be fixed.
 
 | Effect | Where | Spec |
 | --- | --- | --- |
@@ -165,6 +165,6 @@ Section names must be consistent: a label used in the margin is not repeated as 
 - [ ] Everything sits on the grid; spacing uses tokens; type uses scale tokens.
 - [ ] No new words that aren't records.
 - [ ] Motion is short, stepped, and tied to an event or a screen object.
-- [ ] Classic unchanged (`git diff --stat` shows no classic files).
+- [ ] Classic unchanged (`git diff --stat` shows none of `classic.html`, `*-classic.*`).
 - [ ] No dead code left from removed options.
 - [ ] §10.5 checks pass.
