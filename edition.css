@@ -985,9 +985,11 @@ h1, h2, h3, .title,
 .booting .register,
 .booting .colophon { visibility: hidden; }
 /* Until the plates go down there is no sheet either, only the desk and the
-   marks; then the sheet surfaces (the one soft move in the run) */
+   marks; then the sheet surfaces (the one soft move in the run). It surfaces
+   from the desk's colour, not from transparent: a see-through sheet let the
+   grey front plate show for its first frame, a grey flash before the blue */
 .booting .sheet { transition: background-color 320ms var(--ease-smooth), border-color 320ms var(--ease-smooth); }
-.booting:not(.boot-plates) .sheet { background-color: transparent; border-color: transparent; }
+.booting:not(.boot-plates) .sheet { background-color: var(--desk); border-color: transparent; }
 .booting.boot-marks .reg-mark,
 .booting.boot-plates .plates,
 .booting.boot-name .nameplate,
