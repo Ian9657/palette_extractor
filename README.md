@@ -51,7 +51,9 @@ python3 -m http.server
 ## Tests
 
 ```sh
-node --test test/color.test.js   # unit tests for the colour logic
+node --test                       # everything (~30 s)
+node --test test/color.test.js   # the colour logic
+node --test test/proof.test.js   # the proof worker: plates, inks, stacking, cut-outs, edge cases
 ```
 
 `gallery.html` runs the extractor over 15 hard real-world images (`regression/`) plus synthetic cases. Save a baseline, change the algorithm, refresh — every role whose colour moved is outlined.
