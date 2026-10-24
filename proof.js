@@ -401,4 +401,7 @@
     });
 
     applyMockupTheme();
+    // The test card's hex labels are drawn on the canvas: if the face wasn't
+    // there yet they came out in a fallback font, so draw again once it is
+    document.fonts.load(`600 ${10 * S}px "IBM Plex Mono"`).then(() => { if (stage.classList.contains('empty')) applyMockupTheme(); });
 })();
