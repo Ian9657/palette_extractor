@@ -57,6 +57,7 @@ function figError(text) {
     FX.split(cap, 300);
 }
 reportError = () => figError('IMAGE COULD NOT BE READ.');
+reportNothingToRead = () => figError('NOTHING TO READ: THE IMAGE IS FULLY TRANSPARENT.');
 dropZoneEl.addEventListener('drop', e => {
     const file = e.dataTransfer.files[0];
     if (file && !file.type.startsWith('image/')) figError('NOT AN IMAGE.');   // main.js ignores it silently

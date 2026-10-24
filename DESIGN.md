@@ -63,7 +63,7 @@ Identity in one line: **a strictly typeset register, viewed through a night-city
 | `--hairline` | `rgba(245,240,232,.18)` | 1 px dividers | — |
 | `--signal` / `--signal-ink` | `#00E5FF` | **the system at work**: entry numerals, FIG. labels, off-register nameplate plate, registration marks, lens brackets, scan line | the only accent used for marks and small text |
 | `--alert` + `--alert-ink` | `#F0EF00` on `#191C23` | **look here**: small state tags (FILED, AWAITING DEPOSIT), the lens readout and crosshair | always a tag with ink text; never text colour; never a large area |
-| `--danger` | `#FF4655` | errors only: Fig. 1's caption when an image can't be deposited (IMAGE COULD NOT BE READ. / NOT AN IMAGE.), a button whose action failed (COPY FAILED, EXPORT FAILED) for 1.5 s | never decorative; never a browser dialog |
+| `--danger` | `#FF4655` | errors only: Fig. 1's caption when an image can't be deposited (IMAGE COULD NOT BE READ. / NOT AN IMAGE. / NOTHING TO READ: THE IMAGE IS FULLY TRANSPARENT.), a button whose action failed (COPY FAILED, EXPORT FAILED) for 1.5 s | never decorative; never a browser dialog |
 
 - **Three accents, three jobs. Nothing else.** No pink/magenta, no second signal ("counter-signal"), no amber, no gradients as decoration.
 - Glow (`drop-shadow` of `--signal`) only on screen-side objects (§3.3), max 4–5 px, never on the sheet or its frame.
@@ -153,7 +153,7 @@ Section names must be consistent: a label used in the margin is not repeated as 
 2. Small changes may go straight to `main`. Bigger ones (algorithms, refactors) go on a branch; tell the owner the branch name and push only after the owner says so ("推"). Push several commits **one at a time**, waiting for each Pages deploy to finish (`git push origin <sha>:main`, `gh run watch`).
 3. Commit messages: imperative subject ≤ 60 chars, a short body on *why*. **No `Co-Authored-By` or other attribution trailers** — the owner is the sole contributor.
 4. One agent edits at a time. Don't touch files outside the task.
-5. Before handing back: `node --test` passes (colour logic and the proof worker); the page loads with no console errors at 1400 px and 390 px; no horizontal scroll at 390 px; real pointer clicks hit their targets (check `elementFromPoint`, not just DOM state).
+5. Before handing back: `npm test` passes (colour logic and the proof worker) and, after a change to extraction or the proof, `npm run edge`; the page loads with no console errors at 1400 px and 390 px; no horizontal scroll at 390 px; real pointer clicks hit their targets (check `elementFromPoint`, not just DOM state).
 6. Hand-back note: what changed, which files, how it was verified, anything left open.
 7. Changing the algorithm in `color.js`: run the 15-image comparison against `color-classic.js` (salient recall, max chroma, mean error) and report it. Don't make any image clearly worse.
 

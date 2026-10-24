@@ -24,9 +24,11 @@ let revCount = parseInt(localStorage.getItem('proofRevCount') || '0') || 0;
 let palette = null;
 
 // Hooks an edition may replace (edition.js does); these defaults are the
-// classic behaviour: a browser alert, and COPIED whether or not the copy took.
+// classic behaviour: a browser alert, silence for an image with no visible
+// pixel, and COPIED whether or not the copy took.
 // copyText returns a promise that settles once the clipboard has answered.
 let reportError = msg => alert(msg);
+let reportNothingToRead = () => {};
 let copyText = text => { navigator.clipboard.writeText(text).catch(() => {}); return Promise.resolve(); };
 
 const loadingOverlay = document.getElementById('loading-overlay');
@@ -335,6 +337,7 @@ function extractColorsVisualized(imgEl, selDomRect = null) {
 
     if (hist.total === 0) {
         endExtraction();
+        reportNothingToRead();
         return;
     }
 
