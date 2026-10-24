@@ -99,7 +99,7 @@ Adding a new effect requires: which screen-side object it belongs to, its durati
 ## 8. Page anatomy (new edition)
 
 1. **Masthead** — mono line (VOL. 01 — edition name · ISSUE nnn · date), nameplate PALETTE with one off-register `--signal` plate, EXTRACTOR + "A REGISTER OF COLOUR", the page's **only** heavy double rule. The edition name appears once.
-2. **01 Intake** — Fig. 1 (4:3 drop zone; controls COLORS/REROLL directly under it; then SAMPLES: six Unsplash photographs, 1920 × 1440 in `samples/` with small thumbnails from `regression/`; one click deposits one, `samples.js`) + opener: kicker, primary-colour rule, headline = primary colour's name, factual standfirst, accession record (folded until an object exists).
+2. **01 Intake** — Fig. 1 (4:3 drop zone; controls COLORS/REROLL directly under it; then SAMPLES: six Unsplash photographs, 1920 × 1440 in `samples/` with 256 px thumbnails in `samples/thumbs/` (the row shows them at most ~82 px wide, so 3× screens stay sharp); one click deposits one, `samples.js`) + opener: kicker, primary-colour rule, headline = primary colour's name, factual standfirst, accession record (folded until an object exists).
 3. **02 Specimen** — COLOR BAR; actions: STAR, SAVE IMG, EXPORT ▾ (link, CSS, Tailwind, Figma). OKLCH line under each swatch.
 4. **03 Relations** — contrast matrix (WCAG/APCA) with type-specimen hover; CVD strips in two columns.
 5. **04 Proof** — the photo re-rendered as one anime cel in the palette's inks, separated into plates (§8.1). Archive and favourites follow, folded.
