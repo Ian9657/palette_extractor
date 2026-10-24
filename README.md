@@ -59,6 +59,7 @@ node --test test/proof.test.js   # the proof worker: plates, inks, stacking, cut
 Browser checks need Playwright once: `npm install` (the browsers: `npx playwright install chromium webkit`).
 
 ```sh
+npm run perf    # load time of the live site: desktop, mid phone, slow phone (CPU and network throttled)
 npm run edge    # ten extreme images (white, black, 1 px, cut-out, fully transparent, 8000 px…) through the real page in Chromium and WebKit
 ```
 

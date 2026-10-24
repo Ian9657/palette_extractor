@@ -5,7 +5,8 @@
   "scripts": {
     "test": "node --test",
     "edge": "node tools/edge.js",
-    "shots": "node tools/shots.js"
+    "shots": "node tools/shots.js",
+    "perf": "node tools/perf.js"
   },
   "devDependencies": {
     "playwright": "1.48.2"
