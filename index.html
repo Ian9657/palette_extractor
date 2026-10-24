@@ -29,10 +29,13 @@
             setTimeout(() => document.documentElement.classList.remove('booting'), 2500);
         }
     </script>
+    <!-- Fonts are self-hosted (fonts/fonts.css); the nameplate's and the mast line's faces are fetched at once -->
+    <link rel="preload" href="fonts/chakra-petch-latin-700.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="fonts/ibm-plex-mono-latin-400.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="fonts/fonts.css">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="register.css">
     <link rel="stylesheet" href="edition.css">
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="object" id="object">
