@@ -83,7 +83,11 @@ For a visual change: `npm run shots -- before/`, make the change, `npm run shots
 | `proof.js` / `proof-worker.js` | Fig. 4 print proof: framing, plates, test card (page); cel, tones, lines, separation (worker) |
 | `previews.js`, `cover.js` | Archive/matrix previews; magazine-cover export |
 | `follow.js`, `fx.js`, `pagefx.js` | Cursor follow, screen-signal effects, page events (title cards, Sandevistan, press run) |
-| `samples.js`, `samples/` | Six sample photographs under Fig. 1 (1920 × 1440) |
+| `samples.js`, `samples/` | Six sample photographs under Fig. 1 (1920 × 1440), with 256 px thumbnails in `samples/thumbs/` |
+| `fonts/` | Chakra Petch, Space Grotesk, IBM Plex Mono (OFL), self-hosted: Latin + Latin Extended, `fonts/fonts.css` |
 | `style.css` | Base styles and the panels, used by both editions |
-| `gallery.html` / `gallery.js` | Regression gallery |
+| `gallery.html` / `gallery.js`, `regression/` | Regression gallery (development tool; not indexed) |
+| `test/` | `npm test`: colour logic and the proof worker |
+| `tools/` | Browser tooling (Playwright): `edge`, `perf`, `shots`, `compare` — see Tests |
+| `package.json` | Dev tooling only; the site has no build step |
 | `ntc.js` | Colour naming ("Name that Color") |

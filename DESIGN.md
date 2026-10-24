@@ -47,6 +47,7 @@ Identity in one line: **a strictly typeset register, viewed through a night-city
   - **Space Grotesk** (`--font-text`) — body copy: standfirst, specimen sentences.
   - **IBM Plex Mono** — labels, numbers, captions, data readouts.
 - No serif, no italic, no fourth font, no pixel/Japanese decorative type. Classic keeps Space Grotesk throughout.
+- Self-hosted in `fonts/` (Latin + Latin Extended; Chakra Petch 500/600/700, Space Grotesk variable, Plex Mono 400/600); the new edition sends no request to Google. Classic and the gallery still load Google Fonts. A new weight means adding its file to `fonts/` and `fonts/fonts.css`.
 - Scale tokens only: `--fs-display` (nameplate only), `--fs-title` (opener headline, entry numerals), `--fs-heading` (panel h2), `--fs-body`, `--fs-label` (12 px), `--fs-micro` (10 px, the floor).
 - Mono labels: uppercase, letter-spacing 0.08–0.14em. Numbers: `font-variant-numeric: tabular-nums`.
 
