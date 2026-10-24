@@ -77,7 +77,7 @@ Identity in one line: **a strictly typeset register, viewed through a night-city
 
 ## 7. Motion and effects catalogue
 
-All effects respect `prefers-reduced-motion: reduce` (off or instant) and are desktop-pointer only where they follow the cursor. Scripted effects check it themselves; a catch-all in `edition.css` makes every CSS transition and animation land at once, so a new effect is covered by default. Known exception: the k-means playback in Fig. 1 (`main.js`) still plays its ~1 s of iterations; main.js no longer serves classic, so this can now be fixed.
+All effects respect `prefers-reduced-motion: reduce` (off or instant) and are desktop-pointer only where they follow the cursor. Scripted effects check it themselves; a catch-all in `edition.css` makes every CSS transition and animation land at once, so a new effect is covered by default. The k-means playback in Fig. 1 (`main.js`) shows only the converged frame.
 
 | Effect | Where | Spec |
 | --- | --- | --- |

@@ -9,6 +9,7 @@ const root = document.documentElement;
 
 const MAX_ITER = 15;
 const FRAME_MS = 60;
+const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 let isExtracting = false;
 let currentK = 5;
@@ -388,6 +389,8 @@ function extractColorsVisualized(imgEl, selDomRect = null) {
         else playing = false;
     }
     worker.onmessage = function (e) {
+        // With reduced motion there is no playback: only the converged frame is drawn
+        if (REDUCED_MOTION) { if (e.data.final) paint(e.data); return; }
         queue.push(e.data);
         if (!playing) { playing = true; requestAnimationFrame(play); }
     };
