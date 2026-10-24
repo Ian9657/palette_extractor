@@ -6,7 +6,8 @@
     "test": "node --test",
     "edge": "node tools/edge.js",
     "shots": "node tools/shots.js",
-    "perf": "node tools/perf.js"
+    "perf": "node tools/perf.js",
+    "compare": "node tools/compare.js"
   },
   "devDependencies": {
     "playwright": "1.48.2"

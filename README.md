@@ -61,7 +61,11 @@ Browser checks need Playwright once: `npm install` (the browsers: `npx playwrigh
 ```sh
 npm run perf    # load time of the live site: desktop, mid phone, slow phone (CPU and network throttled)
 npm run edge    # ten extreme images (white, black, 1 px, cut-out, fully transparent, 8000 px…) through the real page in Chromium and WebKit
+npm run shots -- before/   # six reference shots (desktop 1400 + iPhone 13: empty, filed, proof apart) into before/ (default shots/)
+npm run compare -- before/ after/   # what changed between two sets, with diff-*.png in after/
 ```
+
+For a visual change: `npm run shots -- before/`, make the change, `npm run shots -- after/`, `npm run compare -- before/ after/`. Shots are taken with reduced motion and a fixed clock, so two local runs match pixel for pixel; against the live site (`URL=https://palette.etarc.net/`) network-decoded images can differ by a few hundred pixels.
 
 `gallery.html` runs the extractor over 15 hard real-world images (`regression/`) plus synthetic cases. Save a baseline, change the algorithm, refresh — every role whose colour moved is outlined.
 
