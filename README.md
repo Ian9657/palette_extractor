@@ -1,73 +1,133 @@
 # Palette Extractor
 
-**Photo in, usable UI theme out.** Drop or paste an image and get a palette where every colour has a job — background, text, primary, accent — with contrast already checked.
+**Turn an image into a role-based UI palette, with contrast checks and ready-to-export tokens.**
 
-Live: [palette.etarc.net](https://palette.etarc.net)
+**English** | [简体中文](README.zh-CN.md)
+
+[Try it live](https://palette.etarc.net) · Browser-side processing · No runtime dependencies or build step
 
 ![Palette Extractor — Signal Edition](screenshot.jpg)
 
-## Editions
+## Why this exists
 
-There are two editions: the **Signal Edition** (the homepage) and the **Classic edition** it grew out of.
+The most common colours in a photograph are not necessarily the most useful colours for an interface. A dark street can occupy almost the entire image while a small neon sign gives it its identity. A palette dominated by near-black shades can describe the pixels well and still miss what makes the image recognisable.
 
-The Signal Edition is laid out like a magazine feature about the image you deposit — a masthead, an opener whose headline is the name of the photo's primary colour, then numbered figures for the palette, its contrast relations, and a print proof with the archive — set on a Night City blue-black sheet with one cyan signal colour. The interface stays quiet so the extracted colours are always the loudest thing on the page. Design rules live in [DESIGN.md](DESIGN.md).
+Even a good set of swatches leaves work to do: choose a background, find readable text, identify a primary colour, and turn those decisions into design tokens.
 
-- **The lens.** In Fig. 1 the original photo is shown; a small frame drifts across it (or follows your mouse) and shows the same spot in its catalogued colours, with the role it belongs to.
-- **Press marks.** Registration marks at the corners, a specimen strip of the current palette in the margin, and the OKLCH value of every swatch.
-- **Print proof.** Fig. 4 redraws the photo as one anime cel in the palette's inks and separates it like a print job — one plate per ink plus a K plate for the lines. EJECT pulls the stack apart. With no photo yet it shows a test card: SMPTE colour bars in the palette's inks, NO SIGNAL DETECTED. The pixel work runs in a Web Worker, so the page never freezes.
-- **Cover export.** SAVE IMG prints the current object as a 4:5 magazine cover.
-- **Archive previews.** Hover an archived palette to see its source photo; hover a matrix cell for a type specimen of that pair. Thumbnails are kept only in your browser (localStorage `palette.thumbs`) and can be cleared from the page.
-- **Classic edition.** The original page, built in April 2026, is kept at [palette.etarc.net/classic](https://palette.etarc.net/classic). Both editions share the same archive and favourites.
+Palette Extractor connects those steps. It selects 3–8 colours using perceptual clustering and saliency, assigns them UI roles, repairs contrast for text and primary against the background, and exports the result for implementation. Extraction is deterministic for the same pixel input, colour count and seed.
+
+## From image to interface
+
+1. **Deposit an image.** Drop, paste or choose a file, use a sample, or select a region of the image.
+2. **Inspect the palette.** Each colour has a role such as BASE, TEXT, PRIMARY or ACCENT, with hex and OKLCH values. Adjusted and generated colours are marked.
+3. **Check relationships.** Inspect the WCAG contrast-ratio or APCA matrix, preview colour pairs as type, and simulate protan, deutan and tritan colour vision deficiencies with collision warnings.
+4. **Export.** Download CSS variables with light/dark variants and hex fallbacks for OKLCH, a Tailwind configuration with 50–950 tonal scales, Figma token JSON, or a PNG cover. Palettes can also be shared by link, archived and starred.
+
+Light/dark variants belong to the exported palette and proof preview; the Signal Edition interface has one fixed appearance.
+
+## How it works
+
+```text
+Image / selected region
+  → colour histogram + saliency map
+  → seeded OKLab k-means candidates
+  → greedy palette selection
+  → UI role assignment
+  → contrast repair
+  → relationship checks, proof and exports
+```
+
+### Preserve the small colours that matter
+
+The extractor builds a frequency-tuned saliency map adapted to OKLab. Saliency increases clustering weights for visually conspicuous regions. Rather than asking k-means for exactly the final number of colours, it first builds up to `2k + 4` candidates.
+
+A greedy selector then chooses `k` candidates by balancing image coverage with conspicuity and colour separation. This gives a small vivid feature a chance to take a slot that would otherwise go to another similar background shade. Cluster representatives are snapped to colours present in the analysed image pixels.
+
+**A concrete regression case:** the colour tests construct a scene containing five dark shades and a magenta light covering about 1% of the image. With only three output colours, the selector retains a colour near that light across seeds 1–8. This is a repeatable synthetic check; real photographs are inspected separately in the regression gallery.
+
+### Give each colour a job
+
+Role assignment scores permutations of the selected colours using area, lightness, chroma and relationships between roles. With at most eight colours, exhaustive search evaluates at most 40,320 assignments. The objective favours a broad, calm background, readable text and a vivid primary; additional roles depend on the requested palette size.
+
+TEXT and PRIMARY are then checked against BASE, with target contrast ratios of **4.5:1** and **3:1** respectively. Repair moves OKLCH lightness while preserving hue, reducing chroma when necessary. The `ADJ` marker records a repair. If the source contains too few distinct colours, derived colours fill the missing roles and receive a `GEN` marker.
+
+Extracted representatives therefore come from the image; repaired colours, generated fills and export derivatives can differ from it. The checks cover specific colour relationships, rather than certifying the accessibility of a finished interface. APCA is available as an additional inspection model; automatic repair uses WCAG contrast ratios.
+
+### Keep pixel work off the interface thread
+
+Colour analysis and print-proof rendering use Web Workers. The colour engine has no DOM dependency and is shared by the application, regression gallery and Node tests. Seeded clustering supports repeatable output, while REROLL explores another seed.
+
+The site is static HTML, CSS and JavaScript. Images are analysed in the browser without an image-processing server. Archive entries, favourites and source thumbnails are stored locally in the browser; thumbnails can be cleared from the page.
+
+## Validation
+
+The project checks colour behaviour, image-processing edge cases and browser interactions separately:
+
+| Check | What it exercises |
+| --- | --- |
+| Colour unit tests | Colour-space round trips, known-colour recovery, deterministic output, role assignment, contrast repair, salient accents and extreme inputs |
+| Proof unit tests | Ink separation, plate stacking, cut-outs and rendering edge cases |
+| Regression gallery | 15 real-world images plus synthetic cases; saved baselines highlight changed role colours and compare mean OKLab reconstruction error |
+| Browser edge checks | Ten extreme images through the actual page in Chromium and WebKit, including transparent, one-pixel and 8000 px inputs, with proof and export checks |
+| Reference screenshots | Desktop and iPhone layouts, with reduced motion and a fixed clock for repeatable comparisons |
+| Performance tooling | Cold-load measurements and sample-to-palette/proof timing under desktop and throttled CPU/network profiles |
+
+The gallery is a development corpus for inspecting tradeoffs. Reconstruction error measures colour fidelity; it does not measure whether someone prefers a palette.
+
+## Design: Signal Edition
+
+The interface treats an image as an object catalogued in a magazine register: received, measured, proofed and filed. A strict grid, a blue-black sheet and restrained signal marks keep extracted colours prominent. The design rules and motion constraints are documented in [DESIGN.md](DESIGN.md).
+
+- **Intake:** the source image, animated clustering and a lens showing the local colour and its assigned role.
+- **Specimen:** role-labelled swatches, OKLCH values and export controls.
+- **Relations:** contrast matrices, type previews and colour vision simulations.
+- **Proof:** a cel-style rendering in the palette's inks, separated into one plate per ink plus a K plate for line work. EJECT pulls the stack apart. Before an image is deposited, a test card uses the current palette.
 
 ![Print proof, plates taken apart](screenshot-proof.jpg)
 
-![Classic edition](screenshot-classic.png)
-
-## What makes it different
-
-- **Roles, not just swatches.** Colours are assigned to roles (BASE, TEXT, PRIMARY, ACCENT…) by scoring every possible assignment, so the background is the largest calm colour and the primary is the most vivid one.
-- **Contrast repair.** If TEXT or PRIMARY is too faint against BASE, only its lightness is moved (hue kept), and the swatch says it was adjusted.
-- **Real colours only.** Clusters are computed in OKLab, then snapped to the nearest colour that actually exists in the image — no averaged mud.
-- **Small, vivid colours survive.** A frequency-tuned saliency map (Achanta et al., 2009) marks what catches the eye; the image is over-clustered into candidates, and the final palette is chosen by greedy submodular maximisation of coverage + conspicuity + diversity — the factors Lin & Hanrahan (2013) found people weigh when picking colour themes. A neon sign on a dark street now gets its slot instead of a fourth shade of grey. On the 15 regression images, recall of the most salient 2% of pixels rose from 84% to 97% with the same average fidelity error.
-- **Accessibility built in.** WCAG 2.1 and APCA contrast matrix, protan/deutan/tritan simulation with collision warnings, one-click light/dark theme.
-- **Reproducible.** Seeded k-means: same image + seed = same palette. REROLL tries the next seed.
-
-## Features
-
-- Drag & drop, paste (⌘/Ctrl+V), or drag a box on the image to extract from a region
-- 3–8 colours, with the k-means iterations animated live
-- Export: CSS variables (light + dark, hex with OKLCH fallback), Tailwind config with 50–950 scales, Figma tokens, PNG
-- Shareable link, history and favourites (stored in your browser)
+The [Classic edition](https://palette.etarc.net/classic), built in April 2026, is preserved separately. It shares archive and favourites with Signal Edition but keeps its own frozen algorithm, UI and styles.
 
 ## Run locally
 
-No build step, no dependencies.
+Serving the application requires no install or build step:
 
 ```sh
 python3 -m http.server
-# open http://localhost:8000
+# Open http://localhost:8000
+# Regression gallery: http://localhost:8000/gallery.html
 ```
 
-## Tests
+Run the Node unit tests:
 
 ```sh
-npm test                          # everything (~30 s); same as node --test
-node --test test/color.test.js   # the colour logic, including extreme images
-node --test test/proof.test.js   # the proof worker: plates, inks, stacking, cut-outs, edge cases
+npm test
+node --test test/color.test.js
+node --test test/proof.test.js
 ```
 
-Browser checks need Playwright once: `npm install` (the browsers: `npx playwright install chromium webkit`).
+Browser tooling uses Playwright as a development dependency:
 
 ```sh
-npm run perf    # load time of the live site: desktop, mid phone, slow phone (CPU and network throttled)
-npm run edge    # ten extreme images (white, black, 1 px, cut-out, fully transparent, 8000 px…) through the real page in Chromium and WebKit
-npm run shots -- before/   # six reference shots (desktop 1400 + iPhone 13: empty, filed, proof apart) into before/ (default shots/)
-npm run compare -- before/ after/   # what changed between two sets, with diff-*.png in after/
+npm install
+npx playwright install chromium webkit
+npm run edge
+npm run perf
 ```
 
-For a visual change: `npm run shots -- before/`, make the change, `npm run shots -- after/`, `npm run compare -- before/ after/`. Shots are taken with reduced motion and a fixed clock, so two local runs match pixel for pixel; against the live site (`URL=https://palette.etarc.net/`) network-decoded images can differ by a few hundred pixels.
+`npm run perf` targets the live site by default. To measure the local server, use `npm run perf -- http://localhost:8000`.
 
-`gallery.html` runs the extractor over 15 hard real-world images (`regression/`) plus synthetic cases. Save a baseline, change the algorithm, refresh — every role whose colour moved is outlined.
+For a visual change, capture a baseline before editing, then compare:
+
+```sh
+npm run shots -- before/
+# Make the visual change
+npm run shots -- after/
+npm run compare -- before/ after/
+```
+
+Screenshots use reduced motion and a fixed clock. The comparison writes `diff-*.png` into the second directory. To capture the live site, use `URL=https://palette.etarc.net/ npm run shots -- live/`; network-decoded images may introduce small differences.
+
+To review an algorithm change, open `gallery.html`, choose a colour count and seed, save a baseline, then refresh after editing. Changed role colours are outlined, with the previous palette shown alongside them.
 
 ## Files
 
