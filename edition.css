@@ -279,6 +279,7 @@ body::after {
 .fig-source .settings-bar label,
 .fig-source .settings-bar button { white-space: nowrap; }
 .fig-source .settings-bar input[type="range"] { flex: 1; min-width: 0; }
+.reroll-note { margin: var(--s1) 0 0; font-size: var(--fs-micro); letter-spacing: 0.12em; opacity: 0.7; }
 
 /* ---- Fig. 1: the original photo, with its extracted twin seen through a lens ---- */
 /* A fixed landscape frame rather than one stretched to the text column */

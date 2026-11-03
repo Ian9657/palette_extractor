@@ -244,10 +244,17 @@ if (kSlider) {
     kSlider.addEventListener('input', (e) => {
         currentK = parseInt(e.target.value);
         if (kValue) kValue.textContent = currentK;
+        updateRerollNote();
     });
     kSlider.addEventListener('change', () => {
         if (currentImgEl) extractColorsVisualized(currentImgEl, selectionRectDom);
     });
+}
+
+// Says on the page (touch has no tooltip) what REROLL changes and what it keeps
+const rerollNote = document.getElementById('reroll-note');
+function updateRerollNote() {
+    if (rerollNote) rerollNote.textContent = `REROLL: SAME COUNT (${currentK}), ANOTHER PICK · SEED ${currentSeed} → ${currentSeed + 1}`;
 }
 
 // Randomness is opt-in: same image + same seed always gives the same palette
@@ -358,6 +365,7 @@ function extractColorsVisualized(imgEl, selDomRect = null) {
 
     const k = currentK;
     const seed = currentSeed;
+    updateRerollNote();
 
     function paint({ final, centroids, counts, assign }) {
         const frame = new ImageData(new Uint8ClampedArray(baseData), width, height);
@@ -1025,7 +1033,7 @@ function renderSwatchList(container, items, emptyText) {
         });
         div.addEventListener('click', () => {
             currentK = Object.keys(item.theme).length;
-            if (kSlider) { kSlider.value = currentK; kValue.textContent = currentK; }
+            if (kSlider) { kSlider.value = currentK; kValue.textContent = currentK; } updateRerollNote();
             setPalette({ adjusted: {}, generated: {}, lowChroma: false, coverage: null, seed: null, ...item }, false);
         });
         container.appendChild(div);
@@ -1085,7 +1093,7 @@ setPalette(paletteFromHash() || {
 }, false);
 if (palette.isDefault === undefined) {
     currentK = Object.keys(palette.theme).length;
-    if (kSlider) { kSlider.value = currentK; kValue.textContent = currentK; }
+    if (kSlider) { kSlider.value = currentK; kValue.textContent = currentK; } updateRerollNote();
 }
 renderSwatchList(historyContainer, history);
 renderFavorites();
