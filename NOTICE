@@ -4,7 +4,7 @@ Copyright (c) 2026 Ian9657. Code: MIT, see LICENSE.
 
 Third-party material in this repository keeps its own licence:
 
-- ntc.js: Name that Color by Chirag Mehta (http://chir.ag/projects/ntc),
+- js/ntc.js: Name that Color by Chirag Mehta (http://chir.ag/projects/ntc),
   Creative Commons Attribution 2.5.
 - fonts/: Chakra Petch, Space Grotesk and IBM Plex Mono, SIL Open Font
   License 1.1. See fonts/OFL.txt.
