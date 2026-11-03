@@ -1,5 +1,7 @@
-// Floating previews over the archive (source thumbnails) and the A11Y matrix
-// (a type specimen of the hovered pair). Positioned by follow.js; desktop only.
+// Previews of the archive (source thumbnails) and the A11Y matrix (a type
+// specimen of a pair). With a fine pointer they float by the cursor,
+// positioned by follow.js; on touch a tap opens them in the page, under the
+// list or the matrix, and a second tap on the same item closes them.
 //
 // Thumbnails: each filed object keeps a small JPEG of its source in this
 // browser only — localStorage key THUMBS_KEY, never uploaded. The archive
@@ -96,7 +98,35 @@ if (!palette.isDefault && !currentImgEl) {
     showArchivedSource(kept);
 }
 
-// ---- Floating previews ----
+// ---- Previews ----
+function frameFor(item) {
+    const t = thumbs[themeKey(item.theme)];
+    if (t) return `<div class="fp-frame"><img src="${t.src}" alt=""></div>`;
+    const bars = Object.values(item.theme).map(c => `<span style="background:${c}"></span>`).join('');
+    return `<div class="fp-frame fp-empty"><div class="fp-bars">${bars}</div><span>NO IMAGE KEPT</span></div>`;
+}
+function captionFor(item) {
+    const t = thumbs[themeKey(item.theme)];
+    return `${t ? t.no : '—'} · ${(t ? t.name : ntc.name(item.theme.primary)[1]).toUpperCase()}`;
+}
+const archiveLists = [[pv('history-container'), () => history], [pv('favorites-container'), () => starred]];
+const itemIndex = (box, el) => [...box.querySelectorAll('.history-item')].indexOf(el);
+
+// Matrix cell → { bg, fg, caption } of the pair it stands for; null for the diagonal
+const a11y = pv('a11y-matrix');
+function pairFor(td) {
+    if (!td || td.classList.contains('a11y-cell--self')) return null;
+    const tr = td.parentElement;
+    const row = [...tr.parentElement.children].indexOf(tr) - 1;   // first row is the header
+    const col = [...tr.children].indexOf(td) - 1;                  // first cell is the row label
+    const colors = Object.values(palette.theme);
+    const names = ROLE_NAMES[colors.length];
+    const ratio = td.querySelector('.a11y-cell-ratio').textContent;
+    const grade = td.querySelector('.a11y-cell-badge').textContent;
+    const unit = contrastModel === 'apca' ? `Lc ${ratio}` : `${ratio}:1`;
+    return { bg: colors[col], fg: colors[row], caption: `${names[row]} ON ${names[col]} · ${unit} · ${grade}` };
+}
+
 if (Follow.enabled) {
     const archivePreview = pv('archive-preview');
     const archiveTrack = pv('archive-track');
@@ -106,24 +136,13 @@ if (Follow.enabled) {
     Follow.track(specimen, Follow.DELAY.mid);
 
     // Archive: one track of frames per list, slid to the hovered item
-    function frameFor(item) {
-        const t = thumbs[themeKey(item.theme)];
-        if (t) return `<div class="fp-frame"><img src="${t.src}" alt=""></div>`;
-        const bars = Object.values(item.theme).map(c => `<span style="background:${c}"></span>`).join('');
-        return `<div class="fp-frame fp-empty"><div class="fp-bars">${bars}</div><span>NO IMAGE KEPT</span></div>`;
-    }
-    function captionFor(item) {
-        const t = thumbs[themeKey(item.theme)];
-        return `${t ? t.no : '—'} · ${(t ? t.name : ntc.name(item.theme.primary)[1]).toUpperCase()}`;
-    }
-
-    [[pv('history-container'), () => history], [pv('favorites-container'), () => starred]].forEach(([box, list]) => {
+    archiveLists.forEach(([box, list]) => {
         let current = -1;
         box.addEventListener('mouseover', e => {
             const el = e.target.closest('.history-item');
             if (!el) return;
             const items = list();
-            const i = [...box.querySelectorAll('.history-item')].indexOf(el);
+            const i = itemIndex(box, el);
             if (i < 0 || !items[i]) return;
             if (!archivePreview.classList.contains('active')) {
                 archiveTrack.innerHTML = items.map(frameFor).join('');
@@ -142,26 +161,16 @@ if (Follow.enabled) {
     });
 
     // Matrix: the hovered pair set as text (row) on background (column)
-    const a11y = pv('a11y-matrix');
     let specimenCaption = '';
     a11y.addEventListener('mouseover', e => {
-        const td = e.target.closest('td.a11y-cell');
-        if (!td || td.classList.contains('a11y-cell--self')) { specimen.classList.remove('active'); return; }
-        const tr = td.parentElement;
-        const row = [...tr.parentElement.children].indexOf(tr) - 1;   // first row is the header
-        const col = [...tr.children].indexOf(td) - 1;                  // first cell is the row label
-        const colors = Object.values(palette.theme);
-        const names = ROLE_NAMES[colors.length];
+        const pair = pairFor(e.target.closest('td.a11y-cell'));
+        if (!pair) { specimen.classList.remove('active'); return; }
         const sheet = pv('specimen-sheet');
-        sheet.style.background = colors[col];
-        sheet.style.color = colors[row];
-        const ratio = td.querySelector('.a11y-cell-ratio').textContent;
-        const grade = td.querySelector('.a11y-cell-badge').textContent;
-        const unit = contrastModel === 'apca' ? `Lc ${ratio}` : `${ratio}:1`;
-        const caption = `${names[row]} ON ${names[col]} · ${unit} · ${grade}`;
-        if (caption !== specimenCaption) {
-            specimenCaption = caption;
-            FX.decode(pv('specimen-caption'), caption, 240);
+        sheet.style.background = pair.bg;
+        sheet.style.color = pair.fg;
+        if (pair.caption !== specimenCaption) {
+            specimenCaption = pair.caption;
+            FX.decode(pv('specimen-caption'), pair.caption, 240);
         }
         specimen.classList.add('active');
     });
@@ -174,4 +183,63 @@ if (Follow.enabled) {
         a11y.querySelectorAll('td[title]').forEach(td => td.removeAttribute('title'));
     };
     renderA11yMatrix();
+} else {
+    // Touch: the same two previews as blocks in the page
+    const tapArchive = document.createElement('figure');
+    tapArchive.className = 'tap-preview tap-archive';
+    tapArchive.hidden = true;
+    tapArchive.innerHTML = '<div class="tap-frame"></div><figcaption class="fp-caption mono-text"></figcaption>';
+    let openItem = null;   // [box, index] of the item shown
+    const closeArchive = () => { tapArchive.hidden = true; openItem = null; };
+
+    archiveLists.forEach(([box, list]) => {
+        // Capture: read the index before the item's own click restores the
+        // palette, which may redraw the list under it
+        box.addEventListener('click', e => {
+            const el = e.target.closest('.history-item');
+            if (!el) return;
+            const i = itemIndex(box, el), item = list()[i];
+            if (i < 0 || !item) return;
+            if (openItem && openItem[0] === box && openItem[1] === i) { closeArchive(); return; }
+            openItem = [box, i];
+            tapArchive.querySelector('.tap-frame').innerHTML = frameFor(item);
+            box.after(tapArchive);
+            tapArchive.hidden = false;
+            FX.decode(tapArchive.querySelector('figcaption'), captionFor(item));
+        }, true);
+    });
+
+    const tapSpecimen = pv('specimen-sheet').parentElement.cloneNode(true);
+    tapSpecimen.removeAttribute('id');
+    tapSpecimen.removeAttribute('aria-hidden');
+    tapSpecimen.className = 'tap-preview tap-specimen';
+    tapSpecimen.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+    tapSpecimen.hidden = true;
+    a11y.after(tapSpecimen);
+    let openCell = null;
+    a11y.addEventListener('click', e => {
+        const td = e.target.closest('td.a11y-cell');
+        const pair = pairFor(td);
+        a11y.querySelectorAll('.tapped').forEach(c => c.classList.remove('tapped'));
+        if (!pair || td === openCell) { tapSpecimen.hidden = true; openCell = null; return; }
+        openCell = td;
+        td.classList.add('tapped');
+        const sheet = tapSpecimen.querySelector('.fs-sheet');
+        sheet.style.background = pair.bg;
+        sheet.style.color = pair.fg;
+        tapSpecimen.hidden = false;
+        FX.decode(tapSpecimen.querySelector('.fp-caption'), pair.caption, 240);
+    });
+
+    // A new palette redraws the matrix, and a new filing shifts the archive: close both
+    const prevSetPaletteTap = setPalette;
+    setPalette = function (next, saveToHistory = false) {
+        prevSetPaletteTap(next, saveToHistory);
+        if (saveToHistory) closeArchive();
+    };
+    const prevRenderA11y = renderA11yMatrix;
+    renderA11yMatrix = function () {
+        prevRenderA11y();
+        tapSpecimen.hidden = true; openCell = null;
+    };
 }

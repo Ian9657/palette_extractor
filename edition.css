@@ -682,6 +682,14 @@ body::after {
 .thumb-note button:hover { background: var(--alert); color: var(--alert-ink); border-color: var(--alert-ink); }
 
 @media (hover: none) { .float-preview { display: none; } }
+/* Touch: the previews open in the page, under the matrix or the archive list */
+.tap-preview { margin: var(--s2) 0 0; }
+.tap-preview[hidden] { display: none; }
+.tap-preview .fs-sheet, .tap-preview .fp-caption { width: auto; }
+.tap-archive { width: min(100%, 15rem); }
+.tap-frame { border: 1px solid var(--border-color); }
+.tap-frame .fp-frame { width: 100%; height: auto; aspect-ratio: 1; }
+.a11y-cell.tapped { outline: 2px solid var(--signal); outline-offset: -2px; }
 @media (prefers-reduced-motion: reduce) {
     .float-preview, .fp-track, .fs-sheet { transition: none; }
 }
