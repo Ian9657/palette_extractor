@@ -1,153 +1,150 @@
+<div align="center">
+
 # Palette Extractor
 
-**Turn an image into a role-based UI palette, with contrast checks and ready-to-export tokens.**
+[![Tests](https://github.com/Ian9657/palette_extractor/actions/workflows/test.yml/badge.svg)](https://github.com/Ian9657/palette_extractor/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 **English** | [简体中文](README.zh-CN.md)
 
-[Try it live](https://palette.etarc.net) · Browser-side processing · No runtime dependencies or build step
+Extracts a 3–8 colour UI palette from an image, assigns each colour a role (`BASE`, `TEXT`, `PRIMARY`, …), repairs text/primary contrast, and exports CSS, Tailwind and Figma tokens.
 
-![Palette Extractor — Signal Edition](screenshot.jpg)
+[palette.etarc.net](https://palette.etarc.net) · static HTML/CSS/JS, no build step, no runtime dependencies · images never leave the browser
 
-## Why this exists
+![Signal Edition](screenshot.jpg)
 
-The most common colours in a photograph are not necessarily the most useful colours for an interface. A dark street can occupy almost the entire image while a small neon sign gives it its identity. A palette dominated by near-black shades can describe the pixels well and still miss what makes the image recognisable.
+</div>
 
-Even a good set of swatches leaves work to do: choose a background, find readable text, identify a primary colour, and turn those decisions into design tokens.
-
-Palette Extractor connects those steps. It selects 3–8 colours using perceptual clustering and saliency, assigns them UI roles, repairs contrast for text and primary against the background, and exports the result for implementation. Extraction is deterministic for the same pixel input, colour count and seed.
-
-## From image to interface
-
-1. **Deposit an image.** Drop, paste or choose a file, use a sample, or select a region of the image.
-2. **Inspect the palette.** Each colour has a role such as BASE, TEXT, PRIMARY or ACCENT, with hex and OKLCH values. Adjusted and generated colours are marked.
-3. **Check relationships.** Inspect the WCAG contrast-ratio or APCA matrix, preview colour pairs as type, and simulate protan, deutan and tritan colour vision deficiencies with collision warnings.
-4. **Export.** Download CSS variables with light/dark variants and hex fallbacks for OKLCH, a Tailwind configuration with 50–950 tonal scales, Figma token JSON, or a PNG cover. Palettes can also be shared by link, archived and starred.
-
-Light/dark variants belong to the exported palette and proof preview; the Signal Edition interface has one fixed appearance.
-
-## How it works
+## Pipeline
 
 ```text
-Image / selected region
-  → colour histogram + saliency map
-  → seeded OKLab k-means candidates
-  → greedy palette selection
-  → UI role assignment
-  → contrast repair
-  → relationship checks, proof and exports
+image ─ canvas, longest side 400 px
+      ─ saliency map + 15-bit histogram        page thread
+      ─ k-means, 2k+4 candidates               Web Worker
+      ─ greedy selection of k                  Web Worker
+      ─ role search · contrast repair · fills  page thread
+      ─ CSS / Tailwind / Figma / PNG export
 ```
 
-### Preserve the small colours that matter
+All of it is in `color.js`, which has no DOM dependency: the page loads it as a script, the k-means half is stringified into a Worker, and the Node tests `require` it.
 
-The extractor builds a frequency-tuned saliency map adapted to OKLab. Saliency increases clustering weights for visually conspicuous regions. Rather than asking k-means for exactly the final number of colours, it first builds up to `2k + 4` candidates.
+### 1. Histogram and saliency
 
-A greedy selector then chooses `k` candidates by balancing image coverage with conspicuity and colour separation. This gives a small vivid feature a chance to take a slot that would otherwise go to another similar background shade. Cluster representatives are snapped to colours present in the analysed image pixels.
+The image is drawn into a canvas whose longest side is at most 400 px. Pixels with alpha < 128 are dropped. Each remaining pixel goes into one of 32,768 bins (5 bits per channel); a bin stores the mean RGB of its pixels, not the bin centre, so reported colours exist in the image.
 
-**A concrete regression case:** the colour tests construct a scene containing five dark shades and a magenta light covering about 1% of the image. With only three output colours, the selector retains a colour near that light across seeds 1–8. This is a repeatable synthetic check; real photographs are inspected separately in the regression gallery.
+Saliency is frequency-tuned (Achanta et al. 2009) in OKLab: each channel is box-blurred twice with radius `min(w, h) / 160`, and a pixel's saliency is its distance from the image mean, with `a`/`b` scaled by 2.5 so chroma counts more than lightness. Values are normalised by the 99th percentile. Each bin carries the mean saliency of its pixels.
 
-### Give each colour a job
+### 2. Candidates: k-means
 
-Role assignment scores permutations of the selected colours using area, lightness, chroma and relationships between roles. With at most eight colours, exhaustive search evaluates at most 40,320 assignments. The objective favours a broad, calm background, readable text and a vivid primary; additional roles depend on the requested palette size.
+Bins are clustered in OKLab with k-means++ seeding from a seeded PRNG (mulberry32), weight `count × (1 + 3·saliency)`, at most 15 iterations. The worker posts every iteration and the page replays them at 60 ms per frame, which is the scan animation.
 
-TEXT and PRIMARY are then checked against BASE, with target contrast ratios of **4.5:1** and **3:1** respectively. Repair moves OKLCH lightness while preserving hue, reducing chroma when necessary. The `ADJ` marker records a repair. If the source contains too few distinct colours, derived colours fill the missing roles and receive a `GEN` marker.
+It asks for `2k + 4` clusters instead of `k`. Before the last two iterations, any two centroids closer than 0.07 are merged and the smaller one is reseeded on the bin with the highest `distance to other centroids × min(chroma weight, 3) × log(1 + count)`. At the end, every centroid snaps to the nearest real bin in its cluster.
 
-Extracted representatives therefore come from the image; repaired colours, generated fills and export derivatives can differ from it. The checks cover specific colour relationships, rather than certifying the accessibility of a finished interface. APCA is available as an additional inspection model; automatic repair uses WCAG contrast ratios.
+### 3. Selection
 
-### Keep pixel work off the interface thread
+From the `2k + 4` candidates, `k` are picked greedily, maximising
 
-Colour analysis and print-proof rendering use Web Workers. The colour engine has no DOM dependency and is shared by the application, regression gallery and Node tests. Seeded clustering supports repeatable output, while REROLL explores another seed.
+```text
+F(S) = coverage(S) + λ · Σ distinct(j) · vivid(j) / max vivid      λ = 0.1
+```
 
-The site is static HTML, CSS and JavaScript. Images are analysed in the browser without an image-processing server. Archive entries, favourites and source thumbnails are stored locally in the browser; thumbnails can be cleared from the page.
+- **coverage**: facility location. Each pixel is covered by its most similar chosen colour, `sim = max(0, 1 − d/τ)`, τ = 0.2 OKLab, weighted by pixel count. It is monotone submodular, so greedy is within `1 − 1/e` of the optimum on this term.
+- **vivid(j)**: mean over the cluster of `saliency × standOut`, where `standOut = max(min(1, C/0.15), 0.6 · min(1, |L − L̄| / 0.35))`. It is a mean, not a sum, so area stays coverage's job. Clusters under 0.2 % of pixels score 0.
+- **distinct(j)**: `min(1, d_nearest / 0.25)`, using the same chroma-weighted distance (×2.5). It keeps near-duplicate dark shades from filling slots.
 
-## Validation
+The terms follow Lin & Hanrahan (CHI 2013). In practice, a 1 % neon sign can take a slot from a fourth near-black.
 
-The project checks colour behaviour, image-processing edge cases and browser interactions separately:
+### 4. Roles
 
-| Check | What it exercises |
+Roles per `k` are fixed tables (`ROLE_NAMES` / `ROLE_KEYS` in `color.js`; for k = 5: `BASE SECOND PRIMARY ACCENT TEXT`). Assignment is an exhaustive permutation search, at most 8! = 40,320 leaves. Each role is scored by named terms in OKLCH, for example:
+
+| Role | Score terms |
 | --- | --- |
-| Colour unit tests | Colour-space round trips, known-colour recovery, deterministic output, role assignment, contrast repair, salient accents and extreme inputs |
-| Proof unit tests | Ink separation, plate stacking, cut-outs and rendering edge cases |
-| Regression gallery | 15 real-world images plus synthetic cases; saved baselines highlight changed role colours and compare mean OKLab reconstruction error |
-| Browser edge checks | Ten extreme images through the actual page in Chromium and WebKit, including transparent, one-pixel and 8000 px inputs, with proof and export checks |
-| Reference screenshots | Desktop and iPhone layouts, with reduced motion and a fixed clock for repeatable comparisons |
-| Performance tooling | Cold-load measurements and sample-to-palette/proof timing under desktop and throttled CPU/network profiles |
+| `bg` | `log(area)` − 8C + 1.5·\|L − 0.5\| |
+| `text` | 1.5·log(contrast vs bg) − 2C |
+| `primary` | 8C + 0.2·log(area) |
+| `accent` | 2C + 3·hue distance from primary |
 
-The gallery is a development corpus for inspecting tradeoffs. Reconstruction error measures colour fidelity; it does not measure whether someone prefers a palette.
+The terms are kept separate so `gallery.html` can show why a colour won a role.
 
-## Design: Signal Edition
+### 5. Contrast repair and fills
 
-The interface treats an image as an object catalogued in a magazine register: received, measured, proofed and filed. A strict grid, a blue-black sheet and restrained signal marks keep extracted colours prominent. The design rules and motion constraints are documented in [DESIGN.md](DESIGN.md).
+`TEXT` must reach 4.5:1 against `BASE` and `PRIMARY` 3:1 (WCAG 2 ratio). A failing colour is moved along OKLCH lightness in 0.01 steps, trying the nearer extreme first with hue and chroma kept, then again with chroma fading toward 0. The original hex is kept, and the swatch is marked `ADJ`.
 
-- **Intake:** the source image, animated clustering and a lens showing the local colour and its assigned role.
-- **Specimen:** role-labelled swatches, OKLCH values and export controls.
-- **Relations:** contrast matrices, type previews and colour vision simulations.
-- **Proof:** a cel-style rendering in the palette's inks, separated into one plate per ink plus a K plate for line work. EJECT pulls the stack apart. Before an image is deposited, a test card uses the current palette.
+If the image has fewer distinct colours than `k`, the missing ones are derived from the dominant and the most chromatic colour (an ink for text, a surface step, the complement, lighter and darker steps). Candidates within 0.05 OKLab of an existing colour are skipped. These are marked `GEN`.
 
-![Print proof, plates taken apart](screenshot-proof.jpg)
+### 6. Inspection and export
 
-The [Classic edition](https://palette.etarc.net/classic), built in April 2026, is preserved separately. It shares archive and favourites with Signal Edition but keeps its own frozen algorithm, UI and styles.
+- WCAG ratio or APCA (0.0.98G-4g) matrix for every pair.
+- CVD simulation: Machado et al. 2009 at severity 1.0, in linear sRGB. Warnings when `primary`/`accent`/`secondary`/`highlight` pairs collapse.
+- CSS variables with light and dark sets (hex plus `oklch()` overrides) and a Tailwind config with an 11-step scale (50–950: OKLCH L 0.97 → 0.24 at the source hue, chroma tapered away from L 0.6).
+- Figma token JSON, a 1200 × 1500 PNG cover, and a share link `#p=HEX-HEX-…` in role order.
+
+## 04 Proof
+
+![EJECT PLATES](docs/proof-eject.webp)
+
+The proof re-renders the photo using only the palette's inks, as cel animation, and separates it into one plate per ink plus a K (line) plate. Every pixel is on exactly one plate.
+
+`proof.js` (page) picks a 16:9 cut that follows the saliency map, and draws the frame. Sources under 480 px are shown whole, at 80 %. The working copy is at most 1024 px wide, sent once per image to `proof-worker.js`. The worker caches the analysis per image + palette and returns one RGBA buffer per plate. Stale replies are dropped by job id. Analysis steps:
+
+| Step | Method | Parameters |
+| --- | --- | --- |
+| cels | guided filter on L (He et al. 2010), 2 passes, then nearest ink; patches below a minimum merged into neighbours | r = 5 px at 960 w, ε = 0.0025, min patch 0.04 % |
+| shadow | one hard step into the next darker ink | ΔL 0.07 |
+| tone | halftone dots on a 4 px grid, dot area = lift toward the next lighter ink | area ≤ 0.5 |
+| lines | cel boundaries where inks differ, plus DoG edges kept only as strokes | ΔE > 0.08, DoG < −0.012, stroke ≥ 30 px |
+| echoes | 3 offset copies of the most salient subject (skipped if it fills > 45 % of the width) | gap ≥ 14 px at 960 w |
+
+Plates stack by area: the largest at the bottom, K on top. EJECT, drag, or ←/→ moves them through 6 positions.
+
+## Determinism and its limit
+
+Same pixels + same `k` + same seed → the same palette (tested for k = 3, 5, 8). REROLL increments the seed.
+
+Known limitation: the 400 px downscale is done by the browser's `drawImage`. Chromium and WebKit resample differently, so the same file can give slightly different bins, and when two role scores are close the roles can swap (for example, `TEXT` white in Chrome, yellow in Safari). Fixing this is the next planned change.
+
+## Storage
+
+Nothing is uploaded. `localStorage` keys: `paletteHistory` (last 8), `starredPalettes`, `palette.thumbs` (240 px source thumbnails, clearable from the page), `contrastModel`, `accessionCount`, `proofRevCount`.
+
+## Tests and tools
+
+```sh
+npm test            # node --test: 53 tests, ~30 s, no install needed
+```
+
+`test/color.test.js` covers conversions, known-colour recovery, seeded determinism, roles, contrast repair, saliency selection and fills. `test/proof.test.js` runs `proof-worker.js` in a `vm` with an `importScripts` shim. CI runs `npm test` on every push to `main`.
+
+Browser tools (`npm install && npx playwright install chromium webkit`):
+
+| Command | Does |
+| --- | --- |
+| `npm run edge` | 10 synthetic inputs (1 × 1, 40 × 3000, 8000 × 6000, fully transparent, …) through the real page in Chromium and WebKit |
+| `npm run perf` | cold load, sample → palette, sample → proof, at desktop speed and throttled CPU/network |
+| `npm run shots -- dir/` | desktop and iPhone screenshots with reduced motion and a fixed clock |
+| `npm run compare -- a/ b/` | pixel diff of two shot sets |
+
+`gallery.html` runs the 15 images in `regression/` plus synthetic cases. For each, it shows roles, score terms and mean OKLab reconstruction error against a saved baseline.
 
 ## Run locally
 
-Serving the application requires no install or build step:
-
 ```sh
-python3 -m http.server
-# Open http://localhost:8000
-# Regression gallery: http://localhost:8000/gallery.html
+python3 -m http.server     # http://localhost:8000, /gallery.html
 ```
 
-Run the Node unit tests:
+## Layout
 
-```sh
-npm test
-node --test test/color.test.js
-node --test test/proof.test.js
-```
-
-Browser tooling uses Playwright as a development dependency:
-
-```sh
-npm install
-npx playwright install chromium webkit
-npm run edge
-npm run perf
-```
-
-`npm run perf` targets the live site by default. To measure the local server, use `npm run perf -- http://localhost:8000`.
-
-For a visual change, capture a baseline before editing, then compare:
-
-```sh
-npm run shots -- before/
-# Make the visual change
-npm run shots -- after/
-npm run compare -- before/ after/
-```
-
-Screenshots use reduced motion and a fixed clock. The comparison writes `diff-*.png` into the second directory. To capture the live site, use `URL=https://palette.etarc.net/ npm run shots -- live/`; network-decoded images may introduce small differences.
-
-To review an algorithm change, open `gallery.html`, choose a colour count and seed, save a baseline, then refresh after editing. Changed role colours are outlined, with the previous palette shown alongside them.
-
-## Files
-
-| File | Purpose |
+| Path | Contents |
 | --- | --- |
-| `color.js` | All colour logic (OKLab, k-means, roles, contrast, CVD, APCA). No DOM. |
-| `main.js` | The app UI (panels, exports, history) |
-| `index.html` | Magazine edition (homepage) |
-| `register.css` / `register.js` | Accession record and the colour plates under the sheet |
-| `edition.css` / `edition.js` | Magazine layout, colour tokens, Fig. 1 lens, press marks |
-| `DESIGN.md` | Design rules: tokens, principles, rejected directions, working agreement |
-| `classic.html`, `color-classic.js`, `main-classic.js`, `style-classic.css` | The original page, frozen: its own copies of the algorithm, the UI and the styles |
-| `proof.js` / `proof-worker.js` | Fig. 4 print proof: framing, plates, test card (page); cel, tones, lines, separation (worker) |
-| `previews.js`, `cover.js` | Archive/matrix previews; magazine-cover export |
-| `follow.js`, `fx.js`, `pagefx.js` | Cursor follow, screen-signal effects, page events (title cards, Sandevistan, press run) |
-| `samples.js`, `samples/` | Six sample photographs under Fig. 1 (1920 × 1440), with 256 px thumbnails in `samples/thumbs/` |
-| `fonts/` | Chakra Petch, Space Grotesk, IBM Plex Mono (OFL), self-hosted: Latin + Latin Extended, `fonts/fonts.css` |
-| `style.css` | Base styles and the panels |
-| `gallery.html` / `gallery.js`, `regression/` | Regression gallery (development tool; not indexed) |
-| `test/` | `npm test`: colour logic and the proof worker |
-| `tools/` | Browser tooling (Playwright): `edge`, `perf`, `shots`, `compare` — see Tests |
-| `package.json` | Dev tooling only; the site has no build step |
-| `ntc.js` | Colour naming ("Name that Color") |
+| `color.js` | colour engine (above), worker bootstrap |
+| `main.js` | page state, extraction calls, history, exports |
+| `index.html`, `style.css`, `edition.css`, `edition.js`, `register.*`, `pagefx.js`, `fx.js`, `follow.js` | Signal Edition layout and motion |
+| `proof.js`, `proof-worker.js` | 04 proof |
+| `previews.js`, `samples.js`, `cover.js` | archive thumbnails, sample images, PNG cover |
+| `classic.html`, `*-classic.*` | frozen Classic Edition ([/classic](https://palette.etarc.net/classic)) |
+| `DESIGN.md` | tokens, grid, type and motion rules |
+
+## License
+
+Code: MIT ([LICENSE](LICENSE)). `ntc.js` (Name that Color, Chirag Mehta) is CC BY 2.5; the fonts are SIL OFL 1.1 ([fonts/OFL.txt](fonts/OFL.txt)); the sample and regression photographs are from Unsplash under the Unsplash License. See [NOTICE](NOTICE).

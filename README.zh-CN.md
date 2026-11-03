@@ -1,149 +1,150 @@
+<div align="center">
+
 # Palette Extractor
 
-**从图像生成具有 UI 角色、经过对比度检查、可直接导出的配色。**
+[![Tests](https://github.com/Ian9657/palette_extractor/actions/workflows/test.yml/badge.svg)](https://github.com/Ian9657/palette_extractor/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 [English](README.md) | **简体中文**
 
-[在线体验](https://palette.etarc.net) · 浏览器本地处理 · 无运行时依赖，无需构建
+从一张图片提取 3–8 色的界面调色板，给每个颜色分配角色（`BASE`、`TEXT`、`PRIMARY` 等），修正文字色和主色的对比度，并导出 CSS、Tailwind 和 Figma 色值。
 
-![Palette Extractor — Signal Edition](screenshot.jpg)
+[palette.etarc.net](https://palette.etarc.net) · 纯静态 HTML/CSS/JS，无构建步骤，无运行时依赖 · 图片不离开浏览器
 
-## 为什么做这个
+![Signal Edition](screenshot.jpg)
 
-一张照片里占比最高的颜色，未必是界面最需要的颜色。夜景里的街道可能占据了绝大多数像素，一小块霓虹招牌却决定了整张照片的辨识度。提取出几种接近黑色的颜色，可以很好地还原像素分布，却可能丢掉最值得保留的强调色。
+</div>
 
-即使得到一组满意的色块，仍然需要决定：哪个做背景，哪个做正文，哪个做主色，它们放在一起是否清晰，以及如何转成项目里的设计 token。
-
-Palette Extractor 把这些步骤连接起来：结合感知色彩空间和视觉显著性提取 3–8 种颜色，分配 UI 角色，修正正文和主色相对背景的对比度，再导出供开发使用。同样的像素输入、颜色数量和随机种子，会得到相同的提取结果。
-
-## 从图像到界面配色
-
-1. **放入图像。** 拖入、粘贴或选择文件，使用内置样图，也可以框选图像中的局部区域。
-2. **检查角色。** 颜色被分配为 BASE、TEXT、PRIMARY、ACCENT 等角色，显示 hex 和 OKLCH 值，并标注经过修正或补充生成的颜色。
-3. **检查关系。** 查看 WCAG 对比度比值或 APCA 矩阵，预览两种颜色搭配的文字，模拟 protan、deutan、tritan 色觉缺陷并检查颜色混淆警告。
-4. **导出使用。** 支持含明暗两套配色的 CSS 变量、带 50–950 色阶的 Tailwind 配置、Figma token JSON 和 PNG 封面。CSS 先输出 hex，再由支持 OKLCH 的浏览器覆盖。配色也可以通过链接分享、存档和收藏。
-
-明暗变体用于导出配色和打样预览；Signal Edition 页面本身保持一种固定外观。
-
-## 工作原理
+## 流程
 
 ```text
-图像 / 选区
-  → 颜色直方图 + 显著性图
-  → 带随机种子的 OKLab k-means 候选聚类
-  → 贪心选择配色
-  → 分配 UI 角色
-  → 修正对比度
-  → 关系检查、图像打样与导出
+图片 ─ 画布，长边 400 px
+     ─ 显著性图 + 15 位直方图          页面线程
+     ─ k-means，2k+4 个候选             Web Worker
+     ─ 贪心挑选 k 个                    Web Worker
+     ─ 角色搜索 · 对比度修正 · 补色     页面线程
+     ─ CSS / Tailwind / Figma / PNG 导出
 ```
 
-### 保留面积小但重要的颜色
+全部逻辑在 `color.js`，不依赖 DOM：页面以普通脚本加载它，k-means 部分转成字符串放进 Worker，Node 测试直接 `require`。
 
-提取器在 OKLab 中计算经适配的频率调谐显著性图，提高视觉突出区域在聚类中的权重。它先生成最多 `2k + 4` 个候选颜色，再从中选择最终的 `k` 种颜色。
+### 1. 直方图与显著性
 
-选择过程使用贪心策略，综合考虑对图像的覆盖、颜色的醒目程度，以及与已选颜色的差异。这样，小面积的鲜艳主体有机会获得一个位置，而不是让多个相近的背景色占满配额。聚类代表色会吸附到分析后的图像像素中实际存在的颜色。
+图片画进长边不超过 400 px 的画布，丢弃 alpha < 128 的像素。其余像素放进 32,768 个桶（每通道 5 位）。每个桶记录其像素的平均 RGB，而不是桶中心，所以报出的颜色都在原图里真实存在。
 
-**一个可复现的例子：** 颜色测试构造了由五种暗色和一条洋红色亮带组成的场景，亮带只占约 1% 的面积。即使只输出三种颜色，选择器在随机种子 1–8 下都会保留接近亮带的颜色。这是一个合成场景测试；真实照片的效果另由回归图库检查。
+显著性用 OKLab 下的频率调谐法（Achanta 等，2009）：每个通道做两次半径 `min(w, h) / 160` 的盒式模糊，像素的显著性为它到全图均值的距离。其中 `a`/`b` 乘以 2.5，让色度比亮度更有分量。结果按第 99 百分位归一化，每个桶带上其像素的平均显著性。
 
-### 为颜色分配用途
+### 2. 候选：k-means
 
-角色分配根据面积、明度、彩度以及角色之间的关系，为颜色排列评分。最多八种颜色对应最多 40,320 种分配，可以进行穷举搜索。评分目标倾向于用覆盖较广、较平静的颜色作背景，用清晰的颜色作正文，用鲜明的颜色作主色；其他角色随颜色数量增加。
+在 OKLab 中聚类：用带种子的伪随机数（mulberry32）做 k-means++ 初始化，权重为 `count × (1 + 3·显著性)`，最多 15 轮。Worker 每轮都把结果发回页面，页面以每帧 60 ms 回放，这就是扫描动画。
 
-分配之后，再检查 TEXT 和 PRIMARY 相对 BASE 的对比度，目标分别为 **4.5:1** 和 **3:1**。修正优先移动 OKLCH 明度并保留色相，必要时降低彩度。经过修正的颜色标记为 `ADJ`；当原图的不同颜色不足时，补充生成的颜色标记为 `GEN`。
+聚类数是 `2k + 4` 而不是 `k`。在最后两轮之前，距离小于 0.07 的两个中心会合并：较小的那个改放到 `到其余中心的距离 × min(色度权重, 3) × log(1 + 像素数)` 最大的桶上。最后每个中心吸附到本簇内最近的真实桶。
 
-因此，提取的代表色来自图像，但修正色、补充色和导出衍生色可能与原图不同。这里检查的是具体的颜色关系，不能据此认定最终界面整体符合无障碍要求。APCA 用于辅助检查，自动修正使用 WCAG 对比度比值。
+### 3. 挑选
 
-### 把像素计算放到后台
+从 `2k + 4` 个候选中贪心挑出 `k` 个，最大化
 
-颜色分析和图像打样使用 Web Worker。颜色引擎不依赖 DOM，由应用、回归图库和 Node 测试共同使用。带种子的聚类支持结果复现，REROLL 则尝试下一个种子。
+```text
+F(S) = coverage(S) + λ · Σ distinct(j) · vivid(j) / max vivid      λ = 0.1
+```
 
-站点使用静态 HTML、CSS 和 JavaScript，图像在浏览器中分析，无需图像处理服务器。历史、收藏和来源缩略图保存在当前浏览器的本地存储中，缩略图可以在页面里清除。
+- **coverage**：设施选址覆盖。每个像素由最相近的已选颜色覆盖，`sim = max(0, 1 − d/τ)`，τ = 0.2（OKLab），按像素数加权。它是单调次模函数，所以贪心解在这一项上不低于最优的 `1 − 1/e`。
+- **vivid(j)**：簇内 `显著性 × standOut` 的平均值，`standOut = max(min(1, C/0.15), 0.6 · min(1, |L − L̄| / 0.35))`。取平均而不取总和，面积只由 coverage 负责。占比不足 0.2 % 的簇记 0。
+- **distinct(j)**：`min(1, d_最近 / 0.25)`，距离同样按色度 ×2.5 加权，防止几种相近的深色占满名额。
 
-## 如何验证
+这三项来自 Lin & Hanrahan（CHI 2013）。实际效果是：占画面 1 % 的霓虹灯可以挤掉第四种近黑色。
 
-颜色行为、图像处理边界和浏览器交互分别检查：
+### 4. 角色
 
-| 检查 | 验证内容 |
+每个 `k` 对应固定的角色表（`color.js` 里的 `ROLE_NAMES` / `ROLE_KEYS`；k = 5 时为 `BASE SECOND PRIMARY ACCENT TEXT`）。分配用穷举排列，最多 8! = 40,320 种。每个角色按 OKLCH 下的几个具名项打分，例如：
+
+| 角色 | 打分项 |
 | --- | --- |
-| 颜色单元测试 | 色彩空间往返转换、已知颜色恢复、确定性、角色分配、对比度修正、小面积强调色和极端输入 |
-| 打样单元测试 | 分色、印版堆叠、透明抠图和渲染边界情况 |
-| 回归图库 | 15 张真实图像及合成场景；保存基线后，标出角色颜色变化，并比较平均 OKLab 重建误差 |
-| 浏览器边界检查 | 在 Chromium 和 WebKit 的真实页面中处理十种极端图像，包括透明图、单像素和 8000 px 图像，并检查打样和导出 |
-| 参考截图 | 桌面和 iPhone 布局；开启减弱动态效果并固定时钟，使前后对比可重复 |
-| 性能工具 | 在桌面及 CPU、网络受限的配置下，记录冷启动和从选择样图到配色、打样完成的时间 |
+| `bg` | `log(面积)` − 8C + 1.5·\|L − 0.5\| |
+| `text` | 1.5·log(对 bg 的对比度) − 2C |
+| `primary` | 8C + 0.2·log(面积) |
+| `accent` | 2C + 3·与 primary 的色相距离 |
 
-回归图库用于开发时观察取舍。重建误差衡量颜色还原程度，不代表用户对配色的偏好。
+各项分开保存，`gallery.html` 可以显示某个颜色为什么得到某个角色。
 
-## 设计：Signal Edition
+### 5. 对比度修正与补色
 
-页面把图像当作杂志登记册里的一个对象：接收、测量、打样、归档。严格的网格、蓝黑色底和克制的信号标记，让提取出的颜色保持突出。视觉与动效规则记录在 [DESIGN.md](DESIGN.md)。
+`TEXT` 对 `BASE` 须达到 4.5:1，`PRIMARY` 须达到 3:1（WCAG 2 对比度）。不达标的颜色沿 OKLCH 亮度以 0.01 步长移动：先朝较近的一端、保持色相和色度，再试一次并让色度逐步降到 0。原色值会保留，色块标记 `ADJ`。
 
-- **Intake：** 原图、聚类过程，以及显示局部颜色和所属角色的镜头。
-- **Specimen：** 带角色的色块、OKLCH 值和导出操作。
-- **Relations：** 对比度矩阵、文字预览和色觉模拟。
-- **Proof：** 使用当前配色把照片重绘成赛璐璐风格图像，再拆成每种颜色一张的印版，加上一张线稿 K 版。EJECT 展开印版；尚未放入图片时，用当前配色显示测试卡。
+如果图里的不同颜色少于 `k` 个，缺的由主色和最鲜艳的颜色推导（文字用墨色、表面层级、补色、更亮和更暗的层级）。与已有颜色的 OKLab 距离小于 0.05 的候选跳过。这些颜色标记 `GEN`。
 
-![展开后的分色印版](screenshot-proof.jpg)
+### 6. 检查与导出
 
-2026 年 4 月制作的 [Classic 版本](https://palette.etarc.net/classic) 单独保留。两个版本共用历史和收藏，但 Classic 的算法、界面和样式保持冻结。
+- 所有颜色两两之间的 WCAG 对比度或 APCA（0.0.98G-4g）矩阵。
+- 色觉缺陷模拟：Machado 等 2009，严重度 1.0，在线性 sRGB 中计算。`primary`/`accent`/`secondary`/`highlight` 之间的组合变得无法区分时给出警告。
+- CSS 变量含浅色和深色两套（hex，加 `oklch()` 覆盖）；Tailwind 配置每个角色 11 级色阶（50–950：保持原色相，OKLCH L 从 0.97 到 0.24，远离 L 0.6 时色度渐减）。
+- Figma token JSON、1200 × 1500 PNG 封面，以及按角色顺序写在网址里的分享链接 `#p=HEX-HEX-…`。
+
+## 04 印刷打样
+
+![EJECT PLATES](docs/proof-eject.webp)
+
+打样只用调色板里的颜色，把照片重绘成赛璐璐动画画面，再拆成每色一块版加一块 K（线条）版。每个像素只属于一块版。
+
+`proof.js`（页面端）按显著性图选取 16:9 画面并负责绘制。长边不足 480 px 的图整张显示，占 80 %。工作图宽度不超过 1024 px，每张图只发给 `proof-worker.js` 一次。Worker 按"图片 + 调色板"缓存分析结果，每块版返回一个 RGBA 缓冲区；过期的回复按任务编号丢弃。分析步骤：
+
+| 步骤 | 方法 | 参数 |
+| --- | --- | --- |
+| 色块 | 对 L 做引导滤波（He 等，2010）两遍，再取最近的墨色；过小的块并入周围 | r = 5 px（以 960 宽为基准），ε = 0.0025，最小块 0.04 % |
+| 阴影 | 向下一个更深的墨色硬切一级 | ΔL 0.07 |
+| 网点 | 4 px 网格的半调网点，网点面积 = 向更浅墨色的提升量 | 面积 ≤ 0.5 |
+| 线条 | 墨色不同的色块边界，加上只保留成笔画的 DoG 边缘 | ΔE > 0.08，DoG < −0.012，笔画 ≥ 30 px |
+| 残影 | 最显著主体的 3 个偏移副本（主体超过画面宽度 45 % 时不画） | 间距 ≥ 14 px（以 960 宽为基准） |
+
+版按面积叠放：面积最大的在最下面，K 版在最上面。EJECT 按钮、拖动或 ←/→ 键可以在 6 个位置之间拆开或装回。
+
+## 确定性及其限制
+
+同样的像素 + 同样的 `k` + 同样的种子 → 同样的调色板（测试覆盖 k = 3、5、8）。REROLL 把种子加一。
+
+已知限制：缩到 400 px 这一步由浏览器的 `drawImage` 完成。Chromium 和 WebKit 的重采样方式不同，同一个文件得到的桶会略有差异。两个角色分数接近时，角色可能对调（例如 Chrome 里 `TEXT` 是白色，Safari 里是黄色）。这是下一步计划要修的问题。
+
+## 存储
+
+不上传任何东西。`localStorage` 键：`paletteHistory`（最近 8 条）、`starredPalettes`、`palette.thumbs`（240 px 原图缩略图，可在页面上清除）、`contrastModel`、`accessionCount`、`proofRevCount`。
+
+## 测试与工具
+
+```sh
+npm test            # node --test：53 项，约 30 秒，无需安装依赖
+```
+
+`test/color.test.js` 覆盖色彩空间转换、已知颜色还原、种子确定性、角色、对比度修正、显著性挑选和补色。`test/proof.test.js` 在 `vm` 里加 `importScripts` 垫片运行 `proof-worker.js`。CI 在每次推送到 `main` 时运行 `npm test`。
+
+浏览器工具（`npm install && npx playwright install chromium webkit`）：
+
+| 命令 | 作用 |
+| --- | --- |
+| `npm run edge` | 10 种合成图片（1 × 1、40 × 3000、8000 × 6000、全透明等）在 Chromium 和 WebKit 中跑真实页面 |
+| `npm run perf` | 冷启动、示例图 → 调色板、示例图 → 打样的耗时，分桌面速度和限速 CPU/网络 |
+| `npm run shots -- dir/` | 桌面和 iPhone 截图，减少动态效果 + 固定时钟 |
+| `npm run compare -- a/ b/` | 两组截图的像素差异 |
+
+`gallery.html` 运行 `regression/` 里的 15 张图和若干合成用例，对每张图显示角色、打分项和平均 OKLab 还原误差，并与保存的基线对比。
 
 ## 本地运行
 
-运行页面无需安装依赖或构建：
-
 ```sh
-python3 -m http.server
-# 应用：http://localhost:8000
-# 回归图库：http://localhost:8000/gallery.html
+python3 -m http.server     # http://localhost:8000，/gallery.html
 ```
 
-运行 Node 单元测试：
+## 文件
 
-```sh
-npm test
-node --test test/color.test.js
-node --test test/proof.test.js
-```
-
-浏览器工具使用 Playwright 开发依赖：
-
-```sh
-npm install
-npx playwright install chromium webkit
-npm run edge
-npm run perf
-```
-
-`npm run perf` 默认测量线上站点。本地服务启动后，可用 `npm run perf -- http://localhost:8000` 测量本地版本。
-
-修改视觉前先保存截图，修改后再次截图并比较：
-
-```sh
-npm run shots -- before/
-# 修改视觉
-npm run shots -- after/
-npm run compare -- before/ after/
-```
-
-截图使用减弱动态效果和固定时钟，差异图 `diff-*.png` 写入第二个目录。使用 `URL=https://palette.etarc.net/ npm run shots -- live/` 可截取线上版本；网络图片解码可能产生少量差异。
-
-修改算法时，先打开 `gallery.html`，选择颜色数量和种子，保存基线。修改后刷新，变化的角色颜色会被标出，旧配色显示在旁边供比较。
-
-## 代码结构
-
-| 文件 | 职责 |
+| 路径 | 内容 |
 | --- | --- |
-| `color.js` | 无 DOM 的颜色引擎：OKLab、显著性、聚类、选择、角色、对比度、色觉模拟和配色衍生 |
-| `main.js` | 应用状态、交互、导出、历史和收藏 |
-| `index.html`、`style.css`、`edition.css/js` | Signal Edition 页面、基础样式和杂志排版 |
-| `proof.js`、`proof-worker.js` | 打样交互与后台像素处理 |
-| `register.css/js`、`previews.js`、`cover.js` | 登记记录、底部印版、悬停预览和封面导出 |
-| `follow.js`、`fx.js`、`pagefx.js` | 指针跟随、信号效果和页面事件动效 |
-| `samples.js`、`samples/` | 六张样图和缩略图 |
-| `gallery.html/js`、`regression/` | 算法回归图库和真实图像样本 |
-| `test/`、`tools/` | Node 测试和 Playwright 浏览器工具 |
-| `classic.html`、`color-classic.js`、`main-classic.js`、`style-classic.css` | 冻结的 Classic 版本 |
-| `fonts/`、`ntc.js` | 自托管字体和颜色命名 |
-| `DESIGN.md` | 视觉规则、设计原则和动效约束 |
+| `color.js` | 取色引擎（见上）与 Worker 启动 |
+| `main.js` | 页面状态、取色调用、历史、导出 |
+| `index.html`、`style.css`、`edition.css`、`edition.js`、`register.*`、`pagefx.js`、`fx.js`、`follow.js` | Signal Edition 版式与动效 |
+| `proof.js`、`proof-worker.js` | 04 印刷打样 |
+| `previews.js`、`samples.js`、`cover.js` | 存档缩略图、示例图、PNG 封面 |
+| `classic.html`、`*-classic.*` | 冻结的经典版（[/classic](https://palette.etarc.net/classic)） |
+| `DESIGN.md` | 颜色变量、网格、字体与动效规则 |
 
-更完整的文件列表见 [英文 README](README.md#files)。
+## 许可
+
+代码：MIT（[LICENSE](LICENSE)）。`ntc.js`（Name that Color，Chirag Mehta）为 CC BY 2.5；字体为 SIL OFL 1.1（[fonts/OFL.txt](fonts/OFL.txt)）；示例图和回归测试照片来自 Unsplash，适用 Unsplash License。详见 [NOTICE](NOTICE)。
