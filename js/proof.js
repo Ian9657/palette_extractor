@@ -124,7 +124,7 @@
 
     // The worker develops the cut; the page only reads the photo and lays
     // the plates it returns. While a cut develops the last one stays up.
-    const worker = new Worker('proof-worker.js');
+    const worker = new Worker('js/proof-worker.js');
     let job = 0, sent = { img: null, key: '' }, imgIds = new WeakMap(), nextImg = 0;
     function render(theme) {
         const img = currentImgEl || keptThumb();

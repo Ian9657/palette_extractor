@@ -11,7 +11,7 @@
 
 [palette.etarc.net](https://palette.etarc.net) · 纯静态 HTML/CSS/JS，无构建步骤，无运行时依赖 · 图片不离开浏览器
 
-![Signal Edition](screenshot.jpg)
+![Signal Edition](docs/screenshot.jpg)
 
 </div>
 
@@ -26,7 +26,7 @@
      ─ CSS / Tailwind / Figma / PNG 导出
 ```
 
-全部逻辑在 `color.js`，不依赖 DOM：页面以普通脚本加载它，k-means 部分转成字符串放进 Worker，Node 测试直接 `require`。
+全部逻辑在 `js/color.js`，不依赖 DOM：页面以普通脚本加载它，k-means 部分转成字符串放进 Worker，Node 测试直接 `require`。
 
 ### 1. 直方图与显著性
 
@@ -86,7 +86,7 @@ F(S) = coverage(S) + λ · Σ distinct(j) · vivid(j) / max vivid      λ = 0.1
 
 打样只用调色板里的颜色，把照片重绘成赛璐璐动画画面，再拆成每色一块版加一块 K（线条）版。每个像素只属于一块版。
 
-`proof.js`（页面端）按显著性图选取 16:9 画面并负责绘制。长边不足 480 px 的图整张显示，占 80 %。工作图宽度不超过 1024 px，每张图只发给 `proof-worker.js` 一次。Worker 按"图片 + 调色板"缓存分析结果，每块版返回一个 RGBA 缓冲区；过期的回复按任务编号丢弃。分析步骤：
+`js/proof.js`（页面端）按显著性图选取 16:9 画面并负责绘制。长边不足 480 px 的图整张显示，占 80 %。工作图宽度不超过 1024 px，每张图只发给 `js/proof-worker.js` 一次。Worker 按"图片 + 调色板"缓存分析结果，每块版返回一个 RGBA 缓冲区；过期的回复按任务编号丢弃。分析步骤：
 
 | 步骤 | 方法 | 参数 |
 | --- | --- | --- |
@@ -135,15 +135,24 @@ python3 -m http.server     # http://localhost:8000，/gallery.html
 
 ## 文件
 
-| 路径 | 内容 |
-| --- | --- |
-| `color.js` | 取色引擎（见上）与 Worker 启动 |
-| `main.js` | 页面状态、取色调用、历史、导出 |
-| `index.html`、`style.css`、`edition.css`、`edition.js`、`register.*`、`pagefx.js`、`fx.js`、`follow.js` | Signal Edition 版式与动效 |
-| `proof.js`、`proof-worker.js` | 04 印刷打样 |
-| `previews.js`、`samples.js`、`cover.js` | 存档缩略图、示例图、PNG 封面 |
-| `classic.html`、`*-classic.*` | 冻结的经典版（[/classic](https://palette.etarc.net/classic)） |
-| `DESIGN.md` | 颜色变量、网格、字体与动效规则 |
+```text
+index.html  classic.html  gallery.html     页面（网址不变：/、/classic、/gallery）
+icon.svg  apple-touch-icon.png  og-image.png  CNAME
+css/        style.css、register.css、edition.css · style-classic.css（冻结）
+js/         color.js        取色引擎与 Worker 启动
+            main.js         页面状态、取色调用、历史、导出
+            proof.js        04 打样取景与绘制
+            proof-worker.js 04 像素计算（Worker）
+            edition.js、register.js、pagefx.js、fx.js、follow.js   Signal Edition 版式与动效
+            previews.js、samples.js、cover.js、gallery.js、ntc.js
+            *-classic.js    冻结的经典版
+fonts/      自托管 woff2 + fonts.css + OFL.txt
+samples/    6 张示例图（1920 px）+ thumbs/（256 px）
+regression/ 15 张回归图 + list.js
+test/       node --test 测试
+tools/      Playwright 工具（edge、perf、shots、compare）+ 静态服务器
+docs/       DESIGN.md（颜色变量、网格、字体、动效规则）与 README 图片
+```
 
 ## 许可
 

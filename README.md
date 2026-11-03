@@ -11,7 +11,7 @@ Extracts a 3–8 colour UI palette from an image, assigns each colour a role (`B
 
 [palette.etarc.net](https://palette.etarc.net) · static HTML/CSS/JS, no build step, no runtime dependencies · images never leave the browser
 
-![Signal Edition](screenshot.jpg)
+![Signal Edition](docs/screenshot.jpg)
 
 </div>
 
@@ -26,7 +26,7 @@ image ─ canvas, longest side 400 px
       ─ CSS / Tailwind / Figma / PNG export
 ```
 
-All of it is in `color.js`, which has no DOM dependency: the page loads it as a script, the k-means half is stringified into a Worker, and the Node tests `require` it.
+All of it is in `js/color.js`, which has no DOM dependency: the page loads it as a script, the k-means half is stringified into a Worker, and the Node tests `require` it.
 
 ### 1. Histogram and saliency
 
@@ -86,7 +86,7 @@ If the image has fewer distinct colours than `k`, the missing ones are derived f
 
 The proof re-renders the photo using only the palette's inks, as cel animation, and separates it into one plate per ink plus a K (line) plate. Every pixel is on exactly one plate.
 
-`proof.js` (page) picks a 16:9 cut that follows the saliency map, and draws the frame. Sources under 480 px are shown whole, at 80 %. The working copy is at most 1024 px wide, sent once per image to `proof-worker.js`. The worker caches the analysis per image + palette and returns one RGBA buffer per plate. Stale replies are dropped by job id. Analysis steps:
+`js/proof.js` (page) picks a 16:9 cut that follows the saliency map, and draws the frame. Sources under 480 px are shown whole, at 80 %. The working copy is at most 1024 px wide, sent once per image to `js/proof-worker.js`. The worker caches the analysis per image + palette and returns one RGBA buffer per plate. Stale replies are dropped by job id. Analysis steps:
 
 | Step | Method | Parameters |
 | --- | --- | --- |
@@ -135,15 +135,24 @@ python3 -m http.server     # http://localhost:8000, /gallery.html
 
 ## Layout
 
-| Path | Contents |
-| --- | --- |
-| `color.js` | colour engine (above), worker bootstrap |
-| `main.js` | page state, extraction calls, history, exports |
-| `index.html`, `style.css`, `edition.css`, `edition.js`, `register.*`, `pagefx.js`, `fx.js`, `follow.js` | Signal Edition layout and motion |
-| `proof.js`, `proof-worker.js` | 04 proof |
-| `previews.js`, `samples.js`, `cover.js` | archive thumbnails, sample images, PNG cover |
-| `classic.html`, `*-classic.*` | frozen Classic Edition ([/classic](https://palette.etarc.net/classic)) |
-| `DESIGN.md` | tokens, grid, type and motion rules |
+```text
+index.html  classic.html  gallery.html     pages (URLs unchanged: /, /classic, /gallery)
+icon.svg  apple-touch-icon.png  og-image.png  CNAME
+css/        style.css, register.css, edition.css  · style-classic.css (frozen)
+js/         color.js        colour engine, worker bootstrap
+            main.js         page state, extraction calls, history, exports
+            proof.js        04 proof framing and drawing
+            proof-worker.js 04 pixel work (Worker)
+            edition.js, register.js, pagefx.js, fx.js, follow.js   Signal Edition layout and motion
+            previews.js, samples.js, cover.js, gallery.js, ntc.js
+            *-classic.js    frozen Classic Edition
+fonts/      self-hosted woff2 + fonts.css + OFL.txt
+samples/    6 sample photos (1920 px) + thumbs/ (256 px)
+regression/ 15 gallery images + list.js
+test/       node --test suites
+tools/      Playwright tools (edge, perf, shots, compare) + static server
+docs/       DESIGN.md (tokens, grid, type, motion rules) and README images
+```
 
 ## License
 
