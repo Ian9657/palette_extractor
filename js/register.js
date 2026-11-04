@@ -43,6 +43,7 @@ processImage = function (file) {
     accEl('acc-date').textContent = stamp(pendingSource.received);
     accEl('acc-source').textContent = pendingSource.name.toUpperCase();
     accEl('acc-dims').textContent = '—';
+    accEl('acc-check').textContent = '—';
     accEl('acc-medium').textContent = '—';
     accEl('acc-condition').textContent = '—';
     setStatus('CATALOGUING');
@@ -63,6 +64,7 @@ setPalette = function (next, saveToHistory = false) {
 
     if (saveToHistory && currentImgEl) {
         accEl('acc-dims').textContent = `${currentImgEl.naturalWidth} × ${currentImgEl.naturalHeight} PX`;
+        accEl('acc-check').textContent = pixelChecksum(currentReading.data);
         setStatus('FILED');
     } else if (!pendingSource) {
         // Opened from the archive, favourites or a shared link: no intake record

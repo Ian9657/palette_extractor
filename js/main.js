@@ -15,6 +15,10 @@ let isExtracting = false;
 let currentK = 5;
 let currentSeed = 1;
 let currentImgEl = null;
+// The deposited image as a palette reads it, the same in every browser (decode.js)
+let currentReading = null;
+const READ_SIZE = 400;
+let depositCount = 0;   // a newer deposit overtakes one still reading its file
 const loadJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
 let history = loadJSON('paletteHistory', []);
 let starred = loadJSON('starredPalettes', []);
@@ -225,8 +229,13 @@ function processImage(file) {
     if (isExtracting) { pendingFile = file; return; }
     fileInput.value = '';   // so choosing the same file again still fires
 
+    const deposit = ++depositCount;
     const img = new Image();
-    img.onload = () => {
+    img.onload = async () => {
+        let bytes = null;
+        try { bytes = new Uint8Array(await file.arrayBuffer()); } catch { /* the browser still has it */ }
+        if (deposit !== depositCount) return;
+        currentReading = readPixels(img, bytes, READ_SIZE);
         if (dropContent) dropContent.hidden = true;
         dropZone.classList.add('has-image');
         currentImgEl = img;
@@ -311,23 +320,12 @@ function extractColorsVisualized(imgEl, selDomRect = null) {
 
     const ctx = previewCanvas.getContext('2d', { willReadFrequently: true });
 
-    const MAX_SIZE = 400;
-    let width = imgEl.naturalWidth;
-    let height = imgEl.naturalHeight;
-
-    if (width > height) {
-        if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
-    } else {
-        if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
-    }
-
-    width = Math.floor(width);
-    height = Math.floor(height);
+    const { data: originalData, width, height } = currentReading;
 
     previewCanvas.width = width;
     previewCanvas.height = height;
 
-    ctx.drawImage(imgEl, 0, 0, width, height);
+    ctx.putImageData(new ImageData(new Uint8ClampedArray(originalData), width, height), 0, 0);
     previewCanvas.classList.add('visible');
 
     let extractRect = null;
@@ -336,7 +334,6 @@ function extractColorsVisualized(imgEl, selDomRect = null) {
         if (extractRect.w <= 0 || extractRect.h <= 0) extractRect = null;
     }
 
-    const originalData = ctx.getImageData(0, 0, width, height).data;
     let hist = buildHistogram(originalData, width, height, extractRect);
     if (hist.total === 0 && extractRect) {
         hist = buildHistogram(originalData, width, height);

@@ -65,13 +65,12 @@ const SYNTHETIC = [
 ];
 
 // ---- Pipeline ----
+// The page's own route to pixels (decode.js), so the gallery measures what visitors get
 function toCanvas(source) {
-    let w = source.naturalWidth || source.width, h = source.naturalHeight || source.height;
-    const s = Math.min(1, MAX_SIZE / Math.max(w, h));
-    w = Math.max(1, Math.floor(w * s)); h = Math.max(1, Math.floor(h * s));
+    const { data, width, height } = readPixels(source, source.fileBytes, MAX_SIZE);
     const c = document.createElement('canvas');
-    c.width = w; c.height = h;
-    c.getContext('2d').drawImage(source, 0, 0, w, h);
+    c.width = width; c.height = height;
+    c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(data), width, height), 0, 0);
     return c;
 }
 
@@ -82,13 +81,12 @@ function syntheticCanvas(draw) {
     return c;
 }
 
-function loadImage(src) {
-    return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error('could not load ' + src));
-        img.src = src;
-    });
+async function loadImage(src) {
+    const img = new Image();
+    img.fileBytes = new Uint8Array(await (await fetch(src)).arrayBuffer());
+    img.src = src;
+    await img.decode().catch(() => { throw new Error('could not load ' + src); });
+    return img;
 }
 
 // ---- Rendering ----
