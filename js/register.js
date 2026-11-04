@@ -3,7 +3,7 @@
 // top-level functions are wrapped here (classic scripts share one global scope).
 const accEl = id => document.getElementById(id);
 const entries = [...document.querySelectorAll('.entry.pending')];
-let accessionCount = parseInt(localStorage.getItem('accessionCount') || '0') || 0;
+let accessionCount = parseInt(store.get('accessionCount') || '0') || 0;
 let pendingSource = null;   // { name, received } of the image being catalogued
 
 const pad = (n, w) => String(n).padStart(w, '0');
@@ -37,7 +37,7 @@ const originalProcessImage = processImage;
 processImage = function (file) {
     if (isExtracting) { originalProcessImage(file); return; }   // main.js queues it
     accessionCount++;
-    localStorage.setItem('accessionCount', accessionCount);
+    store.set('accessionCount', accessionCount);
     pendingSource = { name: file.name && file.name !== 'image.png' ? file.name : 'PASTED FROM CLIPBOARD', received: new Date() };
     accEl('acc-no').textContent = `PE-${pendingSource.received.getFullYear()}-${pad(accessionCount, 4)}`;
     accEl('acc-date').textContent = stamp(pendingSource.received);

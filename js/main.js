@@ -19,10 +19,17 @@ let currentImgEl = null;
 let currentReading = null;
 const READ_SIZE = 400;
 let depositCount = 0;   // a newer deposit overtakes one still reading its file
-const loadJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
+// Browser storage can be full or blocked outright. Nothing here depends on it:
+// the page works from memory and the archive simply won't outlive the visit.
+const store = {
+    get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); return true; } catch { return false; } },
+    remove(k) { try { localStorage.removeItem(k); } catch { /* nothing to remove */ } }
+};
+const loadJSON = (k, fb) => { try { return JSON.parse(store.get(k)) ?? fb; } catch { return fb; } };
 let history = loadJSON('paletteHistory', []);
 let starred = loadJSON('starredPalettes', []);
-let revCount = parseInt(localStorage.getItem('proofRevCount') || '0') || 0;
+let revCount = parseInt(store.get('proofRevCount') || '0') || 0;
 
 // The one piece of app state: { theme, coverage, adjusted, lowChroma, seed }.
 // History, favourites and edits all pass this object around.
@@ -615,7 +622,7 @@ function exportToImage(e) {
 // ---- UI Updates ----
 let swapFrom = null;        // role key picked as the first half of a swap
 let proofInverted = false;  // PRINT PROOF previews the derived opposite-mode theme
-let contrastModel = localStorage.getItem('contrastModel') === 'apca' ? 'apca' : 'wcag';
+let contrastModel = store.get('contrastModel') === 'apca' ? 'apca' : 'wcag';
 let coverageTimers = [];    // count-up animation of the previous palette, cancelled on change
 
 function setPalette(next, saveToHistory = false) {
@@ -633,7 +640,7 @@ function setPalette(next, saveToHistory = false) {
     // 2. Proof metadata
     if (saveToHistory) {
         revCount++;
-        localStorage.setItem('proofRevCount', revCount);
+        store.set('proofRevCount', revCount);
     }
     const k = Object.keys(theme).length;
     const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
@@ -877,7 +884,7 @@ const CONTRAST_MODELS = {
 if (btnContrastModel) {
     btnContrastModel.addEventListener('click', () => {
         contrastModel = contrastModel === 'wcag' ? 'apca' : 'wcag';
-        localStorage.setItem('contrastModel', contrastModel);
+        store.set('contrastModel', contrastModel);
         renderA11yMatrix();
     });
 }
@@ -1008,7 +1015,7 @@ function addToHistory(p) {
     history = history.filter(item => !sameTheme(item, p));
     history.unshift(storable(p));
     if (history.length > 8) history.pop();
-    localStorage.setItem('paletteHistory', JSON.stringify(history));
+    store.set('paletteHistory', JSON.stringify(history));
     renderSwatchList(historyContainer, history);
 }
 
@@ -1066,7 +1073,7 @@ if (btnStarCurrent) {
         } else {
             starred.unshift(storable(palette));
         }
-        localStorage.setItem('starredPalettes', JSON.stringify(starred));
+        store.set('starredPalettes', JSON.stringify(starred));
         updateStarButtonUI();
         renderFavorites();
     });

@@ -12,15 +12,23 @@ const THUMB_SIZE = 480;
 const pv = id => document.getElementById(id);
 
 const themeKey = theme => Object.values(theme).join('');
-const loadThumbs = () => { try { return JSON.parse(localStorage.getItem(THUMBS_KEY)) || {}; } catch { return {}; } };
+const loadThumbs = () => { try { return JSON.parse(store.get(THUMBS_KEY)) || {}; } catch { return {}; } };
 let thumbs = loadThumbs();
 
+// Thumbnails are the one optional thing in storage, so they give way: never more
+// than this many characters of them (17 or so at 480 px), oldest out first, which
+// leaves the palettes room even under Safari's 5 MB.
+const THUMBS_MAX = 1500000;
 function saveThumbs() {
-    try {
-        if (Object.keys(thumbs).length) localStorage.setItem(THUMBS_KEY, JSON.stringify(thumbs));
-        else localStorage.removeItem(THUMBS_KEY);
-        return true;
-    } catch { return false; }   // quota full or storage blocked: previews just fall back
+    const size = () => Object.values(thumbs).reduce((sum, t) => sum + t.src.length, 0);
+    const oldest = () => { delete thumbs[Object.keys(thumbs)[0]]; };
+    while (size() > THUMBS_MAX) oldest();
+    if (!Object.keys(thumbs).length) { store.remove(THUMBS_KEY); return true; }
+    while (!store.set(THUMBS_KEY, JSON.stringify(thumbs))) {
+        if (Object.keys(thumbs).length <= 1) return false;
+        oldest();
+    }
+    return true;
 }
 
 // Keep only thumbnails some archived or starred palette still points to
