@@ -114,6 +114,8 @@ Section names must be consistent: a label used in the margin is not repeated as 
 
 ### 8.1 04 Proof (`proof.js` on the page, `proof-worker.js` for the pixels)
 
+- Apart, the K plate sits on a pale film (`--text-color` at 80 %): its ink is the palette's darkest and would vanish on the sheet. Its pixels don't change; seated, the film is gone.
+
 **Framing**
 - A photo: the 16:9 cut slides halfway from the centre toward its saliency; no zoom.
 - A small source (longest side < 480 px: an icon, a logo) is an object, not a scene: shown whole at 80 % of the frame, centred on its own ground (the mean of its border). A transparent ground stays cut out — nothing is printed there and the sheet shows.
