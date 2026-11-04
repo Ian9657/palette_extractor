@@ -126,12 +126,12 @@ k-means 会把这些微小差异放大成不同的调色板，而修改聚类解
 
 ## 存储
 
-不上传任何东西。`localStorage` 键：`paletteHistory`（最近 8 条）、`starredPalettes`、`palette.thumbs`（480 px 原图缩略图，可在页面上清除）、`contrastModel`、`accessionCount`、`proofRevCount`。
+不上传任何东西，而且 `_headers` 让这成为浏览器强制的规则：`connect-src 'self' blob:` 拒绝向其他主机发送请求，页面也不加载任何第三方内容。`localStorage` 键：`paletteHistory`（最近 8 条）、`starredPalettes`、`palette.thumbs`（480 px 原图缩略图，可在页面上清除）、`contrastModel`、`accessionCount`、`proofRevCount`。
 
 ## 测试与工具
 
 ```sh
-npm test            # node --test：79 项，约 30 秒，无需安装依赖
+npm test            # node --test：82 项，约 30 秒，无需安装依赖
 ```
 
 `test/color.test.js` 覆盖色彩空间转换、已知颜色还原、种子确定性、角色、对比度修正、显著性挑选和补色。`test/proof.test.js` 在 `vm` 里加 `importScripts` 垫片运行 `proof-worker.js`。`test/decode.test.js` 读取 `test/fixtures/` 里的 20 种 JPEG 变体（由 `tools/make-jpeg-fixtures.py` 生成），并要求仓库里每张 JPEG 的校验和与调色板都符合 `test/records.json`。CI 在每次推送到 `main` 时运行 `npm test`。
@@ -142,6 +142,7 @@ npm test            # node --test：79 项，约 30 秒，无需安装依赖
 | --- | --- |
 | `npm run edge` | 10 种合成图片（1 × 1、40 × 3000、8000 × 6000、全透明等）在 Chromium 和 WebKit 中跑真实页面 |
 | `npm run cross` | 所有图片在 k = 3、5、8、种子 1–3 下跑 Chromium 和 WebKit，彼此对比并与 `test/records.json` 对比；6 张示例走真实页面；计时一张 8000 × 6000 的 JPEG |
+| `npm run csp` | 带着 `_headers` 在 Chromium 和 WebKit 中走遍所有功能：没有违规，且向其他主机的请求被拒绝（`URL=… npm run csp` 检查线上） |
 | `npm run perf` | 冷启动、示例图 → 调色板、示例图 → 打样的耗时，分桌面速度和限速 CPU/网络 |
 | `npm run shots -- dir/` | 桌面和 iPhone 截图，减少动态效果 + 固定时钟 |
 | `npm run compare -- a/ b/` | 两组截图的像素差异 |

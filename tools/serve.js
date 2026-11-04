@@ -10,14 +10,23 @@ const TYPES = {
     '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.json': 'application/json'
 };
 
-function start() {
+// With { headers: true } it also sends what _headers asks of Cloudflare (npm run csp).
+// Not by default: Playwright's waitForFunction uses eval, which the policy forbids.
+function start({ headers = false } = {}) {
+    const extra = {};
+    if (headers) {
+        for (const line of fs.readFileSync(path.join(ROOT, '_headers'), 'utf8').split('\n')) {
+            const m = line.match(/^\s+([\w-]+):\s*(.+)$/);
+            if (m) extra[m[1]] = m[2];
+        }
+    }
     const server = http.createServer((req, res) => {
         let file = path.join(ROOT, decodeURIComponent(new URL(req.url, 'http://x').pathname));
         if (!file.startsWith(ROOT)) { res.writeHead(403).end(); return; }
         if (file.endsWith(path.sep)) file = path.join(file, 'index.html');
         fs.readFile(file, (err, body) => {
             if (err) { res.writeHead(404).end(); return; }
-            res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream' }).end(body);
+            res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream', ...extra }).end(body);
         });
     });
     return new Promise(resolve => server.listen(0, '127.0.0.1', () =>

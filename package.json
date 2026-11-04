@@ -16,7 +16,8 @@
     "shots": "node tools/shots.js",
     "perf": "node tools/perf.js",
     "compare": "node tools/compare.js",
-    "doc-images": "node tools/doc-images.js"
+    "doc-images": "node tools/doc-images.js",
+    "csp": "node tools/csp.js"
   },
   "devDependencies": {
     "playwright": "1.48.2"
