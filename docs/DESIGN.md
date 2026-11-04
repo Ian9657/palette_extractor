@@ -46,7 +46,7 @@ Identity in one line: **a strictly typeset register, viewed through a night-city
   - **Space Grotesk** (`--font-text`) — body copy: standfirst, specimen sentences.
   - **IBM Plex Mono** — labels, numbers, captions, data readouts.
 - No serif, no italic, no fourth font, no pixel/Japanese decorative type.
-- Self-hosted in `fonts/` (Latin + Latin Extended; Chakra Petch 500/600/700, Space Grotesk variable, Plex Mono 400/600); the new edition sends no request to Google. Classic and the gallery still load Google Fonts. A new weight means adding its file to `fonts/` and `fonts/fonts.css`.
+- Self-hosted in `fonts/` (Latin + Latin Extended; Chakra Petch 500/600/700, Space Grotesk variable, Plex Mono 400/600); the new edition sends no request to Google. The gallery still loads Google Fonts. A new weight means adding its file to `fonts/` and `fonts/fonts.css`.
 - Scale tokens only: `--fs-display` (nameplate only), `--fs-title` (opener headline, entry numerals), `--fs-heading` (panel h2), `--fs-body`, `--fs-label` (12 px), `--fs-micro` (10 px, the floor).
 - Mono labels: uppercase, letter-spacing 0.08–0.14em. Numbers: `font-variant-numeric: tabular-nums`.
 
@@ -163,7 +163,7 @@ There are no releases: the site has one address and every push is the current ve
 ## 10. Working agreement (for every agent)
 
 1. **Read this file first.** Quote the section you rely on when you make a judgement call.
-2. Small changes may go straight to `main`. Bigger ones (algorithms, refactors) go on a branch; tell the owner the branch name and push only after the owner says so ("推"). Push several commits **one at a time**, waiting for each Pages deploy to finish (`git push origin <sha>:main`, `gh run watch`).
+2. Small changes may go straight to `main`. Bigger ones (algorithms, refactors) go on a branch; tell the owner the branch name and push only after the owner says so ("推"). Push several commits **one at a time**, waiting for each Cloudflare build to finish (`git push origin <sha>:main`).
 3. Commit messages: imperative subject ≤ 60 chars, a short body on *why*. **No `Co-Authored-By` or other attribution trailers** — the owner is the sole contributor.
 4. One agent edits at a time. Don't touch files outside the task.
 5. Before handing back: `npm test` passes (colour logic and the proof worker) and, after a change to extraction or the proof, `npm run edge`; for a visual change, `npm run shots` before and after and `npm run compare` (README › Tests); the page loads with no console errors at 1400 px and 390 px; no horizontal scroll at 390 px; real pointer clicks hit their targets (check `elementFromPoint`, not just DOM state).
