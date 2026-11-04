@@ -19,7 +19,7 @@ Identity in one line: **a strictly typeset register, viewed through a night-city
 | Edition | Files | Status |
 | --- | --- | --- |
 | **Classic** (built April 2026) | `classic.html`, `style-classic.css`, `color-classic.js`, `main-classic.js` (plus the shared `ntc.js` name list) | **Frozen.** Do not change any of its files. Since 2026-10-24 it shares no code with the new edition, so nothing done to the new edition can touch it. |
-| **New** (homepage) | `index.html`, `main.js`, `style.css`, `edition.css/js`, `proof.js`, `proof-worker.js`, `register.css/js`, `previews.js`, `cover.js`, `icon-signal.svg`, `apple-touch-icon-signal.png`, `follow.js`, `fx.js`, `pagefx.js`, `samples.js`, `color.js` | The one living design. |
+| **New** (homepage) | `index.html`, `main.js`, `style.css`, `edition.css/js`, `proof.js`, `proof-worker.js`, `register.css/js`, `previews.js`, `cover.js`, `icon-signal.svg`, `apple-touch-icon-signal.png`, `follow.js`, `fx.js`, `pagefx.js`, `samples.js`, `color.js`, `decode.js` | The one living design. |
 
 - The new edition has **one appearance**: the dark night-city register below. **No day/night switch, no second theme.** Remove theme branches rather than leaving dead ones (`[data-theme="day"]` rules, `editionCopy.day`, `setEdition`, the pre-paint theme script).
 
@@ -114,7 +114,7 @@ Section names must be consistent: a label used in the margin is not repeated as 
 
 ### 8.1 04 Proof (`proof.js` on the page, `proof-worker.js` for the pixels)
 
-- Apart, the K plate sits on a pale film (`--text-color` at 80 %): its ink is the palette's darkest and would vanish on the sheet. Its pixels don't change; seated, the film is gone.
+- Apart, the K plate sits on a pale film (`--text-color`, up to 80 % as the stack opens): its ink is the palette's darkest and would vanish on the sheet. Its pixels don't change; seated, the film is gone.
 
 **Framing**
 - A photo: the 16:9 cut slides halfway from the centre toward its saliency; no zoom.
