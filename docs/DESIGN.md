@@ -97,7 +97,7 @@ All effects respect `prefers-reduced-motion: reduce` (off or instant) and are de
 
 Adding a new effect requires: which screen-side object it belongs to, its duration, and what record it reveals. Effects without a record are cut.
 
-**Touch previews.** With no hover, the archive and matrix previews open on one small screen fixed to the bottom of the viewport (`previews.js`, `.tap-screen`). It is a screen object, so it carries the full treatment: lens brackets, scanlines, a stepped cut-in of offset slices with channel split (0.34 s), decoded caption; while open, switching items slides the thumbnail strip and drops the signal instead of cutting in again. A tap only looks: RETRIEVE restores a palette, which keeps looking and choosing separate, as hover and click do on desktop.
+**Touch previews.** With no hover, the archive and matrix previews open on one small screen fixed to the bottom of the viewport (`previews.js`, `.tap-screen`). It is a screen object, so it carries the full treatment: lens brackets, scanlines, a stepped cut-in of offset slices with channel split (0.34 s), decoded caption; while open, switching archive items slides the thumbnail strip and drops the signal instead of cutting in again. The matrix is for comparing many pairs in a row, so its specimen is quieter: a 0.16 s cut-in, then colours change at once with a 120 ms decoded caption. A tap only looks: RETRIEVE restores a palette, which keeps looking and choosing separate, as hover and click do on desktop.
 
 **Icons.** `icon.svg` belongs to the Classic Edition and stays as it is. `icon-signal.svg` is the same palette on the sheet colour, with the nameplate's off-register cyan, the lens brackets and one torn band; under 24 px the brackets and tear drop out.
 

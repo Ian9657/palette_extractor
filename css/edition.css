@@ -705,7 +705,7 @@ body::after {
 .tap-screen[data-mode="specimen"] .fp-track,
 .tap-screen[data-mode="specimen"] .ts-bars,
 .tap-screen[data-mode="specimen"] .ts-retrieve { display: none; }
-.tap-screen .fs-sheet { width: auto; border: 0; }
+.tap-screen .fs-sheet { width: auto; border: 0; transition: none; }
 .tap-screen .fp-frame { width: 100%; height: 9.5rem; }
 .ts-side { display: flex; flex-direction: column; justify-content: flex-end; min-width: 0; }
 .tap-screen[data-mode="archive"] .ts-side { gap: var(--s1); padding: var(--s2); }
@@ -725,6 +725,7 @@ body::after {
 }
 .tap-screen[data-mode="archive"] .ts-close { display: none; }
 .ts-in { animation: ts-cut-in 0.34s steps(1) 1; }
+.tap-screen[data-mode="specimen"].ts-in { animation: ts-cut-in-brief 0.16s steps(1) 1; }
 .ts-out { animation: ts-cut-out 0.16s steps(1) 1 forwards; }
 /* A signal arriving: slices first, a wrong offset, then lock */
 @keyframes ts-cut-in {
@@ -733,6 +734,11 @@ body::after {
     36%  { clip-path: inset(0 0 34% 0); transform: translateX(-7px); filter: url(#rgb-split); }
     54%  { clip-path: inset(58% 0 0 0); transform: translateX(9px); filter: url(#rgb-split); }
     72%  { clip-path: inset(0); transform: translateX(-3px); filter: url(#rgb-split); }
+    100% { clip-path: inset(0); transform: none; filter: none; }
+}
+@keyframes ts-cut-in-brief {
+    0%   { clip-path: inset(30% 0 30% 0); transform: translateX(-6px); filter: url(#rgb-split); }
+    50%  { clip-path: inset(0); transform: translateX(3px); filter: url(#rgb-split); }
     100% { clip-path: inset(0); transform: none; filter: none; }
 }
 @keyframes ts-cut-out {

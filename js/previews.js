@@ -225,7 +225,8 @@ if (Follow.enabled) {
         tv.dataset.mode = mode;
         tv.hidden = false;
         tv.classList.remove('ts-out');
-        if (switching) FX.split(tv, 360);
+        // Comparing colour pairs means many tips in a row, so the specimen doesn't shake
+        if (switching) { if (mode === 'archive') FX.split(tv, 360); }
         else {
             tv.classList.remove('ts-in');
             void tv.offsetWidth;   // restart the cut-in
@@ -275,7 +276,7 @@ if (Follow.enabled) {
         sheet.style.background = pair.bg;
         sheet.style.color = pair.fg;
         show('specimen', td, {});
-        FX.decode(caption, pair.caption, 240);
+        FX.decode(caption, pair.caption, 120);
     });
 
     // A tap anywhere else puts the screen away
