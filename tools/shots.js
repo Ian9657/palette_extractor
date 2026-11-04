@@ -12,9 +12,6 @@ const { start } = require('./serve');
 
 const OUT = path.resolve(process.argv[2] || path.join(__dirname, '..', 'shots'));
 const URL = process.env.URL;   // shoot the live site instead: URL=https://palette.etarc.net/ npm run shots
-// ZINE=1 shoots the April edition in zine/ instead: empty, and with samples/neon-city.jpg
-// deposited through the file input (it has no sample row and no proof)
-const ZINE = !!process.env.ZINE;
 
 const SETS = [
     ['desktop', chromium, { viewport: { width: 1400, height: 900 } }],
@@ -24,7 +21,7 @@ const SETS = [
 (async () => {
     fs.mkdirSync(OUT, { recursive: true });
     const server = URL ? null : await start();
-    const base = (URL || server.url) + (ZINE ? 'zine/' : '');
+    const base = URL || server.url;
     const made = [];
     for (const [name, type, opts] of SETS) {
         const browser = await type.launch();
@@ -32,7 +29,7 @@ const SETS = [
         await ctx.clock.setFixedTime(new Date('2026-01-01T12:00:00'));
         const page = await ctx.newPage();
         const shot = async (label, target = page, full = true) => {
-            const file = path.join(OUT, `${ZINE ? 'zine-' : ''}${name}-${label}.png`);
+            const file = path.join(OUT, `${name}-${label}.png`);
             await (target === page ? page.screenshot({ path: file, fullPage: full }) : target.screenshot({ path: file }));
             made.push(file);
         };
@@ -44,14 +41,6 @@ const SETS = [
         if (URL) await page.waitForTimeout(1500);   // over the network a decoded thumbnail can still be a frame from painted
         await shot('1-empty');
 
-        if (ZINE) {
-            await page.setInputFiles('#file-input', path.join(__dirname, '..', 'samples', 'neon-city.jpg'));
-            await page.waitForFunction(() => palette && !palette.isDefault && !isExtracting);
-            await page.waitForTimeout(1500);   // the coverage badge counts up on a timer, reduced motion or not
-            await shot('2-filed');
-            await browser.close();
-            continue;
-        }
         await page.locator('.sample').first().click();
         await page.waitForFunction(() => document.getElementById('acc-status').textContent === 'FILED');
         await page.waitForFunction(() => !document.getElementById('proof-stage').classList.contains('empty'));

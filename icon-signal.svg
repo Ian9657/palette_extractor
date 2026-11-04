@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <!-- The Classic Edition's palette (icon.svg) on the Signal Edition's sheet: the
+  <!-- A painter's palette on the Signal Edition's sheet: the
        nameplate's off-register cyan, the Fig. 1 lens brackets, one torn band. -->
   <style>.simple { display: none; } @media (max-width: 24px) { .detail { display: none; } .simple { display: inline; } }</style>
   <defs>

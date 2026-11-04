@@ -14,11 +14,10 @@ The page should let people *feel* harmony and opposition between colours — **w
 
 Identity in one line: **a strictly typeset register, viewed through a night-city instrument.** The structure is a magazine; the screen-side objects carry the cyberpunk.
 
-## 2. Two editions, nothing else
+## 2. One edition
 
 | Edition | Files | Status |
 | --- | --- | --- |
-| **Zine** (built April 2026, the old Classic) | everything in `zine/`, self-contained | **Frozen.** Do not change any of its files. It shares no code with the new edition. Reached only by typing `/zine`: the new edition never links to it, the page is `noindex`, and the README doesn't list it. The one trace on the site is a printed slug, not a link: `/zine` on the K plate's film when 04 is fully apart. |
 | **New** (homepage) | `index.html`, `main.js`, `style.css`, `edition.css/js`, `proof.js`, `proof-worker.js`, `register.css/js`, `previews.js`, `cover.js`, `icon-signal.svg`, `apple-touch-icon-signal.png`, `follow.js`, `fx.js`, `pagefx.js`, `samples.js`, `color.js`, `decode.js` | The one living design. |
 
 - The new edition has **one appearance**: the dark night-city register below. **No day/night switch, no second theme.** Remove theme branches rather than leaving dead ones (`[data-theme="day"]` rules, `editionCopy.day`, `setEdition`, the pre-paint theme script).
@@ -46,7 +45,7 @@ Identity in one line: **a strictly typeset register, viewed through a night-city
   - **Chakra Petch** (`--font-display`) — nameplate, headings, section numerals, panel titles, role names. Its chamfered corners are the page's cyberpunk voice in type.
   - **Space Grotesk** (`--font-text`) — body copy: standfirst, specimen sentences.
   - **IBM Plex Mono** — labels, numbers, captions, data readouts.
-- No serif, no italic, no fourth font, no pixel/Japanese decorative type. The Zine keeps Space Grotesk throughout.
+- No serif, no italic, no fourth font, no pixel/Japanese decorative type.
 - Self-hosted in `fonts/` (Latin + Latin Extended; Chakra Petch 500/600/700, Space Grotesk variable, Plex Mono 400/600); the new edition sends no request to Google. Classic and the gallery still load Google Fonts. A new weight means adding its file to `fonts/` and `fonts/fonts.css`.
 - Scale tokens only: `--fs-display` (nameplate only), `--fs-title` (opener headline, entry numerals), `--fs-heading` (panel h2), `--fs-body`, `--fs-label` (12 px), `--fs-micro` (10 px, the floor).
 - Mono labels: uppercase, letter-spacing 0.08–0.14em. Numbers: `font-variant-numeric: tabular-nums`.
@@ -99,7 +98,7 @@ Adding a new effect requires: which screen-side object it belongs to, its durati
 
 **Touch previews.** With no hover, the archive and matrix previews open on one small screen fixed to the bottom of the viewport (`previews.js`, `.tap-screen`). It is a screen object, so it carries the full treatment: lens brackets, scanlines, a stepped cut-in of offset slices with channel split (0.34 s), decoded caption; while open, switching archive items slides the thumbnail strip and drops the signal instead of cutting in again. The matrix is for comparing many pairs in a row, so its specimen is quieter: a 0.16 s cut-in, then colours change at once with a 120 ms decoded caption. A tap only looks: RETRIEVE restores a palette, which keeps looking and choosing separate, as hover and click do on desktop.
 
-**Icons.** `zine/icon.svg` belongs to the Zine and stays as it is. `icon-signal.svg` is the same palette on the sheet colour, with the nameplate's off-register cyan, the lens brackets and one torn band; under 24 px the brackets and tear drop out.
+**Icon.** `icon-signal.svg` is a painter's palette on the sheet colour, with the nameplate's off-register cyan, the lens brackets and one torn band; under 24 px the brackets and tear drop out.
 
 ## 8. Page anatomy (new edition)
 
@@ -108,7 +107,7 @@ Adding a new effect requires: which screen-side object it belongs to, its durati
 3. **02 Specimen** — COLOUR BAR; actions: STAR, SAVE COVER, EXPORT ▾ (link, CSS, Tailwind, Figma). OKLCH line under each swatch.
 4. **03 Relations** — contrast matrix (WCAG/APCA) with type-specimen hover; CVD strips in two columns.
 5. **04 Proof** — the photo re-rendered as one anime cel in the palette's inks, separated into plates (§8.1). Archive and favourites follow, folded.
-6. **Colophon** — fonts, method, sample credits. No link to the zine.
+6. **Colophon** — fonts, method, sample credits.
 
 Section names must be consistent: a label used in the margin is not repeated as the panel's h2.
 
@@ -169,7 +168,7 @@ There are no releases: the site has one address and every push is the current ve
 4. One agent edits at a time. Don't touch files outside the task.
 5. Before handing back: `npm test` passes (colour logic and the proof worker) and, after a change to extraction or the proof, `npm run edge`; for a visual change, `npm run shots` before and after and `npm run compare` (README › Tests); the page loads with no console errors at 1400 px and 390 px; no horizontal scroll at 390 px; real pointer clicks hit their targets (check `elementFromPoint`, not just DOM state).
 6. Hand-back note: what changed, which files, how it was verified, anything left open.
-7. Changing the algorithm in `color.js`: run the 15-image comparison against `zine/color.js` (salient recall, max chroma, mean error) and report it. Don't make any image clearly worse.
+7. Changing the algorithm in `color.js`: run the 15-image comparison in `gallery.html` against the saved baseline (salient recall, max chroma, mean error) and report it. Don't make any image clearly worse.
 
 ## 11. Review checklist (used to accept a change)
 
@@ -178,6 +177,5 @@ There are no releases: the site has one address and every push is the current ve
 - [ ] Everything sits on the grid; spacing uses tokens; type uses scale tokens.
 - [ ] No new words that aren't records.
 - [ ] Motion is short, stepped, and tied to an event or a screen object.
-- [ ] Zine unchanged (`git diff --stat` shows nothing in `zine/`).
 - [ ] No dead code left from removed options.
 - [ ] §10.5 checks pass.

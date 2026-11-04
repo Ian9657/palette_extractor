@@ -159,7 +159,7 @@ python3 -m http.server     # http://localhost:8000, /gallery.html
 
 ```text
 index.html  gallery.html     pages
-icon-signal.svg  apple-touch-icon-signal.png  og-image.png  CNAME
+icon-signal.svg  apple-touch-icon-signal.png  og-image.png  wrangler.jsonc
 css/        style.css, register.css, edition.css
 js/         color.js        colour engine, worker bootstrap
             decode.js       JPEG decoder, area downscale, checksum

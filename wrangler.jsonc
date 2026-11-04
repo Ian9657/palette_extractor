@@ -3,5 +3,5 @@
   "compatibility_date": "2026-09-28",
   // The site is the repo's static files, no build step. .assetsignore keeps out what isn't the site.
   "assets": { "directory": "." },
-  "workers_dev": true
+  "workers_dev": false
 }
