@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- The Classic Edition's palette (icon.svg) on the Signal Edition's sheet: the
+       nameplate's off-register cyan, the Fig. 1 lens brackets, one torn band. -->
+  <style>.simple { display: none; } @media (max-width: 24px) { .detail { display: none; } .simple { display: inline; } }</style>
+  <defs>
+    <path id="p" d="M31 5C47 5 60 15 60 29C60 39 53 44 46 42C41 40.5 37.5 43.5 39 49C40.5 55 36.5 59 29 58.5C15 57.5 4 46 4 31C4 16 15.5 5 31 5Z"/>
+    <g id="face">
+      <use href="#p" fill="#F5F0E8"/>
+      <ellipse cx="20" cy="47" rx="5.2" ry="4.2" fill="#111927"/>
+      <g stroke="#111927" stroke-width="2.5">
+        <circle cx="17" cy="25" r="6.4" fill="#FF4655"/>
+        <circle cx="30" cy="15.5" r="6.4" fill="#F0EF00"/>
+        <circle cx="45" cy="18" r="6.4" fill="#00E5FF"/>
+        <circle cx="51.5" cy="31" r="4" fill="#F5F0E8"/>
+      </g>
+    </g>
+    <clipPath id="above"><rect x="-8" y="-8" width="84" height="44.2"/></clipPath>
+    <clipPath id="band"><rect x="-8" y="36" width="84" height="6"/></clipPath>
+    <clipPath id="below"><rect x="-8" y="41.8" width="84" height="40"/></clipPath>
+  </defs>
+  <rect width="64" height="64" rx="11" fill="#111927"/>
+  <g transform="translate(7.5 7.5) scale(0.76)">
+    <use href="#p" transform="translate(5.5 5)" fill="#00E5FF"/>
+    <use class="simple" href="#face"/>
+    <g class="detail">
+      <use href="#face" clip-path="url(#above)"/>
+      <use href="#face" clip-path="url(#below)"/>
+      <g clip-path="url(#band)"><use href="#face" transform="translate(7 0)"/></g>
+    </g>
+  </g>
+  <g class="detail" fill="none" stroke="#00E5FF" stroke-width="2.2">
+    <path d="M5 13V5H13"/><path d="M51 5H59V13"/><path d="M59 51V59H51"/><path d="M13 59H5V51"/>
+  </g>
+</svg>
