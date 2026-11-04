@@ -120,7 +120,7 @@ Limits:
 
 - PNG decodes identically in both engines, so it stays with the browser, as do formats this decoder declines: WebP, CMYK, 12-bit, arithmetic coding and LUT ICC profiles. WebP and these JPEGs are not covered by the guarantee.
 - Only the palette is covered. The 04 proof still draws from the browser's decoded image, so its picture can differ slightly between browsers; its inks do not.
-- These runs use Playwright's WebKit build, not Safari itself. Because the decoder doesn't use the browser's, Safari should match, but that has not been checked on a device yet.
+- These runs use Playwright's WebKit build, not Safari itself. Safari on an iPhone was checked by hand once, on one sample (checksum and colours matched); it is not part of any automated run.
 
 Same pixels + same `k` + same seed → the same palette. REROLL increments the seed.
 
