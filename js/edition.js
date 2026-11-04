@@ -63,22 +63,15 @@ dropZoneEl.addEventListener('drop', e => {
     if (file && !file.type.startsWith('image/')) figError('NOT AN IMAGE.');   // main.js ignores it silently
 });
 
-// ---- Hooks (wrapping the register.js wrappers) ----
-const prevProcessImage = processImage;
-processImage = function (file) {
-    if (isExtracting) { prevProcessImage(file); return; }   // main.js queues it
+// ---- Following the image ----
+on('deposit', (file, queued) => {
+    if (queued) return;
     dropZoneEl.classList.remove('lensed');
     originalEl.src = URL.createObjectURL(file);
-    prevProcessImage(file);
-};
+});
 
-const prevExtract = extractColorsVisualized;
-extractColorsVisualized = function (...args) {
-    if (isExtracting) { prevExtract(...args); return; }   // main.js queues it
-    dropZoneEl.classList.remove('lensed');   // let the clustering play out full-frame
-    prevExtract(...args);
-    if (isExtracting) startScan();
-};
+on('extract-start', () => dropZoneEl.classList.remove('lensed'));   // let the clustering play out full-frame
+on('extract-running', () => startScan());
 
 // On a worker failure main.js ends the extraction; clear the scan here
 worker.addEventListener('error', () => {
@@ -138,9 +131,7 @@ function oklchLine(hex) {
 }
 
 // renderSwatches is also called on its own (swap mode), so decorate there, not in setPalette
-const prevRenderSwatches = renderSwatches;
-renderSwatches = function () {
-    prevRenderSwatches();
+on('swatches', () => {
     const keys = ROLE_KEYS[Object.keys(palette.theme).length];
     paletteContainer.querySelectorAll('.swatch').forEach((swatch, i) => {
         const line = document.createElement('div');
@@ -149,16 +140,14 @@ renderSwatches = function () {
         line.title = oklchString(palette.theme[keys[i]]);
         swatch.querySelector('.swatch-footer').appendChild(line);
     });
-};
+});
 
-const prevSetPaletteMag = setPalette;
-setPalette = function (next, saveToHistory = false) {
-    prevSetPaletteMag(next, saveToHistory);
+on('palette', (next, saveToHistory) => {
     if (next.isDefault) return;
     renderStrip(next.theme);
     writeFeature(next, !saveToHistory && !currentImgEl);
     if (saveToHistory && currentImgEl) startLens();
-};
+});
 
 // ---- Fig. 1 lens ----
 const reduceMotionMag = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -277,24 +266,12 @@ if (palette.isDefault) {
 // FAVORITES shrinks to one line while it is empty.
 const recordCard = document.querySelector('.accession-card');
 recordCard.classList.toggle('collapsed', palette.isDefault);
-const prevSetPaletteFold = setPalette;
-setPalette = function (next, saveToHistory = false) {
-    prevSetPaletteFold(next, saveToHistory);
-    if (!next.isDefault) recordCard.classList.remove('collapsed');
-};
-// processImage fills the record before the palette lands; open it then too
-const prevProcessFold = processImage;
-processImage = function (file) {
-    recordCard.classList.remove('collapsed');
-    prevProcessFold(file);
-};
+on('palette', next => { if (!next.isDefault) recordCard.classList.remove('collapsed'); });
+// The record fills in before the palette lands; open it then too
+on('deposit', () => recordCard.classList.remove('collapsed'));
 
 const favoritesBlock = mag('favorites-block');
-const prevRenderFavorites = renderFavorites;
-renderFavorites = function () {
-    prevRenderFavorites();
-    favoritesBlock.classList.toggle('is-empty', starred.length === 0);
-};
+on('favorites', () => favoritesBlock.classList.toggle('is-empty', starred.length === 0));
 renderFavorites();
 
 // EXPORT menu: close after a choice, on Escape and on any click outside

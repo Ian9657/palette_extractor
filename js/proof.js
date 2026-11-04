@@ -311,9 +311,7 @@
     }
 
     // The proof follows the theme main.js shows in it (extracted, or its derived opposite)
-    const prevApplyMockup = applyMockupTheme;
-    applyMockupTheme = function () {
-        prevApplyMockup();
+    on('proof-theme', () => {
         if (!palette) return;
         $('mockup-badge').textContent = palette.coverage == null ? '—' : `${palette.coverage}%`;
         // main.js labels the button with the mode shown (◐ DARK / LIGHT), which
@@ -324,7 +322,7 @@
             inv.setAttribute('aria-pressed', proofInverted);
         }
         render(proofInverted ? invertTheme(palette.theme) : palette.theme);
-    };
+    });
 
     // ---- Take apart / install ----
     let explode = 0;

@@ -140,17 +140,16 @@
         });
     }
 
-    const prevSetPaletteFx = setPalette;
-    setPalette = function (next, saveToHistory = false) {
-        const oldInks = [...platesEl.children].map(p => p.style.getPropertyValue('--plate'));
-        prevSetPaletteFx(next, saveToHistory);
+    let oldInks = [];
+    on('palette-before', () => { oldInks = [...platesEl.children].map(p => p.style.getPropertyValue('--plate')); });
+    on('palette', next => {
         const key = Object.values(next.theme).join();
         if (!next.isDefault && key !== lastTheme) {
             sandevistan(next.theme);
             inkPlates(oldInks);
         }
         lastTheme = key;
-    };
+    });
     lastTheme = Object.values(palette.theme).join();
 
     // ---- Fringe on pressed controls ----

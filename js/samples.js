@@ -4,12 +4,10 @@
 (() => {
     const row = document.getElementById('samples');
     let picked = null;   // the sample being deposited; any other deposit clears the mark
-    const prevProcess = processImage;
-    processImage = function (file) {
+    on('deposit', () => {
         row.querySelectorAll('.sample').forEach(b => b.classList.toggle('current', b === picked));
         picked = null;
-        prevProcess(file);
-    };
+    });
     row.querySelectorAll('.sample').forEach(btn => {
         const { src, thumb, id, name } = btn.dataset;
         btn.style.backgroundImage = `url("${thumb || src}")`;   // small copy; the full size loads on deposit

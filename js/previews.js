@@ -73,9 +73,7 @@ function showArchivedSource(kept) {
 }
 
 // File a thumbnail whenever an object is catalogued (also on reroll / colour count)
-const prevSetPalettePv = setPalette;
-setPalette = function (next, saveToHistory = false) {
-    prevSetPalettePv(next, saveToHistory);
+on('palette', (next, saveToHistory) => {
     if (next.isDefault) return;
     if (saveToHistory && currentImgEl) {
         pv('drop-zone').classList.remove('archived');
@@ -94,7 +92,7 @@ setPalette = function (next, saveToHistory = false) {
         showArchivedSource(kept);
     }
     renderThumbNote();
-};
+});
 
 // Starring keeps a thumbnail alive even after it leaves the 8-item archive
 pv('btn-star-current').addEventListener('click', () => { pruneThumbs(); saveThumbs(); renderThumbNote(); });
@@ -186,11 +184,7 @@ if (Follow.enabled) {
     a11y.addEventListener('mouseleave', () => { specimen.classList.remove('active'); specimenCaption = ''; });
 
     // The specimen replaces the cells' native tooltips on desktop
-    const prevRenderA11y = renderA11yMatrix;
-    renderA11yMatrix = function () {
-        prevRenderA11y();
-        a11y.querySelectorAll('td[title]').forEach(td => td.removeAttribute('title'));
-    };
+    on('matrix', () => a11y.querySelectorAll('td[title]').forEach(td => td.removeAttribute('title')));
     renderA11yMatrix();
 } else {
     const tv = document.createElement('div');
@@ -294,14 +288,6 @@ if (Follow.enabled) {
     });
 
     // A new palette redraws the matrix and shifts the archive under it
-    const prevSetPaletteTap = setPalette;
-    setPalette = function (next, saveToHistory = false) {
-        prevSetPaletteTap(next, saveToHistory);
-        closeScreen();
-    };
-    const prevRenderA11y = renderA11yMatrix;
-    renderA11yMatrix = function () {
-        if (open && tv.dataset.mode === 'specimen') closeScreen();
-        prevRenderA11y();
-    };
+    on('palette', closeScreen);
+    on('matrix', () => { if (open && tv.dataset.mode === 'specimen') closeScreen(); });
 }

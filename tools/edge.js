@@ -92,6 +92,11 @@ async function runCase(browser, url, file) {
     return { filedMs, proofMs, proofReady, proofWhy: state.proofWhy, hexes, problems };
 }
 
+const BROKEN_STORAGE = {
+    full: () => { Storage.prototype.setItem = () => { throw new DOMException('full', 'QuotaExceededError'); }; },
+    blocked: () => { Object.defineProperty(window, 'localStorage', { get() { throw new DOMException('denied', 'SecurityError'); } }); }
+};
+
 (async () => {
     const server = await start();
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'palette-edge-'));
@@ -107,6 +112,21 @@ async function runCase(browser, url, file) {
             console.log(`${r.problems.length ? '✖' : '✔'} ${name.padEnd(12)} filed ${(r.filedMs / 1000).toFixed(1)}s · ${proof} · ${r.hexes.join(' ')}`);
             for (const p of r.problems) console.log('    ' + p);
             if (r.problems.length) failed++;
+        }
+        // Storage full, then blocked outright: a deposit must still be filed
+        for (const [mode, breakIt] of Object.entries(BROKEN_STORAGE)) {
+            const ctx = await browser.newContext();
+            await ctx.addInitScript(breakIt);
+            const page = await ctx.newPage();
+            const errors = [];
+            page.on('pageerror', e => errors.push(e.message));
+            await page.goto(server.url);
+            await page.click('.sample');
+            const filed = await page.waitForFunction(() => document.getElementById('acc-status').textContent === 'FILED', null, { timeout: 30000 }).then(() => true, () => false);
+            const ok = filed && !errors.length;
+            console.log(`${ok ? '✔' : '✖'} storage ${mode}${ok ? ' · still files' : `: ${errors[0] || 'not filed'}`}`);
+            if (!ok) failed++;
+            await ctx.close();
         }
         await browser.close();
     }

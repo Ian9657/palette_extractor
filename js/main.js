@@ -19,6 +19,17 @@ let currentImgEl = null;
 let currentReading = null;
 const READ_SIZE = 400;
 let depositCount = 0;   // a newer deposit overtakes one still reading its file
+// The other files react to what happens here by subscribing, in load order:
+//   deposit (file, queued)      a new image, before it is read; queued if an extraction is running
+//   extract-start               an extraction is about to read the image
+//   extract-running             its worker is on its way
+//   palette-before (next)       setPalette is about to apply a palette
+//   palette (next, saved)       ...and has applied it
+//   swatches, matrix, favorites, proof-theme    that part was redrawn
+const hooks = {};
+const on = (name, fn) => { (hooks[name] = hooks[name] || []).push(fn); };
+const emit = (name, ...args) => { (hooks[name] || []).forEach(fn => fn(...args)); };
+
 // Browser storage can be full or blocked outright. Nothing here depends on it:
 // the page works from memory and the archive simply won't outlive the visit.
 const store = {
@@ -233,6 +244,7 @@ function endExtraction() {
 
 // ---- Image Processing ----
 function processImage(file) {
+    emit('deposit', file, isExtracting);
     if (isExtracting) { pendingFile = file; return; }
     fileInput.value = '';   // so choosing the same file again still fires
 
@@ -319,6 +331,7 @@ function mapDomRectToCanvas(domRect, canvas, dropZone) {
 // ---- K-Means Color Extraction Visualized ----
 function extractColorsVisualized(imgEl, selDomRect = null) {
     if (isExtracting) { pendingExtract = true; return; }
+    emit('extract-start');
     isExtracting = true;
 
     loadingOverlay.hidden = false;
@@ -410,6 +423,7 @@ function extractColorsVisualized(imgEl, selDomRect = null) {
     // A worker failure would otherwise leave isExtracting stuck and the page dead
     worker.onerror = e => { e.preventDefault(); endExtraction(); };
     worker.postMessage({ bins: hist.bins, k, seed, maxIter: MAX_ITER });
+    emit('extract-running');
 }
 
 // ---- Export Capabilities ----
@@ -626,6 +640,7 @@ let contrastModel = store.get('contrastModel') === 'apca' ? 'apca' : 'wcag';
 let coverageTimers = [];    // count-up animation of the previous palette, cancelled on change
 
 function setPalette(next, saveToHistory = false) {
+    emit('palette-before', next);
     palette = next;
     swapFrom = null;
     const { theme } = palette;
@@ -659,7 +674,11 @@ function setPalette(next, saveToHistory = false) {
         addToHistory(palette);
     }
     updateHash();
+    countCoverage();
+    emit('palette', next, saveToHistory);
+}
 
+function countCoverage() {
     const badge = document.getElementById('mockup-badge');
     const progress = document.getElementById('mockup-progress');
     coverageTimers.forEach(clearTimeout);  // clearTimeout also clears intervals
@@ -718,6 +737,7 @@ function applyMockupTheme() {
         btnInvert.title = proofInverted ? 'Showing the derived opposite mode; click for the extracted theme'
                                         : 'Showing the extracted theme; click to preview the derived opposite mode';
     }
+    emit('proof-theme');
 }
 
 if (btnInvert) {
@@ -858,6 +878,7 @@ function renderSwatches() {
         paletteNotes.innerHTML = notes.map(n => `<div>${n}</div>`).join('');
         paletteNotes.hidden = notes.length === 0;
     }
+    emit('swatches');
 }
 
 // ---- A11Y Contrast Matrix ----
@@ -948,6 +969,7 @@ function renderA11yMatrix() {
     html += '</div>';
 
     a11yMatrix.innerHTML = html;
+    emit('matrix');
 }
 
 // ---- Colour-vision deficiency preview ----
@@ -1046,6 +1068,7 @@ function renderSwatchList(container, items, emptyText) {
 
 function renderFavorites() {
     renderSwatchList(favoritesContainer, starred, 'NO STARRED PALETTES YET.');
+    emit('favorites');
 }
 
 function isCurrentStarred() {

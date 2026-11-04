@@ -33,9 +33,8 @@ function renderCondition(p) {
     return parts.length ? parts.join(' · ') : 'INTACT';
 }
 
-const originalProcessImage = processImage;
-processImage = function (file) {
-    if (isExtracting) { originalProcessImage(file); return; }   // main.js queues it
+on('deposit', (file, queued) => {
+    if (queued) return;
     accessionCount++;
     store.set('accessionCount', accessionCount);
     pendingSource = { name: file.name && file.name !== 'image.png' ? file.name : 'PASTED FROM CLIPBOARD', received: new Date() };
@@ -48,12 +47,9 @@ processImage = function (file) {
     accEl('acc-condition').textContent = '—';
     setStatus('CATALOGUING');
     renderTotal();
-    originalProcessImage(file);
-};
+});
 
-const originalSetPalette = setPalette;
-setPalette = function (next, saveToHistory = false) {
-    originalSetPalette(next, saveToHistory);
+on('palette', (next, saveToHistory) => {
     if (next.isDefault) return;
     renderPlates(next.theme);
     applyTilt();
@@ -74,7 +70,7 @@ setPalette = function (next, saveToHistory = false) {
         setStatus('AMENDED');
     }
     openEntries();
-};
+});
 
 // ---- Colour plates under the register ----
 // One plate per role, front to back in role order; total depth stays the same
