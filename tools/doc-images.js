@@ -37,6 +37,7 @@ async function ejectAnimation(browser, url) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'palette-frames-'));
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 2 });
     await deposit(page, url);
+    await page.addStyleTag({ content: '.proof-stage.apart .proof-layer:last-child::after { content: none !important; }' });   // the slug is for visitors to find
     await page.evaluate(() => document.getElementById('proof-screen').closest('section').scrollIntoView({ block: 'center' }));
     await page.waitForTimeout(2500);
     const box = await page.evaluate(() => {

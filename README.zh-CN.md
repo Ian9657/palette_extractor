@@ -158,9 +158,9 @@ python3 -m http.server     # http://localhost:8000，/gallery.html
 ## 文件
 
 ```text
-index.html  classic.html  gallery.html     页面（网址不变：/、/classic、/gallery）
-icon-signal.svg  icon.svg（经典版）  apple-touch-icon*.png  og-image.png  CNAME
-css/        style.css、register.css、edition.css · style-classic.css（冻结）
+index.html  gallery.html     页面
+icon-signal.svg  apple-touch-icon-signal.png  og-image.png  CNAME
+css/        style.css、register.css、edition.css
 js/         color.js        取色引擎与 Worker 启动
             decode.js       JPEG 解码器、面积缩小、校验和
             main.js         页面状态、取色调用、历史、导出
@@ -168,7 +168,6 @@ js/         color.js        取色引擎与 Worker 启动
             proof-worker.js 04 像素计算（Worker）
             edition.js、register.js、pagefx.js、fx.js、follow.js   Signal Edition 版式与动效
             previews.js、samples.js、cover.js、gallery.js、ntc.js
-            *-classic.js    冻结的经典版
 fonts/      自托管 woff2 + fonts.css + OFL.txt
 samples/    6 张示例图（1920 px）+ thumbs/（256 px）
 regression/ 15 张回归图 + list.js

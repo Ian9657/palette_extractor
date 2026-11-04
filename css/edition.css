@@ -926,6 +926,21 @@ body::after {
 /* K is the darkest ink, invisible on the dark sheet: apart, it is a key drawing on a pale
    film, which firms up as the stack opens so it doesn't wash over the plates still seated */
 .proof-stage.apart .proof-layer:last-child { background: rgb(245 240 232 / calc(var(--e) * 0.8)); }
+/* The film's slug, as a printer marks the edge of a plate: appears only fully apart */
+.proof-stage.apart .proof-layer:last-child::after {
+    content: '/zine';
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    padding: 0.15rem 0.5rem;
+    background: var(--text-color);             /* clear of any line work under it */
+    color: var(--alert-ink);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: var(--fs-label);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    opacity: calc((var(--e) - 0.8) * 5);
+}
 /* no glow on the plates: they are sparse, a glow would ring every speck */
 
 /* Layer tags appear only while the frame is apart */

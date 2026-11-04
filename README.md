@@ -158,9 +158,9 @@ python3 -m http.server     # http://localhost:8000, /gallery.html
 ## Layout
 
 ```text
-index.html  classic.html  gallery.html     pages (URLs unchanged: /, /classic, /gallery)
-icon-signal.svg  icon.svg (Classic)  apple-touch-icon*.png  og-image.png  CNAME
-css/        style.css, register.css, edition.css  · style-classic.css (frozen)
+index.html  gallery.html     pages
+icon-signal.svg  apple-touch-icon-signal.png  og-image.png  CNAME
+css/        style.css, register.css, edition.css
 js/         color.js        colour engine, worker bootstrap
             decode.js       JPEG decoder, area downscale, checksum
             main.js         page state, extraction calls, history, exports
@@ -168,7 +168,6 @@ js/         color.js        colour engine, worker bootstrap
             proof-worker.js 04 pixel work (Worker)
             edition.js, register.js, pagefx.js, fx.js, follow.js   Signal Edition layout and motion
             previews.js, samples.js, cover.js, gallery.js, ntc.js
-            *-classic.js    frozen Classic Edition
 fonts/      self-hosted woff2 + fonts.css + OFL.txt
 samples/    6 sample photos (1920 px) + thumbs/ (256 px)
 regression/ 15 gallery images + list.js
