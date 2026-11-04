@@ -13,6 +13,7 @@
   "scripts": {
     "test": "node --test",
     "edge": "node tools/edge.js",
+    "cross": "node tools/cross.js",
     "shots": "node tools/shots.js",
     "perf": "node tools/perf.js",
     "compare": "node tools/compare.js"
