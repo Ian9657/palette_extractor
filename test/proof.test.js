@@ -8,7 +8,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const read = f => fs.readFileSync(path.join(__dirname, '..', 'js', f), 'utf8');
+const read = f => fs.readFileSync(path.join(__dirname, '..', 'public', 'js', f), 'utf8');
 
 function worker() {
     const replies = [];

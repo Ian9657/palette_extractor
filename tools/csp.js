@@ -42,7 +42,7 @@ async function run(browser, base, problems) {
     await page.click('#btn-reroll');
     await page.waitForTimeout(500);
     await until(page, () => !isExtracting, 'reroll');
-    await page.setInputFiles('#file-input', path.join(__dirname, '..', 'samples', 'dog.jpg'));
+    await page.setInputFiles('#file-input', path.join(__dirname, '..', 'public', 'samples', 'dog.jpg'));
     await page.waitForTimeout(500);
     await until(page, () => !isExtracting, 'file input');
 
@@ -63,9 +63,13 @@ async function run(browser, base, problems) {
     const violations = (await page.evaluate(() => window.__violations)).filter(v => !v.includes('example.com'));
     if (!(await page.evaluate(() => window.__violations)).some(v => v.includes('example.com'))) problems.push('the blocked request raised no violation');
 
-    await page.goto(new URL('gallery.html', base).href);
-    await page.waitForTimeout(4000);
-    const galleryViolations = await page.evaluate(() => window.__violations);
+    // The gallery isn't deployed, so it can only be checked locally.
+    let galleryViolations = [];
+    if (!LIVE) {
+        await page.goto(new URL('regression/gallery.html', base).href);
+        await page.waitForTimeout(4000);
+        galleryViolations = await page.evaluate(() => window.__violations);
+    }
 
     for (const v of [...violations, ...galleryViolations]) problems.push('violation: ' + v);
     for (const e of errors) problems.push('page error: ' + e);

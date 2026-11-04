@@ -18,7 +18,7 @@ Identity in one line: **a strictly typeset register, viewed through a night-city
 
 | Edition | Files | Status |
 | --- | --- | --- |
-| **New** (homepage) | `index.html`, `main.js`, `style.css`, `edition.css/js`, `proof.js`, `proof-worker.js`, `register.css/js`, `previews.js`, `cover.js`, `icon-signal.svg`, `apple-touch-icon-signal.png`, `follow.js`, `fx.js`, `pagefx.js`, `samples.js`, `color.js`, `decode.js` | The one living design. |
+| **New** (homepage) | `index.html`, `main.js`, `style.css`, `edition.css/js`, `proof.js`, `proof-worker.js`, `register.css/js`, `previews.js`, `cover.js`, `icon.svg`, `apple-touch-icon.png`, `follow.js`, `fx.js`, `pagefx.js`, `samples.js`, `color.js`, `decode.js` | The one living design. |
 
 - The new edition has **one appearance**: the dark night-city register below. **No day/night switch, no second theme.** Remove theme branches rather than leaving dead ones (`[data-theme="day"]` rules, `editionCopy.day`, `setEdition`, the pre-paint theme script).
 
@@ -46,7 +46,7 @@ Identity in one line: **a strictly typeset register, viewed through a night-city
   - **Space Grotesk** (`--font-text`) — body copy: standfirst, specimen sentences.
   - **IBM Plex Mono** — labels, numbers, captions, data readouts.
 - No serif, no italic, no fourth font, no pixel/Japanese decorative type.
-- Self-hosted in `fonts/` (Latin + Latin Extended; Chakra Petch 500/600/700, Space Grotesk variable, Plex Mono 400/600); the new edition sends no request to Google. The gallery still loads Google Fonts. A new weight means adding its file to `fonts/` and `fonts/fonts.css`.
+- Self-hosted in `public/fonts/` (Latin + Latin Extended; Chakra Petch 500/600/700, Space Grotesk variable, Plex Mono 400/600); the new edition sends no request to Google. The gallery still loads Google Fonts. A new weight means adding its file to `fonts/` and `fonts/fonts.css`.
 - Scale tokens only: `--fs-display` (nameplate only), `--fs-title` (opener headline, entry numerals), `--fs-heading` (panel h2), `--fs-body`, `--fs-label` (12 px), `--fs-micro` (10 px, the floor).
 - Mono labels: uppercase, letter-spacing 0.08–0.14em. Numbers: `font-variant-numeric: tabular-nums`.
 
@@ -98,12 +98,12 @@ Adding a new effect requires: which screen-side object it belongs to, its durati
 
 **Touch previews.** With no hover, the archive and matrix previews open on one small screen fixed to the bottom of the viewport (`previews.js`, `.tap-screen`). It is a screen object, so it carries the full treatment: lens brackets, scanlines, a stepped cut-in of offset slices with channel split (0.34 s), decoded caption; while open, switching archive items slides the thumbnail strip and drops the signal instead of cutting in again. The matrix is for comparing many pairs in a row, so its specimen is quieter: a 0.16 s cut-in, then colours change at once with a 120 ms decoded caption. A tap only looks: RETRIEVE restores a palette, which keeps looking and choosing separate, as hover and click do on desktop.
 
-**Icon.** `icon-signal.svg` is a painter's palette on the sheet colour, with the nameplate's off-register cyan, the lens brackets and one torn band; under 24 px the brackets and tear drop out.
+**Icon.** `icon.svg` is a painter's palette on the sheet colour, with the nameplate's off-register cyan, the lens brackets and one torn band; under 24 px the brackets and tear drop out.
 
 ## 8. Page anatomy (new edition)
 
 1. **Masthead** — mono line (VOL. 01 — edition name · ISSUE nnn · date), nameplate PALETTE with one off-register `--signal` plate, EXTRACTOR + "A REGISTER OF COLOUR", the page's **only** heavy double rule. The edition name appears once.
-2. **01 Intake** — Fig. 1 (4:3 drop zone; controls COLOURS/REROLL directly under it; then SAMPLES: six Unsplash photographs, 1920 × 1440 in `samples/` with 256 px thumbnails in `samples/thumbs/` (the row shows them at most ~82 px wide, so 3× screens stay sharp); one click deposits one, `samples.js`) + opener: kicker, primary-colour rule, headline = primary colour's name, factual standfirst, accession record (folded until an object exists).
+2. **01 Intake** — Fig. 1 (4:3 drop zone; controls COLOURS/REROLL directly under it; then SAMPLES: six Unsplash photographs, 1920 × 1440 in `public/samples/` with 256 px thumbnails in `public/samples/thumbs/` (the row shows them at most ~82 px wide, so 3× screens stay sharp); one click deposits one, `samples.js`) + opener: kicker, primary-colour rule, headline = primary colour's name, factual standfirst, accession record (folded until an object exists).
 3. **02 Specimen** — COLOUR BAR; actions: STAR, SAVE COVER, EXPORT ▾ (link, CSS, Tailwind, Figma). OKLCH line under each swatch.
 4. **03 Relations** — contrast matrix (WCAG/APCA) with type-specimen hover; CVD strips in two columns.
 5. **04 Proof** — the photo re-rendered as one anime cel in the palette's inks, separated into plates (§8.1). Archive and favourites follow, folded.
@@ -168,7 +168,7 @@ There are no releases: the site has one address and every push is the current ve
 4. One agent edits at a time. Don't touch files outside the task.
 5. Before handing back: `npm test` passes (colour logic and the proof worker) and, after a change to extraction or the proof, `npm run edge`; for a visual change, `npm run shots` before and after and `npm run compare` (README › Tests); the page loads with no console errors at 1400 px and 390 px; no horizontal scroll at 390 px; real pointer clicks hit their targets (check `elementFromPoint`, not just DOM state).
 6. Hand-back note: what changed, which files, how it was verified, anything left open.
-7. Changing the algorithm in `color.js`: run the 15-image comparison in `gallery.html` against the saved baseline (salient recall, max chroma, mean error) and report it. Don't make any image clearly worse.
+7. Changing the algorithm in `color.js`: run the 15-image comparison in `regression/gallery.html` against the saved baseline (salient recall, max chroma, mean error) and report it. Don't make any image clearly worse.
 
 ## 11. Review checklist (used to accept a change)
 

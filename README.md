@@ -26,7 +26,7 @@ image ─ own JPEG decode, area average to 400 px
       ─ CSS / Tailwind / Figma / PNG export
 ```
 
-All of it is in `js/color.js`, which has no DOM dependency: the page loads it as a script, the k-means half is stringified into a Worker, and the Node tests `require` it.
+All of it is in `public/js/color.js`, which has no DOM dependency: the page loads it as a script, the k-means half is stringified into a Worker, and the Node tests `require` it.
 
 ### 1. Histogram and saliency
 
@@ -65,7 +65,7 @@ Roles per `k` are fixed tables (`ROLE_NAMES` / `ROLE_KEYS` in `color.js`; for k 
 | `primary` | 8C + 0.2·log(area) |
 | `accent` | 2C + 3·hue distance from primary |
 
-The terms are kept separate so `gallery.html` can show why a colour won a role.
+The terms are kept separate so `regression/gallery.html` can show why a colour won a role.
 
 ### 5. Contrast repair and fills
 
@@ -100,7 +100,7 @@ Plates stack by area: the largest at the bottom, K on top. EJECT, drag, or ←/�
 
 ## Same file, same record
 
-The palette is a pure function of the pixels, the colour count and the seed. Getting the same pixels out of a file is the harder part. Measured between Chromium and WebKit on the 21 images in `samples/` and `regression/`:
+The palette is a pure function of the pixels, the colour count and the seed. Getting the same pixels out of a file is the harder part. Measured between Chromium and WebKit on the 21 images in `public/samples/` and `regression/`:
 
 | Layer | Difference | Same colours and roles (k = 3, 5, 8, seed 1) |
 | --- | --- | --- |
@@ -126,7 +126,7 @@ Same pixels + same `k` + same seed → the same palette. REROLL increments the s
 
 ## Storage
 
-Nothing is uploaded, and `_headers` makes that a browser rule rather than a promise: `connect-src 'self' blob:` refuses requests to any other host, and the page loads nothing from third parties. `localStorage` keys: `paletteHistory` (last 8), `starredPalettes`, `palette.thumbs` (480 px source thumbnails, clearable from the page), `contrastModel`, `accessionCount`, `proofRevCount`.
+Nothing is uploaded, and `public/_headers` makes that a browser rule rather than a promise: `connect-src 'self' blob:` refuses requests to any other host, and the page loads nothing from third parties. `localStorage` keys: `paletteHistory` (last 8), `starredPalettes`, `palette.thumbs` (480 px source thumbnails, clearable from the page), `contrastModel`, `accessionCount`, `proofRevCount`.
 
 ## Tests and tools
 
@@ -142,41 +142,42 @@ Browser tools (`npm install && npx playwright install chromium webkit`):
 | --- | --- |
 | `npm run edge` | 10 synthetic inputs (1 × 1, 40 × 3000, 8000 × 6000, fully transparent, …) through the real page in Chromium and WebKit |
 | `npm run cross` | every image at k = 3, 5, 8 and seeds 1–3 in Chromium and WebKit, compared with each other and with `test/records.json`; the six samples through the real page; an 8000 × 6000 JPEG timed |
-| `npm run csp` | every feature with `_headers` applied, in Chromium and WebKit: no policy violations, and a request to another host is refused (`URL=… npm run csp` checks the live site) |
+| `npm run csp` | every feature with `public/_headers` applied, in Chromium and WebKit: no policy violations, and a request to another host is refused (`URL=… npm run csp` checks the live site) |
 | `npm run perf` | cold load, sample → palette, sample → proof, at desktop speed and throttled CPU/network |
 | `npm run shots -- dir/` | desktop and iPhone screenshots with reduced motion and a fixed clock |
 | `npm run compare -- a/ b/` | pixel diff of two shot sets |
-| `npm run doc-images` | regenerates `docs/screenshot.jpg`, `docs/proof-eject.webp` and `og-image.png` |
+| `npm run doc-images` | regenerates `docs/screenshot.jpg`, `docs/proof-eject.webp` and `public/og-image.png` |
 
-`gallery.html` runs the 15 images in `regression/` plus synthetic cases. For each, it shows roles, score terms and mean OKLab reconstruction error against a saved baseline.
+`regression/gallery.html` runs the 15 images in `regression/` plus synthetic cases. For each, it shows roles, score terms and mean OKLab reconstruction error against a saved baseline.
 
 ## Run locally
 
 ```sh
-python3 -m http.server     # http://localhost:8000, /gallery.html
+npm run serve     # prints the local URLs: the site, and /regression/gallery.html
 ```
 
 ## Layout
 
 ```text
-index.html  gallery.html     pages
-icon-signal.svg  apple-touch-icon-signal.png  og-image.png  wrangler.jsonc
-css/        style.css, register.css, edition.css
-js/         color.js        colour engine, worker bootstrap
-            decode.js       JPEG decoder, area downscale, checksum
-            main.js         page state, extraction calls, history, exports
-            proof.js        04 proof framing and drawing
-            proof-worker.js 04 pixel work (Worker)
-            edition.js, register.js, pagefx.js, fx.js, follow.js   Signal Edition layout and motion
-            previews.js, samples.js, cover.js, gallery.js, ntc.js
-fonts/      self-hosted woff2 + fonts.css + OFL.txt
-samples/    6 sample photos (1920 px) + thumbs/ (256 px)
-regression/ 15 gallery images + list.js
+public/     the deployed site, nothing else is published
+  index.html  _headers  icon.svg  apple-touch-icon.png  og-image.png
+  css/        style.css, register.css, edition.css
+  js/         color.js        colour engine, worker bootstrap
+              decode.js       JPEG decoder, area downscale, checksum
+              main.js         page state, extraction calls, history, exports
+              proof.js        04 proof framing and drawing
+              proof-worker.js 04 pixel work (Worker)
+              edition.js, register.js, pagefx.js, fx.js, follow.js   Signal Edition layout and motion
+              previews.js, samples.js, cover.js, ntc.js
+  fonts/      self-hosted woff2 + fonts.css + OFL.txt
+  samples/    6 sample photos (1920 px) + thumbs/ (256 px)
+regression/ gallery page + script, 15 images, list.js (not deployed)
 test/       node --test suites, fixtures/, records.json
 tools/      Playwright tools (edge, perf, shots, compare) + static server
 docs/       DESIGN.md (tokens, grid, type, motion rules) and README images
+wrangler.jsonc  deploy config: publishes public/ only
 ```
 
 ## License
 
-Code: MIT ([LICENSE](LICENSE)). `ntc.js` (Name that Color, Chirag Mehta) is CC BY 2.5; the fonts are SIL OFL 1.1 ([fonts/OFL.txt](fonts/OFL.txt)); the sample and regression photographs are from Unsplash under the Unsplash License. See [NOTICE](NOTICE).
+Code: MIT ([LICENSE](LICENSE)). `ntc.js` (Name that Color, Chirag Mehta) is CC BY 2.5; the fonts are SIL OFL 1.1 ([fonts/OFL.txt](public/fonts/OFL.txt)); the sample and regression photographs are from Unsplash under the Unsplash License. See [NOTICE](NOTICE).

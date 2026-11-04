@@ -26,7 +26,7 @@
      ─ CSS / Tailwind / Figma / PNG 导出
 ```
 
-全部逻辑在 `js/color.js`，不依赖 DOM：页面以普通脚本加载它，k-means 部分转成字符串放进 Worker，Node 测试直接 `require`。
+全部逻辑在 `public/js/color.js`，不依赖 DOM：页面以普通脚本加载它，k-means 部分转成字符串放进 Worker，Node 测试直接 `require`。
 
 ### 1. 直方图与显著性
 
@@ -65,7 +65,7 @@ F(S) = coverage(S) + λ · Σ distinct(j) · vivid(j) / max vivid      λ = 0.1
 | `primary` | 8C + 0.2·log(面积) |
 | `accent` | 2C + 3·与 primary 的色相距离 |
 
-各项分开保存，`gallery.html` 可以显示某个颜色为什么得到某个角色。
+各项分开保存，`regression/gallery.html` 可以显示某个颜色为什么得到某个角色。
 
 ### 5. 对比度修正与补色
 
@@ -100,7 +100,7 @@ F(S) = coverage(S) + λ · Σ distinct(j) · vivid(j) / max vivid      λ = 0.1
 
 ## 同一文件，同一记录
 
-调色板完全由像素、颜色数和种子决定。难的是从文件里得到相同的像素。在 `samples/` 和 `regression/` 的 21 张图上，Chromium 与 WebKit 之间的测量结果：
+调色板完全由像素、颜色数和种子决定。难的是从文件里得到相同的像素。在 `public/samples/` 和 `regression/` 的 21 张图上，Chromium 与 WebKit 之间的测量结果：
 
 | 环节 | 差异 | 颜色和角色都相同（k = 3、5、8，种子 1） |
 | --- | --- | --- |
@@ -126,7 +126,7 @@ k-means 会把这些微小差异放大成不同的调色板，而修改聚类解
 
 ## 存储
 
-不上传任何东西，而且 `_headers` 让这成为浏览器强制的规则：`connect-src 'self' blob:` 拒绝向其他主机发送请求，页面也不加载任何第三方内容。`localStorage` 键：`paletteHistory`（最近 8 条）、`starredPalettes`、`palette.thumbs`（480 px 原图缩略图，可在页面上清除）、`contrastModel`、`accessionCount`、`proofRevCount`。
+不上传任何东西，而且 `public/_headers` 让这成为浏览器强制的规则：`connect-src 'self' blob:` 拒绝向其他主机发送请求，页面也不加载任何第三方内容。`localStorage` 键：`paletteHistory`（最近 8 条）、`starredPalettes`、`palette.thumbs`（480 px 原图缩略图，可在页面上清除）、`contrastModel`、`accessionCount`、`proofRevCount`。
 
 ## 测试与工具
 
@@ -142,41 +142,42 @@ npm test            # node --test：82 项，约 30 秒，无需安装依赖
 | --- | --- |
 | `npm run edge` | 10 种合成图片（1 × 1、40 × 3000、8000 × 6000、全透明等）在 Chromium 和 WebKit 中跑真实页面 |
 | `npm run cross` | 所有图片在 k = 3、5、8、种子 1–3 下跑 Chromium 和 WebKit，彼此对比并与 `test/records.json` 对比；6 张示例走真实页面；计时一张 8000 × 6000 的 JPEG |
-| `npm run csp` | 带着 `_headers` 在 Chromium 和 WebKit 中走遍所有功能：没有违规，且向其他主机的请求被拒绝（`URL=… npm run csp` 检查线上） |
+| `npm run csp` | 带着 `public/_headers` 在 Chromium 和 WebKit 中走遍所有功能：没有违规，且向其他主机的请求被拒绝（`URL=… npm run csp` 检查线上） |
 | `npm run perf` | 冷启动、示例图 → 调色板、示例图 → 打样的耗时，分桌面速度和限速 CPU/网络 |
 | `npm run shots -- dir/` | 桌面和 iPhone 截图，减少动态效果 + 固定时钟 |
 | `npm run compare -- a/ b/` | 两组截图的像素差异 |
-| `npm run doc-images` | 重新生成 `docs/screenshot.jpg`、`docs/proof-eject.webp` 和 `og-image.png` |
+| `npm run doc-images` | 重新生成 `docs/screenshot.jpg`、`docs/proof-eject.webp` 和 `public/og-image.png` |
 
-`gallery.html` 运行 `regression/` 里的 15 张图和若干合成用例，对每张图显示角色、打分项和平均 OKLab 还原误差，并与保存的基线对比。
+`regression/gallery.html` 运行 `regression/` 里的 15 张图和若干合成用例，对每张图显示角色、打分项和平均 OKLab 还原误差，并与保存的基线对比。
 
 ## 本地运行
 
 ```sh
-python3 -m http.server     # http://localhost:8000，/gallery.html
+npm run serve     # 输出本地地址：网站，以及 /regression/gallery.html
 ```
 
 ## 文件
 
 ```text
-index.html  gallery.html     页面
-icon-signal.svg  apple-touch-icon-signal.png  og-image.png  wrangler.jsonc
-css/        style.css、register.css、edition.css
-js/         color.js        取色引擎与 Worker 启动
-            decode.js       JPEG 解码器、面积缩小、校验和
-            main.js         页面状态、取色调用、历史、导出
-            proof.js        04 打样取景与绘制
-            proof-worker.js 04 像素计算（Worker）
-            edition.js、register.js、pagefx.js、fx.js、follow.js   Signal Edition 版式与动效
-            previews.js、samples.js、cover.js、gallery.js、ntc.js
-fonts/      自托管 woff2 + fonts.css + OFL.txt
-samples/    6 张示例图（1920 px）+ thumbs/（256 px）
-regression/ 15 张回归图 + list.js
+public/     部署的网站，其他文件都不发布
+  index.html  _headers  icon.svg  apple-touch-icon.png  og-image.png
+  css/        style.css、register.css、edition.css
+  js/         color.js        取色引擎与 Worker 启动
+              decode.js       JPEG 解码器、面积缩小、校验和
+              main.js         页面状态、取色调用、历史、导出
+              proof.js        04 打样取景与绘制
+              proof-worker.js 04 像素计算（Worker）
+              edition.js、register.js、pagefx.js、fx.js、follow.js   Signal Edition 版式与动效
+              previews.js、samples.js、cover.js、ntc.js
+  fonts/      自托管 woff2 + fonts.css + OFL.txt
+  samples/    6 张示例图（1920 px）+ thumbs/（256 px）
+regression/ 图库页面和脚本、15 张回归图、list.js（不部署）
 test/       node --test 测试、fixtures/、records.json
 tools/      Playwright 工具（edge、perf、shots、compare）+ 静态服务器
 docs/       DESIGN.md（颜色变量、网格、字体、动效规则）与 README 图片
+wrangler.jsonc  部署配置：只发布 public/
 ```
 
 ## 许可
 
-代码：MIT（[LICENSE](LICENSE)）。`ntc.js`（Name that Color，Chirag Mehta）为 CC BY 2.5；字体为 SIL OFL 1.1（[fonts/OFL.txt](fonts/OFL.txt)）；示例图和回归测试照片来自 Unsplash，适用 Unsplash License。详见 [NOTICE](NOTICE)。
+代码：MIT（[LICENSE](LICENSE)）。`ntc.js`（Name that Color，Chirag Mehta）为 CC BY 2.5；字体为 SIL OFL 1.1（[fonts/OFL.txt](public/fonts/OFL.txt)）；示例图和回归测试照片来自 Unsplash，适用 Unsplash License。详见 [NOTICE](NOTICE)。

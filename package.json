@@ -11,6 +11,7 @@
   },
   "scripts": {
     "test": "node --test",
+    "serve": "node tools/serve.js",
     "edge": "node tools/edge.js",
     "cross": "node tools/cross.js",
     "shots": "node tools/shots.js",

@@ -12,16 +12,16 @@ const { start } = require('./serve');
 
 const ROOT = path.join(__dirname, '..');
 const RECORDS = JSON.parse(fs.readFileSync(path.join(ROOT, 'test', 'records.json'), 'utf8'));
-const list = dir => fs.readdirSync(path.join(ROOT, dir)).filter(f => /\.(jpg|png)$/.test(f)).map(f => `${dir}/${f}`);
-const FILES = [...list('samples'), ...list('regression'), ...list('test/fixtures')];
+const list = (dir, disk = dir) => fs.readdirSync(path.join(ROOT, disk)).filter(f => /\.(jpg|png)$/.test(f)).map(f => `${dir}/${f}`);
+const FILES = [...list('samples', 'public/samples'), ...list('regression'), ...list('test/fixtures')];
 const SAMPLES = ['NEON CITY', 'CONCERT', 'GARAGE', 'DOG', 'BLOSSOM', 'JELLYFISH'];
 
 const readAll = async files => {
     const out = {};
     for (const url of files) {
-        const bytes = new Uint8Array(await (await fetch(url)).arrayBuffer());
+        const bytes = new Uint8Array(await (await fetch('/' + url)).arrayBuffer());
         const img = new Image();
-        img.src = url;
+        img.src = '/' + url;
         try { await img.decode(); } catch { continue; }   // a file this browser won't show at all
         const r = readPixels(img, bytes, 400);
         const palettes = {};
@@ -64,7 +64,7 @@ const readHuge = b64 => {
     for (const [name, type] of [['chromium', chromium], ['webkit', webkit]]) {
         const browser = await type.launch({ args: name === 'chromium' ? ['--mute-audio'] : [] });
         const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
-        await page.goto(server.url + 'gallery.html');
+        await page.goto(server.url + 'regression/gallery.html');
         results[name] = await page.evaluate(readAll, FILES);
         if (!hugeBytes) hugeBytes = await page.evaluate(makeHuge);
         huge[name] = await page.evaluate(readHuge, hugeBytes);

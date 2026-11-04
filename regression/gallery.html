@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="robots" content="noindex">   <!-- a development tool, published with the site -->
+    <meta name="robots" content="noindex">   <!-- a development tool, not deployed: npm run serve, then /regression/gallery.html -->
     <title>Palette Regression Gallery</title>
-    <link rel="icon" href="icon-signal.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="apple-touch-icon-signal.png">
-    <link rel="stylesheet" href="fonts/fonts.css">
+    <link rel="icon" href="../icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="../apple-touch-icon.png">
+    <link rel="stylesheet" href="../fonts/fonts.css">
     <style>
         :root { --paper: #F5F0E8; --ink: #1a1a1a; --warn: #d33; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -49,12 +49,12 @@
         <button id="clear-baseline">Clear baseline</button>
         <span class="hint">Hover a swatch for its score terms · thin strip = baseline · red outline = role changed · ERR ▲ = worse fit</span>
     </div>
-    <div id="drop">DROP IMAGES HERE TO ADD THEM FOR THIS SESSION · PERMANENT SET: regression/list.js (serve over http)</div>
+    <div id="drop">DROP IMAGES HERE TO ADD THEM FOR THIS SESSION · PERMANENT SET: list.js (serve over http)</div>
     <div id="rows"></div>
 
-    <script src="js/color.js"></script>
-    <script src="js/decode.js"></script>
-    <script src="regression/list.js"></script>
-    <script src="js/gallery.js"></script>
+    <script src="../js/color.js"></script>
+    <script src="../js/decode.js"></script>
+    <script src="list.js"></script>
+    <script src="gallery.js"></script>
 </body>
 </html>

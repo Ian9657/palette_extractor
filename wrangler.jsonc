@@ -1,7 +1,7 @@
 {
   "name": "palette",
   "compatibility_date": "2026-09-28",
-  // The site is the repo's static files, no build step. .assetsignore keeps out what isn't the site.
-  "assets": { "directory": "." },
+  // The site is public/, no build step. Nothing outside that folder is ever deployed.
+  "assets": { "directory": "./public" },
   "workers_dev": false
 }

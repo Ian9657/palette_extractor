@@ -1,7 +1,7 @@
 // Run with: node --test
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const C = require('../js/color.js');
+const C = require('../public/js/color.js');
 
 // Solid-colour blocks laid side by side: [{ rgb: [r,g,b], w: columns }]
 function blocks(spec, height = 20) {

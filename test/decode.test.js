@@ -2,8 +2,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const D = require('../js/decode.js');
-const C = require('../js/color.js');
+const D = require('../public/js/decode.js');
+const C = require('../public/js/color.js');
 
 const root = path.join(__dirname, '..');
 const fixture = name => new Uint8Array(fs.readFileSync(path.join(__dirname, 'fixtures', name)));
@@ -115,11 +115,13 @@ test('reading size: longest side capped, never upscaled, never zero', () => {
 //   UPDATE_RECORDS=1 node --test test/decode.test.js
 const RECORDS = path.join(__dirname, 'records.json');
 test('every JPEG in the repo still gives its recorded checksum and palettes', () => {
-    const files = ['samples', 'regression'].flatMap(dir => fs.readdirSync(path.join(root, dir))
+    // Records are keyed samples/x.jpg and regression/x.jpg, whatever folder those live in.
+    const dirs = { samples: path.join(root, 'public', 'samples'), regression: path.join(root, 'regression') };
+    const files = Object.keys(dirs).flatMap(dir => fs.readdirSync(dirs[dir])
         .filter(f => f.endsWith('.jpg')).map(f => `${dir}/${f}`));
     const now = {};
     for (const file of files) {
-        const img = D.decodeJpeg(new Uint8Array(fs.readFileSync(path.join(root, file))), 400);
+        const img = D.decodeJpeg(new Uint8Array(fs.readFileSync(path.join(dirs[file.split('/')[0]], path.basename(file)))), 400);
         const { width, height } = D.readingSize(img.width * img.scale, img.height * img.scale, 400);
         const data = D.areaDownscale(img.data, img.width, img.height, width, height);
         now[file] = { checksum: D.pixelChecksum(data), palettes: {} };

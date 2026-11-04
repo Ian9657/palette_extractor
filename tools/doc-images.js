@@ -1,7 +1,7 @@
 // Regenerates the images the README and link previews show (npm run doc-images):
 //   docs/screenshot.jpg    the page with a sample filed
 //   docs/proof-eject.webp  04 Proof taken apart and seated again
-//   og-image.png           the share card, its colours computed from the sample
+//   public/og-image.png           the share card, its colours computed from the sample
 // The animation is assembled with Pillow (python3 -c "import PIL").
 const { chromium } = require('playwright');
 const { spawnSync } = require('node:child_process');
@@ -9,11 +9,11 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { start } = require('./serve');
-const C = require('../js/color.js');
-const D = require('../js/decode.js');
+const C = require('../public/js/color.js');
+const D = require('../public/js/decode.js');
 
 const ROOT = path.join(__dirname, '..');
-const SAMPLE = 'NEON CITY', SAMPLE_FILE = 'samples/neon-city.jpg';
+const SAMPLE = 'NEON CITY', SAMPLE_FILE = 'public/samples/neon-city.jpg';
 
 async function deposit(page, url) {
     await page.goto(url);
@@ -90,7 +90,7 @@ async function shareCard(browser, url) {
     const names = C.ROLE_NAMES[5];
     const swatches = C.ROLE_KEYS[5].map((key, i) => `<div class="sw" style="background:${theme[key]};color:${C.inkOn(theme[key])}"><b>${names[i]}</b><span>${theme[key]}</span></div>`).join('');
     const page = await browser.newPage({ viewport: { width: 1200, height: 630 } });
-    await page.goto(url + 'gallery.html');
+    await page.goto(url + 'regression/gallery.html');
     await page.setContent(`<!doctype html><link rel="stylesheet" href="${url}fonts/fonts.css"><style>
         * { box-sizing: border-box; margin: 0; }
         body { width: 1200px; height: 630px; background: #111927; color: #F5F0E8; padding: 44px 56px; font-family: 'Space Grotesk'; overflow: hidden; }
@@ -120,7 +120,7 @@ async function shareCard(browser, url) {
     <p>Five colours chosen by saliency, coverage and diversity — measured, proofed and filed.</p><div class="bar">${swatches}</div></div></div>`);
     await page.evaluate(() => document.fonts.ready);
     await page.waitForTimeout(800);
-    await page.screenshot({ path: path.join(ROOT, 'og-image.png') });
+    await page.screenshot({ path: path.join(ROOT, 'public/og-image.png') });
     await page.close();
 }
 
@@ -132,7 +132,7 @@ async function shareCard(browser, url) {
     await shareCard(browser, server.url);
     await browser.close();
     server.close();
-    for (const f of ['docs/screenshot.jpg', 'docs/proof-eject.webp', 'og-image.png']) {
+    for (const f of ['docs/screenshot.jpg', 'docs/proof-eject.webp', 'public/og-image.png']) {
         console.log(`${f}: ${Math.round(fs.statSync(path.join(ROOT, f)).size / 1024)} KB`);
     }
 })();
