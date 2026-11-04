@@ -474,10 +474,8 @@ body::after {
     font-size: clamp(0.45rem, 11cqw, 0.65rem);
     letter-spacing: 0;
     opacity: 0.9;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
+.a11y-abbr { display: none; }
 
 .mast-end { display: flex; align-items: baseline; gap: var(--s2); }
 
@@ -530,6 +528,9 @@ body::after {
     /* style.css gives the matrix a 360px floor, wider than a phone's column: let the fixed layout share the width instead */
     .a11y-matrix table { min-width: 0; }
     .a11y-matrix th, .a11y-matrix td { padding-left: 0; padding-right: 0; }
+    .a11y-matrix table.dense .a11y-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    .a11y-matrix table.dense .a11y-abbr { display: inline; }
+    .a11y-matrix table.dense .a11y-cell-badge { font-size: 0.5rem; letter-spacing: 0; white-space: nowrap; }
 }
 /* Below 360px the role names no longer fit at the 10px floor: keep the floor and scroll sideways */
 @media (max-width: 359px) { .a11y-matrix table { min-width: 340px; } }

@@ -920,13 +920,16 @@ function renderA11yMatrix() {
     const n = colors.length;
     const rgbs = colors.map(hexToRgb);
 
+    // Six colours and up don't leave a phone's column room for a whole role name
+    const roleLabel = name => `<span class="a11y-name">${name}</span><span class="a11y-abbr" aria-hidden="true">${name === 'TEXT' ? 'TXT' : name.slice(0, 3)}</span>`;
+
     // Build table
-    let html = '<table>';
+    let html = `<table class="${n >= 6 ? 'dense' : ''}">`;
 
     // Header row
     html += '<tr><th></th>';
     for (let i = 0; i < n; i++) {
-        html += `<th><div style="width:14px;height:14px;background:${colors[i]};border:1px solid var(--border-color);margin:0 auto 3px;"></div>${names[i]}</th>`;
+        html += `<th><div style="width:14px;height:14px;background:${colors[i]};border:1px solid var(--border-color);margin:0 auto 3px;"></div>${roleLabel(names[i])}</th>`;
     }
     html += '</tr>';
 
@@ -935,7 +938,7 @@ function renderA11yMatrix() {
     let totalPairs = 0;
 
     for (let row = 0; row < n; row++) {
-        html += `<tr><th><div style="width:14px;height:14px;background:${colors[row]};border:1px solid var(--border-color);margin:0 auto 3px;"></div>${names[row]}</th>`;
+        html += `<tr><th><div style="width:14px;height:14px;background:${colors[row]};border:1px solid var(--border-color);margin:0 auto 3px;"></div>${roleLabel(names[row])}</th>`;
 
         for (let col = 0; col < n; col++) {
             if (row === col) {
