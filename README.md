@@ -18,7 +18,7 @@ Extracts a 3–8 colour UI palette from an image, assigns each colour a role (`B
 ## Pipeline
 
 ```text
-image ─ canvas, longest side 400 px
+image ─ own JPEG decode, area average to 400 px
       ─ saliency map + 15-bit histogram        page thread
       ─ k-means, 2k+4 candidates               Web Worker
       ─ greedy selection of k                  Web Worker
@@ -30,7 +30,7 @@ All of it is in `js/color.js`, which has no DOM dependency: the page loads it as
 
 ### 1. Histogram and saliency
 
-The image is drawn into a canvas whose longest side is at most 400 px. Pixels with alpha < 128 are dropped. Each remaining pixel goes into one of 32,768 bins (5 bits per channel); a bin stores the mean RGB of its pixels, not the bin centre, so reported colours exist in the image.
+The image is read at a longest side of at most 400 px (see [Same file, same record](#same-file-same-record)). Pixels with alpha < 128 are dropped. Each remaining pixel goes into one of 32,768 bins (5 bits per channel); a bin stores the mean RGB of its pixels, not the bin centre, so reported colours exist in the image.
 
 Saliency is frequency-tuned (Achanta et al. 2009) in OKLab: each channel is box-blurred twice with radius `min(w, h) / 160`, and a pixel's saliency is its distance from the image mean, with `a`/`b` scaled by 2.5 so chroma counts more than lightness. Values are normalised by the 99th percentile. Each bin carries the mean saliency of its pixels.
 
@@ -98,11 +98,31 @@ The proof re-renders the photo using only the palette's inks, as cel animation, 
 
 Plates stack by area: the largest at the bottom, K on top. EJECT, drag, or ←/→ moves them through 6 positions.
 
-## Determinism and its limit
+## Same file, same record
 
-Same pixels + same `k` + same seed → the same palette (tested for k = 3, 5, 8). REROLL increments the seed.
+The palette is a pure function of the pixels, the colour count and the seed. Getting the same pixels out of a file is the harder part. Measured between Chromium and WebKit on the 21 images in `samples/` and `regression/`:
 
-Known limitation: the 400 px downscale is done by the browser's `drawImage`. Chromium and WebKit resample differently, so the same file can give slightly different bins, and when two role scores are close the roles can swap (for example, `TEXT` white in Chrome, yellow in Safari). Fixing this is the next planned change.
+| Layer | Difference | Same colours and roles (k = 3, 5, 8, seed 1) |
+| --- | --- | --- |
+| `drawImage` to 400 px | up to 198 levels on a channel | 24 / 63 |
+| browser JPEG decode, own downscale | mean 0.01–0.43, up to 32 | 28 / 63 |
+| `js/decode.js` for both | 0 | 63 / 63 |
+
+k-means turns those small differences into different palettes, and no change to the clustering fixed that: fixed per-bin random draws, density-peak candidates and swap search all stopped near 44 / 63. So the input is what is made identical.
+
+`js/decode.js` is a JPEG decoder in integer arithmetic: baseline and progressive, any chroma subsampling, restart markers, EXIF orientation, and matrix-shaper ICC profiles such as Display P3 converted to sRGB. Against Chromium's decoder it differs by a mean of 0.02–0.05 levels. At 8× the reading size and above (`max(w, h) ≥ 3200`), each block's DC term stands in for its pixels, so a 48 MP file needs no 192 MB canvas. All images are then downscaled by area average, weighted by alpha.
+
+Timings in V8 on Apple Silicon, on a sample photo upscaled and saved at quality 95: 12 MP in 88 ms, 48 MP in 149 ms, 7.7 MP (the slowest case, full IDCT) in 231 ms. Against drawImage in Chromium, mean OKLab reconstruction error moves from 0.0499 to 0.0502.
+
+The record shows the result as `CHECKSUM`, FNV-1a of the 400 px pixels. Two browsers showing the same checksum read the same image.
+
+Limits:
+
+- PNG decodes identically in both engines, so it stays with the browser, as do formats this decoder declines: WebP, CMYK, 12-bit, arithmetic coding and LUT ICC profiles. WebP and these JPEGs are not covered by the guarantee.
+- Only the palette is covered. The 04 proof still draws from the browser's decoded image, so its picture can differ slightly between browsers; its inks do not.
+- These runs use Playwright's WebKit build, not Safari itself. Because the decoder doesn't use the browser's, Safari should match, but that has not been checked on a device yet.
+
+Same pixels + same `k` + same seed → the same palette. REROLL increments the seed.
 
 ## Storage
 
@@ -111,16 +131,17 @@ Nothing is uploaded. `localStorage` keys: `paletteHistory` (last 8), `starredPal
 ## Tests and tools
 
 ```sh
-npm test            # node --test: 53 tests, ~30 s, no install needed
+npm test            # node --test: 79 tests, ~30 s, no install needed
 ```
 
-`test/color.test.js` covers conversions, known-colour recovery, seeded determinism, roles, contrast repair, saliency selection and fills. `test/proof.test.js` runs `proof-worker.js` in a `vm` with an `importScripts` shim. CI runs `npm test` on every push to `main`.
+`test/color.test.js` covers conversions, known-colour recovery, seeded determinism, roles, contrast repair, saliency selection and fills. `test/proof.test.js` runs `proof-worker.js` in a `vm` with an `importScripts` shim. `test/decode.test.js` reads 20 JPEG variants in `test/fixtures/` (generated by `tools/make-jpeg-fixtures.py`) and holds every JPEG in the repo to its checksum and palettes in `test/records.json`. CI runs `npm test` on every push to `main`.
 
 Browser tools (`npm install && npx playwright install chromium webkit`):
 
 | Command | Does |
 | --- | --- |
 | `npm run edge` | 10 synthetic inputs (1 × 1, 40 × 3000, 8000 × 6000, fully transparent, …) through the real page in Chromium and WebKit |
+| `npm run cross` | every image at k = 3, 5, 8 and seeds 1–3 in Chromium and WebKit, compared with each other and with `test/records.json`; the six samples through the real page; an 8000 × 6000 JPEG timed |
 | `npm run perf` | cold load, sample → palette, sample → proof, at desktop speed and throttled CPU/network |
 | `npm run shots -- dir/` | desktop and iPhone screenshots with reduced motion and a fixed clock |
 | `npm run compare -- a/ b/` | pixel diff of two shot sets |
@@ -140,6 +161,7 @@ index.html  classic.html  gallery.html     pages (URLs unchanged: /, /classic, /
 icon.svg  apple-touch-icon.png  og-image.png  CNAME
 css/        style.css, register.css, edition.css  · style-classic.css (frozen)
 js/         color.js        colour engine, worker bootstrap
+            decode.js       JPEG decoder, area downscale, checksum
             main.js         page state, extraction calls, history, exports
             proof.js        04 proof framing and drawing
             proof-worker.js 04 pixel work (Worker)
@@ -149,7 +171,7 @@ js/         color.js        colour engine, worker bootstrap
 fonts/      self-hosted woff2 + fonts.css + OFL.txt
 samples/    6 sample photos (1920 px) + thumbs/ (256 px)
 regression/ 15 gallery images + list.js
-test/       node --test suites
+test/       node --test suites, fixtures/, records.json
 tools/      Playwright tools (edge, perf, shots, compare) + static server
 docs/       DESIGN.md (tokens, grid, type, motion rules) and README images
 ```

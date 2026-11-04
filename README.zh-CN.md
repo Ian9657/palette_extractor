@@ -18,7 +18,7 @@
 ## 流程
 
 ```text
-图片 ─ 画布，长边 400 px
+图片 ─ 自己解码 JPEG，面积平均缩到 400 px
      ─ 显著性图 + 15 位直方图          页面线程
      ─ k-means，2k+4 个候选             Web Worker
      ─ 贪心挑选 k 个                    Web Worker
@@ -30,7 +30,7 @@
 
 ### 1. 直方图与显著性
 
-图片画进长边不超过 400 px 的画布，丢弃 alpha < 128 的像素。其余像素放进 32,768 个桶（每通道 5 位）。每个桶记录其像素的平均 RGB，而不是桶中心，所以报出的颜色都在原图里真实存在。
+以长边不超过 400 px 读取图片（见[同一文件，同一记录](#同一文件同一记录)），丢弃 alpha < 128 的像素。其余像素放进 32,768 个桶（每通道 5 位）。每个桶记录其像素的平均 RGB，而不是桶中心，所以报出的颜色都在原图里真实存在。
 
 显著性用 OKLab 下的频率调谐法（Achanta 等，2009）：每个通道做两次半径 `min(w, h) / 160` 的盒式模糊，像素的显著性为它到全图均值的距离。其中 `a`/`b` 乘以 2.5，让色度比亮度更有分量。结果按第 99 百分位归一化，每个桶带上其像素的平均显著性。
 
@@ -98,11 +98,31 @@ F(S) = coverage(S) + λ · Σ distinct(j) · vivid(j) / max vivid      λ = 0.1
 
 版按面积叠放：面积最大的在最下面，K 版在最上面。EJECT 按钮、拖动或 ←/→ 键可以在 6 个位置之间拆开或装回。
 
-## 确定性及其限制
+## 同一文件，同一记录
 
-同样的像素 + 同样的 `k` + 同样的种子 → 同样的调色板（测试覆盖 k = 3、5、8）。REROLL 把种子加一。
+调色板完全由像素、颜色数和种子决定。难的是从文件里得到相同的像素。在 `samples/` 和 `regression/` 的 21 张图上，Chromium 与 WebKit 之间的测量结果：
 
-已知限制：缩到 400 px 这一步由浏览器的 `drawImage` 完成。Chromium 和 WebKit 的重采样方式不同，同一个文件得到的桶会略有差异。两个角色分数接近时，角色可能对调（例如 Chrome 里 `TEXT` 是白色，Safari 里是黄色）。这是下一步计划要修的问题。
+| 环节 | 差异 | 颜色和角色都相同（k = 3、5、8，种子 1） |
+| --- | --- | --- |
+| `drawImage` 缩到 400 px | 单通道最多 198 级 | 24 / 63 |
+| 浏览器解码 JPEG，自己缩图 | 平均 0.01–0.43，最多 32 | 28 / 63 |
+| 两边都用 `js/decode.js` | 0 | 63 / 63 |
+
+k-means 会把这些微小差异放大成不同的调色板，而修改聚类解决不了：按桶固定随机数、密度峰值候选、交换搜索都停在 44 / 63 左右。所以要让输入本身完全相同。
+
+`js/decode.js` 是一个整数运算的 JPEG 解码器：支持基线和渐进式、任意色度采样、重启标记、EXIF 方向，并把 Display P3 等矩阵型 ICC 配置转换到 sRGB。与 Chromium 的解码器相比平均只差 0.02–0.05 级。读取尺寸的 8 倍及以上（`max(w, h) ≥ 3200`）时，每块的 DC 项代替其像素，所以 4800 万像素的文件不需要 192 MB 的画布。之后所有图片都按 alpha 加权做面积平均缩小。
+
+在 Apple 芯片的 V8 上，用放大后以质量 95 保存的示例照片测得耗时：1200 万像素 88 ms，4800 万像素 149 ms，770 万像素（最慢的情况，完整 IDCT）231 ms。与 Chromium 的 drawImage 相比，平均 OKLab 还原误差从 0.0499 变为 0.0502。
+
+记录里的 `CHECKSUM` 就是结果：400 px 像素的 FNV-1a 值。两个浏览器显示相同的校验和，就说明读到的是同一张图。
+
+限制：
+
+- PNG 在两个内核中解码结果相同，所以仍由浏览器解码；解码器不处理的格式也一样：WebP、CMYK、12 位、算术编码和 LUT 型 ICC 配置。WebP 和这些 JPEG 不在保证范围内。
+- 只保证调色板。04 打样仍用浏览器解码的图片绘制，所以画面在不同浏览器之间可能略有差异；所用的墨色相同。
+- 这些测试用的是 Playwright 的 WebKit 构建版本，不是 Safari 本身。解码器不依赖浏览器，所以 Safari 应该一致，但还没有在真机上核对。
+
+同样的像素 + 同样的 `k` + 同样的种子 → 同样的调色板。REROLL 把种子加一。
 
 ## 存储
 
@@ -111,16 +131,17 @@ F(S) = coverage(S) + λ · Σ distinct(j) · vivid(j) / max vivid      λ = 0.1
 ## 测试与工具
 
 ```sh
-npm test            # node --test：53 项，约 30 秒，无需安装依赖
+npm test            # node --test：79 项，约 30 秒，无需安装依赖
 ```
 
-`test/color.test.js` 覆盖色彩空间转换、已知颜色还原、种子确定性、角色、对比度修正、显著性挑选和补色。`test/proof.test.js` 在 `vm` 里加 `importScripts` 垫片运行 `proof-worker.js`。CI 在每次推送到 `main` 时运行 `npm test`。
+`test/color.test.js` 覆盖色彩空间转换、已知颜色还原、种子确定性、角色、对比度修正、显著性挑选和补色。`test/proof.test.js` 在 `vm` 里加 `importScripts` 垫片运行 `proof-worker.js`。`test/decode.test.js` 读取 `test/fixtures/` 里的 20 种 JPEG 变体（由 `tools/make-jpeg-fixtures.py` 生成），并要求仓库里每张 JPEG 的校验和与调色板都符合 `test/records.json`。CI 在每次推送到 `main` 时运行 `npm test`。
 
 浏览器工具（`npm install && npx playwright install chromium webkit`）：
 
 | 命令 | 作用 |
 | --- | --- |
 | `npm run edge` | 10 种合成图片（1 × 1、40 × 3000、8000 × 6000、全透明等）在 Chromium 和 WebKit 中跑真实页面 |
+| `npm run cross` | 所有图片在 k = 3、5、8、种子 1–3 下跑 Chromium 和 WebKit，彼此对比并与 `test/records.json` 对比；6 张示例走真实页面；计时一张 8000 × 6000 的 JPEG |
 | `npm run perf` | 冷启动、示例图 → 调色板、示例图 → 打样的耗时，分桌面速度和限速 CPU/网络 |
 | `npm run shots -- dir/` | 桌面和 iPhone 截图，减少动态效果 + 固定时钟 |
 | `npm run compare -- a/ b/` | 两组截图的像素差异 |
@@ -140,6 +161,7 @@ index.html  classic.html  gallery.html     页面（网址不变：/、/classic�
 icon.svg  apple-touch-icon.png  og-image.png  CNAME
 css/        style.css、register.css、edition.css · style-classic.css（冻结）
 js/         color.js        取色引擎与 Worker 启动
+            decode.js       JPEG 解码器、面积缩小、校验和
             main.js         页面状态、取色调用、历史、导出
             proof.js        04 打样取景与绘制
             proof-worker.js 04 像素计算（Worker）
@@ -149,7 +171,7 @@ js/         color.js        取色引擎与 Worker 启动
 fonts/      自托管 woff2 + fonts.css + OFL.txt
 samples/    6 张示例图（1920 px）+ thumbs/（256 px）
 regression/ 15 张回归图 + list.js
-test/       node --test 测试
+test/       node --test 测试、fixtures/、records.json
 tools/      Playwright 工具（edge、perf、shots、compare）+ 静态服务器
 docs/       DESIGN.md（颜色变量、网格、字体、动效规则）与 README 图片
 ```
