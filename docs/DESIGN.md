@@ -142,6 +142,13 @@ Section names must be consistent: a label used in the margin is not repeated as 
 - All pixel work runs in `proof-worker.js`, so the page never freezes; the page only frames the photo, sends it once, and lays the plates that come back.
 - A worker may run on a slow core (≈ 5× slower on Apple Silicon): keep the working size ≤ 1024 wide, saliency at quarter size, and fast paths where neighbours agree. A new cut takes ~2–3 s there.
 
+## 8.2 Versions
+
+There are no releases: the site has one address and every push is the current version, so nobody installs or upgrades anything. What can change for a visitor is the record: the same file giving a different palette. So the nameplate's `VOL.` counts the rules a record is filed under.
+
+- Move to the next `VOL.` only when the same file would get a different record: a change to `js/decode.js` or the extraction in `js/color.js`, which is also what makes `test/records.json` need `UPDATE_RECORDS=1`.
+- Styles, effects, tools and bug fixes that leave the records alone don't count.
+
 ## 9. Rejected — do not reintroduce
 
 - Day/night switch and any second theme for the new edition.

@@ -1,6 +1,5 @@
 {
   "name": "palette-extractor",
-  "version": "1.0.0",
   "private": true,
   "description": "Static in-browser tool that extracts role-based UI palettes from images. npm scripts are dev tooling; the site has no build step.",
   "license": "MIT",
