@@ -265,11 +265,10 @@ function startLens() {
 renderSwatches();
 if (!palette.isDefault) { renderStrip(palette.theme); writeFeature(palette, true); }
 
-// The default palette is a real palette too: show it in the plates and the strip
+// The default palette is a real palette too: show it in the plates. The specimen
+// strip waits for an object: it labels what is filed, and nothing is yet
 if (palette.isDefault) {
     renderPlates(palette.theme);
-    renderStrip(palette.theme);
-    mag('specimen-strip-label').textContent = `DEFAULT · ${Object.keys(palette.theme).length}`;
     mag('headline-rule').style.setProperty('--headline-colour', palette.theme.primary);
 }
 
