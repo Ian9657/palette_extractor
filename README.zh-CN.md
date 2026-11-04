@@ -126,7 +126,7 @@ k-means 会把这些微小差异放大成不同的调色板，而修改聚类解
 
 ## 存储
 
-不上传任何东西。`localStorage` 键：`paletteHistory`（最近 8 条）、`starredPalettes`、`palette.thumbs`（240 px 原图缩略图，可在页面上清除）、`contrastModel`、`accessionCount`、`proofRevCount`。
+不上传任何东西。`localStorage` 键：`paletteHistory`（最近 8 条）、`starredPalettes`、`palette.thumbs`（480 px 原图缩略图，可在页面上清除）、`contrastModel`、`accessionCount`、`proofRevCount`。
 
 ## 测试与工具
 
@@ -158,7 +158,7 @@ python3 -m http.server     # http://localhost:8000，/gallery.html
 
 ```text
 index.html  classic.html  gallery.html     页面（网址不变：/、/classic、/gallery）
-icon.svg  apple-touch-icon.png  og-image.png  CNAME
+icon-signal.svg  icon.svg（经典版）  apple-touch-icon*.png  og-image.png  CNAME
 css/        style.css、register.css、edition.css · style-classic.css（冻结）
 js/         color.js        取色引擎与 Worker 启动
             decode.js       JPEG 解码器、面积缩小、校验和

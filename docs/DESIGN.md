@@ -19,7 +19,7 @@ Identity in one line: **a strictly typeset register, viewed through a night-city
 | Edition | Files | Status |
 | --- | --- | --- |
 | **Classic** (built April 2026) | `classic.html`, `style-classic.css`, `color-classic.js`, `main-classic.js` (plus the shared `ntc.js` name list) | **Frozen.** Do not change any of its files. Since 2026-10-24 it shares no code with the new edition, so nothing done to the new edition can touch it. |
-| **New** (homepage) | `index.html`, `main.js`, `style.css`, `edition.css/js`, `proof.js`, `proof-worker.js`, `register.css/js`, `previews.js`, `cover.js`, `follow.js`, `fx.js`, `pagefx.js`, `samples.js`, `color.js` | The one living design. |
+| **New** (homepage) | `index.html`, `main.js`, `style.css`, `edition.css/js`, `proof.js`, `proof-worker.js`, `register.css/js`, `previews.js`, `cover.js`, `icon-signal.svg`, `apple-touch-icon-signal.png`, `follow.js`, `fx.js`, `pagefx.js`, `samples.js`, `color.js` | The one living design. |
 
 - The new edition has **one appearance**: the dark night-city register below. **No day/night switch, no second theme.** Remove theme branches rather than leaving dead ones (`[data-theme="day"]` rules, `editionCopy.day`, `setEdition`, the pre-paint theme script).
 
@@ -96,6 +96,10 @@ All effects respect `prefers-reduced-motion: reduce` (off or instant) and are de
 | Plate stack | under the sheet | one plate per extracted colour, exposed right/bottom; each plate eases on its own, front 0.585 → back 0.39; always z-below the sheet; opens to 1.95 × depth leaning away from the pointer. On a new palette the plates re-ink front to back, one per 40 ms frame, in a hard cut, each kicking out 6 px for two frames (`pagefx.js`) |
 
 Adding a new effect requires: which screen-side object it belongs to, its duration, and what record it reveals. Effects without a record are cut.
+
+**Touch previews.** With no hover, the archive and matrix previews open on one small screen fixed to the bottom of the viewport (`previews.js`, `.tap-screen`). It is a screen object, so it carries the full treatment: lens brackets, scanlines, a stepped cut-in of offset slices with channel split (0.34 s), decoded caption; while open, switching items slides the thumbnail strip and drops the signal instead of cutting in again. A tap only looks: RETRIEVE restores a palette, which keeps looking and choosing separate, as hover and click do on desktop.
+
+**Icons.** `icon.svg` belongs to the Classic Edition and stays as it is. `icon-signal.svg` is the same palette on the sheet colour, with the nameplate's off-register cyan, the lens brackets and one torn band; under 24 px the brackets and tear drop out.
 
 ## 8. Page anatomy (new edition)
 

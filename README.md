@@ -126,7 +126,7 @@ Same pixels + same `k` + same seed → the same palette. REROLL increments the s
 
 ## Storage
 
-Nothing is uploaded. `localStorage` keys: `paletteHistory` (last 8), `starredPalettes`, `palette.thumbs` (240 px source thumbnails, clearable from the page), `contrastModel`, `accessionCount`, `proofRevCount`.
+Nothing is uploaded. `localStorage` keys: `paletteHistory` (last 8), `starredPalettes`, `palette.thumbs` (480 px source thumbnails, clearable from the page), `contrastModel`, `accessionCount`, `proofRevCount`.
 
 ## Tests and tools
 
@@ -158,7 +158,7 @@ python3 -m http.server     # http://localhost:8000, /gallery.html
 
 ```text
 index.html  classic.html  gallery.html     pages (URLs unchanged: /, /classic, /gallery)
-icon.svg  apple-touch-icon.png  og-image.png  CNAME
+icon-signal.svg  icon.svg (Classic)  apple-touch-icon*.png  og-image.png  CNAME
 css/        style.css, register.css, edition.css  · style-classic.css (frozen)
 js/         color.js        colour engine, worker bootstrap
             decode.js       JPEG decoder, area downscale, checksum

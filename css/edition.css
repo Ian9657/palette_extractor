@@ -682,14 +682,67 @@ body::after {
 .thumb-note button:hover { background: var(--alert); color: var(--alert-ink); border-color: var(--alert-ink); }
 
 @media (hover: none) { .float-preview { display: none; } }
-/* Touch: the previews open in the page, under the matrix or the archive list */
-.tap-preview { margin: var(--s2) 0 0; }
-.tap-preview[hidden] { display: none; }
-.tap-preview .fs-sheet, .tap-preview .fp-caption { width: auto; }
-.tap-archive { width: min(100%, 15rem); }
-.tap-frame { border: 1px solid var(--border-color); }
-.tap-frame .fp-frame { width: 100%; height: auto; aspect-ratio: 1; }
-.a11y-cell.tapped { outline: 2px solid var(--signal); outline-offset: -2px; }
+/* Touch: the previews open on a small screen at the bottom of the viewport */
+.tap-screen {
+    --w: 100%;
+    position: fixed;
+    left: var(--s2);
+    right: var(--s2);
+    bottom: max(var(--s2), env(safe-area-inset-bottom));
+    z-index: 120;
+    display: grid;
+    background: var(--bg-color);
+    border: 1px solid var(--signal);
+    box-shadow: 0 0 18px color-mix(in srgb, var(--signal) 28%, transparent);
+}
+.tap-screen[hidden] { display: none; }
+.tap-screen[data-mode="archive"] { grid-template-columns: 9.5rem minmax(0, 1fr); }
+.tap-screen .fp-caption { width: auto; white-space: normal; }
+.tap-screen[data-mode="specimen"] .fp-caption { padding-block: 0.75rem; padding-right: 2.75rem; }
+.ts-window { width: auto; height: auto; border: 0; }
+.tap-screen[data-mode="archive"] .ts-window { height: 9.5rem; }
+.tap-screen[data-mode="archive"] .fs-sheet,
+.tap-screen[data-mode="specimen"] .fp-track,
+.tap-screen[data-mode="specimen"] .ts-bars,
+.tap-screen[data-mode="specimen"] .ts-retrieve { display: none; }
+.tap-screen .fs-sheet { width: auto; border: 0; }
+.tap-screen .fp-frame { width: 100%; height: 9.5rem; }
+.ts-side { display: flex; flex-direction: column; justify-content: flex-end; min-width: 0; }
+.tap-screen[data-mode="archive"] .ts-side { gap: var(--s1); padding: var(--s2); }
+.ts-bars { flex: 1; min-height: 0; }
+.ts-close {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    z-index: 4;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--bg-color);   /* it sits on the caption bar */
+    font: 600 1.25rem/1 'IBM Plex Mono', monospace;
+}
+.tap-screen[data-mode="archive"] .ts-close { display: none; }
+.ts-in { animation: ts-cut-in 0.34s steps(1) 1; }
+.ts-out { animation: ts-cut-out 0.16s steps(1) 1 forwards; }
+/* A signal arriving: slices first, a wrong offset, then lock */
+@keyframes ts-cut-in {
+    0%   { clip-path: inset(46% 0 46% 0); transform: translateX(-10px); filter: url(#rgb-split); }
+    18%  { clip-path: inset(18% 0 58% 0); transform: translateX(14px); filter: url(#rgb-split); }
+    36%  { clip-path: inset(0 0 34% 0); transform: translateX(-7px); filter: url(#rgb-split); }
+    54%  { clip-path: inset(58% 0 0 0); transform: translateX(9px); filter: url(#rgb-split); }
+    72%  { clip-path: inset(0); transform: translateX(-3px); filter: url(#rgb-split); }
+    100% { clip-path: inset(0); transform: none; filter: none; }
+}
+@keyframes ts-cut-out {
+    0%   { clip-path: inset(0 0 40% 0); transform: translateX(8px); filter: url(#rgb-split); }
+    40%  { clip-path: inset(44% 0 44% 0); transform: translateX(-12px); filter: url(#rgb-split); }
+    100% { clip-path: inset(50% 0 50% 0); }
+}
+.a11y-cell.tapped { outline: 2px solid var(--signal); outline-offset: -2px; transform: none; box-shadow: none; }
+.history-item.tapped { outline: 2px solid var(--signal); outline-offset: 2px; }
+
 @media (prefers-reduced-motion: reduce) {
     .float-preview, .fp-track, .fs-sheet { transition: none; }
 }

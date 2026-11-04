@@ -1,13 +1,14 @@
 // Previews of the archive (source thumbnails) and the A11Y matrix (a type
 // specimen of a pair). With a fine pointer they float by the cursor,
-// positioned by follow.js; on touch a tap opens them in the page, under the
-// list or the matrix, and a second tap on the same item closes them.
+// positioned by follow.js. On touch there is no hover to separate looking from
+// choosing, so a tap opens them on a small screen fixed to the bottom of the
+// viewport, with the same signal effects; RETRIEVE is what restores a palette.
 //
 // Thumbnails: each filed object keeps a small JPEG of its source in this
 // browser only — localStorage key THUMBS_KEY, never uploaded. The archive
 // shows what is stored and offers to clear it.
 const THUMBS_KEY = 'palette.thumbs';
-const THUMB_SIZE = 240;
+const THUMB_SIZE = 480;
 const pv = id => document.getElementById(id);
 
 const themeKey = theme => Object.values(theme).join('');
@@ -184,62 +185,114 @@ if (Follow.enabled) {
     };
     renderA11yMatrix();
 } else {
-    // Touch: the same two previews as blocks in the page
-    const tapArchive = document.createElement('figure');
-    tapArchive.className = 'tap-preview tap-archive';
-    tapArchive.hidden = true;
-    tapArchive.innerHTML = '<div class="tap-frame"></div><figcaption class="fp-caption mono-text"></figcaption>';
-    let openItem = null;   // [box, index] of the item shown
-    const closeArchive = () => { tapArchive.hidden = true; openItem = null; };
+    const tv = document.createElement('div');
+    tv.className = 'tap-screen';
+    tv.hidden = true;
+    tv.innerHTML = `
+        <div class="fp-window ts-window">
+            <div class="fp-track"></div>
+            <div class="fs-sheet">${pv('specimen-sheet').innerHTML}</div>
+        </div>
+        <div class="ts-side">
+            <div class="fp-bars ts-bars"></div>
+            <div class="fp-caption mono-text"></div>
+            <button type="button" class="btn-export ts-retrieve">RETRIEVE</button>
+        </div>
+        <button type="button" class="ts-close" aria-label="Close preview">×</button>`;
+    document.body.appendChild(tv);
+    const part = sel => tv.querySelector(sel);
+    const track = part('.fp-track'), sheet = part('.fs-sheet'), caption = part('.fp-caption');
+
+    let open = null;   // what is on screen: { mark, box, index } (box only for the archive)
+    let shutTimer = 0;
+    const unmark = () => { if (open && open.mark) open.mark.classList.remove('tapped'); };
+    function closeScreen() {
+        if (tv.hidden || !open) return;
+        unmark();
+        open = null;
+        if (REDUCED_MOTION) { tv.hidden = true; return; }
+        tv.classList.remove('ts-in');
+        tv.classList.add('ts-out');
+        shutTimer = setTimeout(() => { tv.hidden = true; tv.classList.remove('ts-out'); }, 160);
+    }
+    // On a first show it cuts in; while open it stays and the signal drops instead
+    function show(mode, mark, extra) {
+        const switching = !!open;
+        unmark();
+        clearTimeout(shutTimer);
+        open = { mark, ...extra };
+        mark.classList.add('tapped');
+        tv.dataset.mode = mode;
+        tv.hidden = false;
+        tv.classList.remove('ts-out');
+        if (switching) FX.split(tv, 360);
+        else {
+            tv.classList.remove('ts-in');
+            void tv.offsetWidth;   // restart the cut-in
+            tv.classList.add('ts-in');
+        }
+        // Whatever was tapped stays in view above the screen
+        const over = mark.getBoundingClientRect().bottom + 12 - tv.getBoundingClientRect().top;
+        if (over > 0) window.scrollBy({ top: over, behavior: REDUCED_MOTION ? 'auto' : 'smooth' });
+    }
 
     archiveLists.forEach(([box, list]) => {
-        // Capture: read the index before the item's own click restores the
-        // palette, which may redraw the list under it
+        // Capture, and stop there: a tap only looks. The item's own click, which
+        // restores the palette, is left for RETRIEVE.
         box.addEventListener('click', e => {
             const el = e.target.closest('.history-item');
-            if (!el) return;
-            const i = itemIndex(box, el), item = list()[i];
-            if (i < 0 || !item) return;
-            if (openItem && openItem[0] === box && openItem[1] === i) { closeArchive(); return; }
-            openItem = [box, i];
-            tapArchive.querySelector('.tap-frame').innerHTML = frameFor(item);
-            box.after(tapArchive);
-            tapArchive.hidden = false;
-            FX.decode(tapArchive.querySelector('figcaption'), captionFor(item));
+            if (!el || el.dataset.retrieving) return;
+            e.stopPropagation();
+            const i = itemIndex(box, el), items = list();
+            if (i < 0 || !items[i]) return;
+            if (open && open.box === box && open.index === i) { closeScreen(); return; }
+            if (!open || open.box !== box) {
+                track.innerHTML = items.map(frameFor).join('');
+                track.style.setProperty('--count', items.length);
+            }
+            track.style.setProperty('--index', i);
+            part('.ts-bars').innerHTML = Object.values(items[i].theme).map(c => `<span style="background:${c}"></span>`).join('');
+            show('archive', el, { box, index: i });
+            FX.decode(caption, captionFor(items[i]));
+            FX.split(track, 600);
         }, true);
     });
 
-    const tapSpecimen = pv('specimen-sheet').parentElement.cloneNode(true);
-    tapSpecimen.removeAttribute('id');
-    tapSpecimen.removeAttribute('aria-hidden');
-    tapSpecimen.className = 'tap-preview tap-specimen';
-    tapSpecimen.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
-    tapSpecimen.hidden = true;
-    a11y.after(tapSpecimen);
-    let openCell = null;
+    part('.ts-retrieve').addEventListener('click', () => {
+        if (!open || !open.mark) return;
+        const el = open.mark;
+        el.dataset.retrieving = '1';
+        el.click();
+        delete el.dataset.retrieving;
+        closeScreen();
+    });
+    part('.ts-close').addEventListener('click', closeScreen);
+
     a11y.addEventListener('click', e => {
         const td = e.target.closest('td.a11y-cell');
         const pair = pairFor(td);
-        a11y.querySelectorAll('.tapped').forEach(c => c.classList.remove('tapped'));
-        if (!pair || td === openCell) { tapSpecimen.hidden = true; openCell = null; return; }
-        openCell = td;
-        td.classList.add('tapped');
-        const sheet = tapSpecimen.querySelector('.fs-sheet');
+        if (!pair || (open && open.mark === td)) { closeScreen(); return; }
         sheet.style.background = pair.bg;
         sheet.style.color = pair.fg;
-        tapSpecimen.hidden = false;
-        FX.decode(tapSpecimen.querySelector('.fp-caption'), pair.caption, 240);
+        show('specimen', td, {});
+        FX.decode(caption, pair.caption, 240);
     });
 
-    // A new palette redraws the matrix, and a new filing shifts the archive: close both
+    // A tap anywhere else puts the screen away
+    document.addEventListener('click', e => {
+        if (!open || tv.contains(e.target) || e.target.closest('.history-item, td.a11y-cell')) return;
+        closeScreen();
+    });
+
+    // A new palette redraws the matrix and shifts the archive under it
     const prevSetPaletteTap = setPalette;
     setPalette = function (next, saveToHistory = false) {
         prevSetPaletteTap(next, saveToHistory);
-        if (saveToHistory) closeArchive();
+        closeScreen();
     };
     const prevRenderA11y = renderA11yMatrix;
     renderA11yMatrix = function () {
+        if (open && tv.dataset.mode === 'specimen') closeScreen();
         prevRenderA11y();
-        tapSpecimen.hidden = true; openCell = null;
     };
 }
