@@ -58,7 +58,6 @@ const loadingOverlay = document.getElementById('loading-overlay');
 const btnExportTailwind = document.getElementById('btn-export-tailwind');
 const btnExportCss = document.getElementById('btn-export-css');
 const btnExportFigma = document.getElementById('btn-export-figma');
-const btnExportImage = document.getElementById('btn-export-image');
 const btnStarCurrent = document.getElementById('btn-star-current');
 const btnReroll = document.getElementById('btn-reroll');
 const btnInvert = document.getElementById('btn-invert');
@@ -496,142 +495,6 @@ function downloadConfig(content, filename, btn) {
 
 btnExportTailwind.addEventListener('click', exportToTailwind);
 btnExportCss.addEventListener('click', exportToCSS);
-if (btnExportImage) btnExportImage.addEventListener('click', exportToImage);
-
-function exportToImage(e) {
-    if (!palette) return;
-    const theme = palette.theme;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = 1200;
-    canvas.height = 1200;
-    const ctx = canvas.getContext('2d');
-
-    ctx.fillStyle = '#F5F0E8';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.fillStyle = 'rgba(26, 26, 26, 0.15)';
-    for (let i = 40; i < canvas.width; i += 40) {
-        for (let j = 40; j < canvas.height; j += 40) {
-            ctx.beginPath();
-            ctx.arc(i, j, 1.5, 0, Math.PI * 2);
-            ctx.fill();
-        }
-    }
-
-    ctx.lineWidth = 6;
-    ctx.strokeStyle = '#1a1a1a';
-    ctx.strokeRect(60, 60, 1080, 1080);
-
-    ctx.font = 'bold 80px "Space Grotesk", sans-serif';
-    ctx.fillStyle = '#1a1a1a';
-    ctx.fillText('PALETTE EXTRACTOR', 100, 160);
-
-    ctx.font = 'bold 24px "IBM Plex Mono", monospace';
-    ctx.fillText('ZINE EDITION // SYSTEM EXPORT // ' + new Date().toISOString().split('T')[0], 100, 210);
-
-    ctx.beginPath();
-    ctx.moveTo(60, 260);
-    ctx.lineTo(1140, 260);
-    ctx.stroke();
-
-    const imgSize = 460;
-    const imgX = 100;
-    const imgY = 320;
-
-    let dw = imgSize;
-    let dh = imgSize;
-    if (currentImgEl) {
-        const imgAspect = currentImgEl.naturalWidth / currentImgEl.naturalHeight;
-        if (imgAspect > 1) {
-            dw = imgSize; dh = imgSize / imgAspect;
-        } else {
-            dh = imgSize; dw = imgSize * imgAspect;
-        }
-    }
-
-    ctx.fillStyle = theme.primary || '#ef4444';
-    ctx.fillRect(imgX + 16, imgY + 16, dw, dh);
-
-    ctx.fillStyle = '#1a1a1a';
-    ctx.fillRect(imgX, imgY, dw, dh);
-
-    if (currentImgEl) {
-        ctx.drawImage(currentImgEl, imgX, imgY, dw, dh);
-    } else {
-        ctx.fillStyle = '#F5F0E8';
-        ctx.fillRect(imgX + 4, imgY + 4, dw - 8, dh - 8);
-        ctx.fillStyle = '#1a1a1a';
-        ctx.font = 'bold 24px "IBM Plex Mono", monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText('NO SOURCE', imgX + dw / 2, imgY + dh / 2);
-        ctx.textAlign = 'left';
-    }
-    ctx.strokeRect(imgX, imgY, dw, dh);
-
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    const l = 20;
-    ctx.moveTo(imgX - l, imgY); ctx.lineTo(imgX, imgY);
-    ctx.moveTo(imgX, imgY - l); ctx.lineTo(imgX, imgY);
-    ctx.moveTo(imgX + dw + l, imgY); ctx.lineTo(imgX + dw, imgY);
-    ctx.moveTo(imgX + dw, imgY - l); ctx.lineTo(imgX + dw, imgY);
-    ctx.moveTo(imgX - l, imgY + dh); ctx.lineTo(imgX, imgY + dh);
-    ctx.moveTo(imgX, imgY + dh + l); ctx.lineTo(imgX, imgY + dh);
-    ctx.moveTo(imgX + dw + l, imgY + dh); ctx.lineTo(imgX + dw, imgY + dh);
-    ctx.moveTo(imgX + dw, imgY + dh + l); ctx.lineTo(imgX + dw, imgY + dh);
-    ctx.stroke();
-
-    const paletteX = 620;
-    const paletteY = 320;
-    const swatchW = 480;
-
-    const k = Object.keys(theme).length;
-    const names = ROLE_NAMES[k];
-    const swatchH = Math.min(100, 660 / k - 20);
-
-    Object.values(theme).forEach((color, i) => {
-        const y = paletteY + i * (swatchH + 20);
-
-        ctx.fillStyle = '#1a1a1a';
-        ctx.fillRect(paletteX + 8, y + 8, swatchW, swatchH);
-
-        ctx.fillStyle = color;
-        ctx.fillRect(paletteX, y, swatchW, swatchH);
-        ctx.lineWidth = 4;
-        ctx.strokeRect(paletteX, y, swatchW, swatchH);
-
-        ctx.fillStyle = inkOn(color);
-
-        ctx.font = 'bold 28px "Space Grotesk", sans-serif';
-        ctx.fillText(names[i], paletteX + 24, y + swatchH / 2 + 10);
-
-        ctx.font = 'bold 24px "IBM Plex Mono", monospace';
-        ctx.fillText(color.toUpperCase(), paletteX + swatchW - 140, y + swatchH / 2 + 8);
-    });
-
-    ctx.fillStyle = '#1a1a1a';
-    ctx.fillRect(60, 1020, 1080, 120);
-    ctx.fillStyle = '#F5F0E8';
-    ctx.font = 'bold 40px "Space Grotesk", sans-serif';
-    ctx.fillText('PROCESS COMPLETE', 100, 1090);
-
-    ctx.font = 'bold 24px "IBM Plex Mono", monospace';
-    ctx.fillText('INK COVERAGE SIMULATION', 740, 1085);
-
-    const url = canvas.toDataURL('image/png');
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'palette-card.png';
-    a.click();
-
-    if (e && e.target) {
-        const btn = e.target;
-        const originalText = btn.textContent;
-        btn.textContent = 'SAVED';
-        setTimeout(() => { btn.textContent = originalText; }, 2000);
-    }
-}
 
 // ---- UI Updates ----
 let swapFrom = null;        // role key picked as the first half of a swap
@@ -662,7 +525,6 @@ function setPalette(next, saveToHistory = false) {
     setText('proof-rev', String(revCount).padStart(3, '0'));
     setText('proof-date', new Date().toISOString().split('T')[0]);
     setText('proof-k', k);
-    setText('proof-iter', MAX_ITER);
     setText('proof-seed', palette.seed ?? '—');
 
     applyMockupTheme();
@@ -881,7 +743,7 @@ function renderSwatches() {
     emit('swatches');
 }
 
-// ---- A11Y Contrast Matrix ----
+// ---- Contrast Matrix ----
 // WCAG 2 ratio is symmetric; APCA Lc is text-on-background, so rows are text, columns are bg.
 const CONTRAST_MODELS = {
     wcag: {
@@ -1000,7 +862,7 @@ function renderCvdPanel() {
     const roleName = key => names[keys.indexOf(key)];
     html += warnings.length
         ? warnings.map(w => `<div class="cvd-warning">⚠ ${roleName(w.a)} ≈ ${roleName(w.b)} UNDER ${CVD_LABELS[w.type]}</div>`).join('')
-        : '<div class="cvd-ok">BRAND ROLES STAY DISTINCT UNDER ALL THREE SIMULATIONS</div>';
+        : '<div class="cvd-ok">KEY COLOURS STAY DISTINCT UNDER ALL THREE SIMULATIONS</div>';
     cvdPanel.innerHTML = html;
 }
 

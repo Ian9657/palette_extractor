@@ -474,7 +474,7 @@ h2 { font-size: 2rem; letter-spacing: -0.02em; }
 .history-color { flex: 1; height: 100%; border-right: 2px solid var(--border-color); mix-blend-mode: multiply; }
 .history-color:last-child { border-right: none; }
 
-/* A11Y Contrast Matrix */
+/* Contrast Matrix */
 .a11y-matrix {
     border: 2px solid var(--border-color);
     margin-top: 1rem;
@@ -616,7 +616,7 @@ h2 { font-size: 2rem; letter-spacing: -0.02em; }
     
     .section-header { flex-direction: column; align-items: stretch; gap: 0.5rem; }
     
-    /* Export buttons: row 1 = STAR + SAVE IMG, row 2 = FIGMA + TAILWIND + CSS */
+    /* Export buttons: row 1 = STAR + SAVE COVER, row 2 = FIGMA + TAILWIND + CSS */
     .export-actions { flex-wrap: wrap; gap: 0.5rem; }
     .btn-export:nth-child(1),
     .btn-export:nth-child(2) { flex: 1 1 45%; }
@@ -668,7 +668,7 @@ h2 { font-size: 2rem; letter-spacing: -0.02em; }
         overflow: hidden;
     }
     
-    /* A11Y Matrix mobile: horizontal scroll, remove blend modes (Safari issue) */
+    /* Contrast Matrix mobile: horizontal scroll, remove blend modes (Safari issue) */
     .a11y-matrix {
         -webkit-overflow-scrolling: touch;
     }

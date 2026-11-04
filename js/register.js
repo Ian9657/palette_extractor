@@ -27,9 +27,9 @@ function renderCondition(p) {
     const adj = Object.keys(p.adjusted || {}).length;
     const gen = Object.keys(p.generated || {}).length;
     const parts = [];
-    if (adj) parts.push(`${adj} RESTORED (ADJ)`);
-    if (gen) parts.push(`${gen} RECONSTRUCTED (GEN)`);
-    if (p.lowChroma) parts.push('FADED');
+    if (adj) parts.push(`${adj} ADJUSTED FOR CONTRAST`);
+    if (gen) parts.push(`${gen} GENERATED`);
+    if (p.lowChroma) parts.push('LOW CHROMA');
     return parts.length ? parts.join(' · ') : 'INTACT';
 }
 
@@ -55,7 +55,7 @@ on('palette', (next, saveToHistory) => {
     applyTilt();
 
     const k = Object.keys(next.theme).length;
-    accEl('acc-medium').textContent = `LIGHT · ${k} COLOURS`;
+    accEl('acc-medium').textContent = String(k);
     accEl('acc-condition').textContent = renderCondition(next);
 
     if (saveToHistory && currentImgEl) {

@@ -2,7 +2,7 @@
 // event. At rest the page is unchanged (DESIGN.md §3.3, §7).
 //   Title card  — each entry, the first time it scrolls in: the numeral
 //                 decodes, the heading is cut in on a yellow card
-//   Sandevistan — a new palette arrives in COLOR BAR in steps, leaving one
+//   Sandevistan — a new palette arrives in COLOUR BAR in steps, leaving one
 //                 afterimage per colour, which then drop out one by one
 //   Fringe      — a hard RGB split on the control that was pressed
 //   Press run   — on load: marks, plates, nameplate, mast line, body, in
@@ -70,7 +70,7 @@
         if (heading) heading.classList.add('card');
     }
 
-    // ---- Sandevistan: COLOR BAR ----
+    // ---- Sandevistan: COLOUR BAR ----
     const bar = document.getElementById('palette-container');
     const STEP = 40, GAP = 18, MAX_ECHOES = 4;
     let echoTimer = null, lastTheme = '';

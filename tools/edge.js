@@ -2,7 +2,7 @@
 // Each image is drawn and encoded by the browser itself, deposited through
 // the file input, and the whole page is checked: no errors or dialogs, a
 // full set of distinct colours, the proof developed (or the test card for a
-// source with nothing to read), and SAVE IMG / CSS VARIABLES still download.
+// source with nothing to read), and SAVE COVER / CSS VARIABLES still download.
 // Runs in Chromium and WebKit. Exit code 1 if any check fails.
 const { chromium, webkit } = require('playwright');
 const fs = require('node:fs');

@@ -72,7 +72,7 @@ Identity in one line: **a strictly typeset register, viewed through a night-city
 
 ### 6.2 Data colours
 
-- Extracted colours appear **exactly as extracted** wherever they are data: COLOR BAR, matrix, CVD strips, specimen strip, plate stack, proof, archive, cover. Themes never recolour, filter or blend them (no `mix-blend-mode` on data on the dark sheet).
+- Extracted colours appear **exactly as extracted** wherever they are data: COLOUR BAR, matrix, CVD strips, specimen strip, plate stack, proof, archive, cover. Themes never recolour, filter or blend them (no `mix-blend-mode` on data on the dark sheet).
 - The opener's headline rule shows `theme.primary` — that is data, and the only data colour allowed in the masthead/opener chrome.
 
 ## 7. Motion and effects catalogue
@@ -88,8 +88,8 @@ All effects respect `prefers-reduced-motion: reduce` (off or instant) and are de
 | Floating previews | archive (source thumbnail), matrix (type specimen) | `follow.js` delays `slow 12 / mid 7`; stepped opening `steps(6)`; scanlines inside |
 | Press run | the sheet, once per page load | marks (cyan layer snaps to register in 3 steps) → sheet surfaces (320 ms fade of its fill and frame, the run's one soft move — owner's call) while the plates are laid front to back with a kick (before this only the desk and marks show; never an empty frame) → nameplate (signal plate hits 0.22em off, steps back to register, `FX.split`) + EXTRACTOR decodes → mast line decodes, mast rule wipes `steps(6)` → body; each stage ≤ 320 ms, ~0.9 s in all; sheet contents hidden by a pre-paint `booting` class (failsafe reveal at 2.5 s); title cards wait for it |
 | Title card | each entry, the first time it scrolls in | numeral decodes + `FX.split`; the panel h2 is cut in on an `--alert` card with `--alert-ink` text: wipe 3 steps, hold, wipe off 3 steps, 340 ms, once per page load |
-| Sandevistan | COLOR BAR, when a new palette lands (deposit, COLORS, reroll, archive, hand edit) | the bar steps in from the left 18 px per 40 ms frame, leaving one solid afterimage per frame in the palette's own colours (most vivid first, max 4); then they drop out farthest first. Data colours exact, no filter on the swatches |
-| Fringe | the control that was pressed (`.btn-export`, COLORS label) | `FX.split`, 200 ms. Never on data colours |
+| Sandevistan | COLOUR BAR, when a new palette lands (deposit, COLOURS, reroll, archive, hand edit) | the bar steps in from the left 18 px per 40 ms frame, leaving one solid afterimage per frame in the palette's own colours (most vivid first, max 4); then they drop out farthest first. Data colours exact, no filter on the swatches |
+| Fringe | the control that was pressed (`.btn-export`, COLOURS label) | `FX.split`, 200 ms. Never on data colours |
 | Tear | 04 Proof: the test card every 2–6 s while on screen; the plate stack once when taken apart and once when seated | 2–4 horizontal bands of every plate shift sideways together for three 70 ms frames, with `FX.split`; never per drag step |
 | Error | Fig. 1's caption when an image can't be deposited; a button whose action failed (COPY FAILED, EXPORT FAILED) | the `--danger` words decode in (260–300 ms) under one `FX.split` — a lost signal; never on a data colour (a swatch's COPY FAILED stays plain) |
 | Signal locked | 04 Proof, when the last plate seats | OSD plate SIGNAL LOCKED, flickers on, holds, gone in 0.6 s |
@@ -104,8 +104,8 @@ Adding a new effect requires: which screen-side object it belongs to, its durati
 ## 8. Page anatomy (new edition)
 
 1. **Masthead** — mono line (VOL. 01 — edition name · ISSUE nnn · date), nameplate PALETTE with one off-register `--signal` plate, EXTRACTOR + "A REGISTER OF COLOUR", the page's **only** heavy double rule. The edition name appears once.
-2. **01 Intake** — Fig. 1 (4:3 drop zone; controls COLORS/REROLL directly under it; then SAMPLES: six Unsplash photographs, 1920 × 1440 in `samples/` with 256 px thumbnails in `samples/thumbs/` (the row shows them at most ~82 px wide, so 3× screens stay sharp); one click deposits one, `samples.js`) + opener: kicker, primary-colour rule, headline = primary colour's name, factual standfirst, accession record (folded until an object exists).
-3. **02 Specimen** — COLOR BAR; actions: STAR, SAVE IMG, EXPORT ▾ (link, CSS, Tailwind, Figma). OKLCH line under each swatch.
+2. **01 Intake** — Fig. 1 (4:3 drop zone; controls COLOURS/REROLL directly under it; then SAMPLES: six Unsplash photographs, 1920 × 1440 in `samples/` with 256 px thumbnails in `samples/thumbs/` (the row shows them at most ~82 px wide, so 3× screens stay sharp); one click deposits one, `samples.js`) + opener: kicker, primary-colour rule, headline = primary colour's name, factual standfirst, accession record (folded until an object exists).
+3. **02 Specimen** — COLOUR BAR; actions: STAR, SAVE COVER, EXPORT ▾ (link, CSS, Tailwind, Figma). OKLCH line under each swatch.
 4. **03 Relations** — contrast matrix (WCAG/APCA) with type-specimen hover; CVD strips in two columns.
 5. **04 Proof** — the photo re-rendered as one anime cel in the palette's inks, separated into plates (§8.1). Archive and favourites follow, folded.
 6. **Colophon** — fonts, method, sample credits. No link to the zine.

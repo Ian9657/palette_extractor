@@ -1172,7 +1172,7 @@ h1, h2, h3, .title,
 .sample.current { border-color: var(--text-color); box-shadow: inset 0 0 0 1px var(--text-color); }
 @media (max-width: 600px) { .samples { grid-template-columns: minmax(0, 1fr); gap: var(--s1); } }
 
-/* The one filled button in COLOR BAR's actions: SAVE IMG; STAR and the EXPORT menu stay outlined */
+/* The one filled button in COLOUR BAR's actions: SAVE COVER; STAR and the EXPORT menu stay outlined */
 .btn-primary { background: var(--text-color); color: var(--bg-color); }
 .favorites-block > .section-header { margin-top: var(--s4); }
 

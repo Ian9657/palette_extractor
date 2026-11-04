@@ -1,4 +1,4 @@
-// SAVE IMG for the new edition: renders the current object as a 4:5
+// SAVE COVER for the new edition: renders the current object as a 4:5
 // magazine cover in the page's own inks (DESIGN.md §6.1) and downloads
 // it. Replaces main.js's classic card on this page only.
 const COVER_W = 1200, COVER_H = 1500, COVER_M = 72;
@@ -149,7 +149,7 @@ async function renderCover() {
     y = box.y + box.h - 4 * 40;
     const spec = [
         ['RECEIVED', document.getElementById('acc-date').textContent],
-        ['MEDIUM', document.getElementById('acc-medium').textContent],
+        ['COLOURS', document.getElementById('acc-medium').textContent],
         ['CONDITION', document.getElementById('acc-condition').textContent],
         ['STATUS', filed ? 'FILED' : 'DEFAULT']
     ];
@@ -193,7 +193,7 @@ async function renderCover() {
     return { canvas: c, name: `palette-${filed ? accNo : 'default'}.png` };
 }
 
-// Take over SAVE IMG before main.js's own listener sees the click
+// Take over SAVE COVER before main.js's own listener sees the click
 document.addEventListener('click', e => {
     const btn = e.target.closest && e.target.closest('#btn-export-image');
     if (!btn) return;

@@ -1,4 +1,4 @@
-// Previews of the archive (source thumbnails) and the A11Y matrix (a type
+// Previews of the archive (source thumbnails) and the contrast matrix (a type
 // specimen of a pair). With a fine pointer they float by the cursor,
 // positioned by follow.js. On touch there is no hover to separate looking from
 // choosing, so a tap opens them on a small screen fixed to the bottom of the

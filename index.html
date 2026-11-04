@@ -7,12 +7,12 @@
     <link rel="icon" href="icon-signal.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="apple-touch-icon-signal.png">
     <!-- Link previews (WeChat, Discord, X, Slack…) -->
-    <meta name="description" content="Drop a photo and it is catalogued like a magazine object: five colours chosen by saliency, coverage and diversity, with roles, contrast, colour-blindness checks and a printable proof.">
+    <meta name="description" content="Drop in an image and get a filed record of its colours: 3–8 roles chosen by saliency, coverage and diversity, checked for contrast and colour blindness, exportable as CSS, Tailwind and Figma tokens.">
     <meta name="theme-color" content="#111927">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Palette Extractor">
     <meta property="og:title" content="Palette Extractor — Signal Edition">
-    <meta property="og:description" content="Photo in, a register of colour out. Five colours chosen by saliency, coverage and diversity — measured, proofed and filed.">
+    <meta property="og:description" content="Drop in an image and get a filed record of its colours: 3–8 roles chosen by saliency, coverage and diversity, checked for contrast and colour blindness, exportable as CSS, Tailwind and Figma tokens.">
     <meta property="og:url" content="https://palette.etarc.net/">
     <meta property="og:image" content="https://palette.etarc.net/og-image.png">
     <meta property="og:image:width" content="1200">
@@ -20,7 +20,7 @@
     <meta property="og:image:alt" content="The Palette Extractor nameplate over a night street photo and its five extracted colours">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Palette Extractor — Signal Edition">
-    <meta name="twitter:description" content="Photo in, a register of colour out.">
+    <meta name="twitter:description" content="Drop in an image, get a filed record of its colours: roles, contrast checks and design tokens.">
     <meta name="twitter:image" content="https://palette.etarc.net/og-image.png">
     <!-- Press run on load (pagefx.js): hide the sheet's contents before first paint; failsafe reveal -->
     <script>
@@ -109,7 +109,7 @@
                             </div>
                         </div>
                         <div class="settings-bar">
-                            <label for="k-slider" class="mono-text">COLORS: <span id="k-value">5</span></label>
+                            <label for="k-slider" class="mono-text">COLOURS: <span id="k-value">5</span></label>
                             <input type="range" id="k-slider" min="3" max="8" value="5">
                             <button id="btn-reroll" class="btn-export" title="Same colour count, a different pick: re-runs clustering with the next seed">↻ REROLL</button>
                         </div>
@@ -144,7 +144,7 @@
                                 <dt>SOURCE</dt>     <dd id="acc-source">—</dd>
                                 <dt>DIMENSIONS</dt> <dd id="acc-dims">—</dd>
                                 <dt>CHECKSUM</dt>   <dd id="acc-check">—</dd>
-                                <dt>MEDIUM</dt>     <dd id="acc-medium">—</dd>
+                                <dt>COLOURS</dt>    <dd id="acc-medium">—</dd>
                                 <dt>CONDITION</dt>  <dd id="acc-condition">—</dd>
                                 <dt>THUMBNAIL</dt>  <dd id="acc-thumb">—</dd>
                             </dl>
@@ -158,14 +158,14 @@
                 <div class="entry-margin">
                     <span class="entry-no">02</span>
                     <span class="entry-label">Specimen</span>
-                    <p class="entry-cap mono-text"><b>FIG. 2</b> The colours, in the order of their roles. Click a plate to copy it; ⇄ trades two roles.</p>
+                    <p class="entry-cap mono-text"><b>FIG. 2</b> The colours, in the order of their roles. Click a swatch to copy it; ⇄ trades two roles.</p>
                 </div>
                 <div class="entry-body">
                     <div class="section-header">
-                        <h2>COLOR BAR</h2>
+                        <h2>COLOUR BAR</h2>
                         <div class="export-actions">
                             <button id="btn-star-current" class="btn-export">☆ STAR</button>
-                            <button id="btn-export-image" class="btn-export btn-primary">SAVE IMG</button>
+                            <button id="btn-export-image" class="btn-export btn-primary">SAVE COVER</button>
                             <details class="export-menu" id="export-menu">
                                 <summary class="btn-export">EXPORT ▾</summary>
                                 <div class="export-menu-list">
@@ -190,7 +190,7 @@
                 </div>
                 <div class="entry-body">
                     <div class="section-header">
-                        <h2>A11Y MATRIX</h2>
+                        <h2>CONTRAST MATRIX</h2>
                         <button id="btn-contrast-model" class="btn-export" title="Switch between WCAG 2.1 ratio and APCA lightness contrast">WCAG 2.1 ⇄</button>
                     </div>
                     <div id="a11y-matrix" class="a11y-matrix"></div>
@@ -202,7 +202,7 @@
                 <div class="entry-margin">
                     <span class="entry-no">04</span>
                     <span class="entry-label">Proof</span>
-                    <p class="entry-cap mono-text"><b>FIG. 4</b> A proof sheet, printed in the extracted inks. The archive is kept below.</p>
+                    <p class="entry-cap mono-text"><b>FIG. 4</b> A proof sheet, printed in the extracted inks.</p>
                 </div>
                 <div class="entry-body">
                     <div class="section-header">
@@ -223,10 +223,9 @@
                         <div class="proof-meta mono-text">
                             <span class="proof-label">REV.</span> <span id="proof-rev" class="proof-value">001</span>
                             <span class="proof-sep">·</span> <span id="proof-date" class="proof-value">—</span>
-                            <span class="proof-sep">·</span> <span class="proof-label">K</span> <span id="proof-k" class="proof-value">5</span>
-                            <span class="proof-sep">·</span> <span class="proof-label">ITER</span> <span id="proof-iter" class="proof-value">15</span>
+                            <span class="proof-sep">·</span> <span class="proof-label">INKS</span> <span id="proof-k" class="proof-value">5</span>
                             <span class="proof-sep">·</span> <span class="proof-label">SEED</span> <span id="proof-seed" class="proof-value">—</span>
-                            <span class="proof-sep">·</span> <span class="proof-label">LIT</span> <span id="mockup-badge" class="proof-value">—</span>
+                            <span class="proof-sep">·</span> <span class="proof-label">COVER</span> <span id="mockup-badge" class="proof-value">—</span>
                             <span class="proof-sep">·</span> <span class="proof-label">SOURCE</span> <span id="proof-source" class="proof-value">—</span>
                             <span class="proof-sep">·</span> <span class="proof-label">LINE</span> <span id="proof-line" class="proof-value">—</span>
                         </div>
@@ -241,10 +240,10 @@
 
                     <div id="favorites-block" class="favorites-block">
                         <div class="section-header">
-                            <h2>FAVORITES</h2>
+                            <h2>FAVOURITES</h2>
                         </div>
                         <div id="favorites-container" class="history-container favorites-wrap"></div>
-                        <p class="favorites-empty mono-text">FAVORITES — none yet. ☆ STAR a palette to keep it here, beyond the last eight.</p>
+                        <p class="favorites-empty mono-text">FAVOURITES — none yet. ☆ STAR a palette to keep it here, beyond the last eight.</p>
                     </div>
                     </details>
                 </div>

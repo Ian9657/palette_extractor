@@ -29,9 +29,9 @@ function writeFeature(p, fromStorage) {
     }
     const w = currentImgEl.naturalWidth, h = currentImgEl.naturalHeight;
     let text = `${k} colours drawn from ${w} × ${h} pixels on ${dateLine(new Date())}.`;
-    if (p.coverage != null) text += ` ${p.coverage}% of the surface is not ${colourName(theme.bg)}.`;
+    if (p.coverage != null) text += ` ${colourName(theme.bg)} holds ${100 - p.coverage}% of the surface.`;
     mag('feature-standfirst').textContent = text;
-    mag('fig1-cap').textContent = `Source, ${w} × ${h} px. Inside the frame, the same image in its ${k} catalogued colours.`;
+    mag('fig1-cap').textContent = `Source, ${w} × ${h} px. Inside the lens, the same image in its ${k} catalogued colours.`;
 }
 
 // ---- Errors and copies: said in place, never in a browser dialog ----
@@ -263,7 +263,7 @@ if (palette.isDefault) {
 
 // ---- Compact empty states ----
 // The accession record stays folded until there is something to record, and
-// FAVORITES shrinks to one line while it is empty.
+// FAVOURITES shrinks to one line while it is empty.
 const recordCard = document.querySelector('.accession-card');
 recordCard.classList.toggle('collapsed', palette.isDefault);
 on('palette', next => { if (!next.isDefault) recordCard.classList.remove('collapsed'); });
