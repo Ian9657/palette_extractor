@@ -145,6 +145,7 @@ Browser tools (`npm install && npx playwright install chromium webkit`):
 | `npm run perf` | cold load, sample → palette, sample → proof, at desktop speed and throttled CPU/network |
 | `npm run shots -- dir/` | desktop and iPhone screenshots with reduced motion and a fixed clock |
 | `npm run compare -- a/ b/` | pixel diff of two shot sets |
+| `npm run doc-images` | regenerates `docs/screenshot.jpg`, `docs/proof-eject.webp` and `og-image.png` |
 
 `gallery.html` runs the 15 images in `regression/` plus synthetic cases. For each, it shows roles, score terms and mean OKLab reconstruction error against a saved baseline.
 

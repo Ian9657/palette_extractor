@@ -16,7 +16,8 @@
     "cross": "node tools/cross.js",
     "shots": "node tools/shots.js",
     "perf": "node tools/perf.js",
-    "compare": "node tools/compare.js"
+    "compare": "node tools/compare.js",
+    "doc-images": "node tools/doc-images.js"
   },
   "devDependencies": {
     "playwright": "1.48.2"

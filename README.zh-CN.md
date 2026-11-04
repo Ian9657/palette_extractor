@@ -145,6 +145,7 @@ npm test            # node --test：79 项，约 30 秒，无需安装依赖
 | `npm run perf` | 冷启动、示例图 → 调色板、示例图 → 打样的耗时，分桌面速度和限速 CPU/网络 |
 | `npm run shots -- dir/` | 桌面和 iPhone 截图，减少动态效果 + 固定时钟 |
 | `npm run compare -- a/ b/` | 两组截图的像素差异 |
+| `npm run doc-images` | 重新生成 `docs/screenshot.jpg`、`docs/proof-eject.webp` 和 `og-image.png` |
 
 `gallery.html` 运行 `regression/` 里的 15 张图和若干合成用例，对每张图显示角色、打分项和平均 OKLab 还原误差，并与保存的基线对比。
 
